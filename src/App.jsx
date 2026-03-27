@@ -37,7 +37,7 @@ const getPath = (colName) => {
 };
 
 // --- Static Config ---
-const SESSION_KEY = 'vu_party_hub_v145_production';
+const SESSION_KEY = 'vu_party_hub_v150_production';
 const GOOGLE_FORM_LINK = 'https://docs.google.com/forms/d/e/1FAIpQLSctHRAv0mdyL8_gwnB0AIOvVDWtZzwA5UYYo_h_rZ48LBnkNQ/viewform'; 
 
 const DAY_STYLES = [
@@ -133,7 +133,7 @@ export default function App() {
   const [baseDate, setBaseDate] = useState(new Date());
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ hostName: '', theme: '', date: '', startTime: '', duration: 2, description: '', roomLink: '', isPublic: false, publicPushMode: 'auto' });
+  const [formData, setFormData] = useState({ hostName: '', coHosts: '', theme: '', date: '', startTime: '', duration: 2, description: '', roomLink: '', isPublic: false, publicPushMode: 'auto' });
   
   const [gateMode, setGateMode] = useState('login');
   const [gateU, setGateU] = useState('');
@@ -323,18 +323,27 @@ export default function App() {
                <div className="flex justify-between items-start mb-3 pl-2">
                  <div>
                    <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tighter leading-none">{p.theme}</h3>
-                   <p className="text-xs text-slate-400 font-bold uppercase mt-1.5 flex items-center gap-1.5"><User size={12} className="text-indigo-400"/> {p.hostName}</p>
+                   <p className="text-xs text-slate-400 font-bold uppercase mt-1.5 flex items-center gap-1.5">
+                     <User size={12} className="text-indigo-400 shrink-0"/> 
+                     <span className="truncate">{p.hostName}{p.coHosts ? ` + ${p.coHosts}` : ''}</span>
+                   </p>
                  </div>
-                 <div className="text-right shrink-0">
+                 <div className="text-right shrink-0 ml-4">
                    <div className="text-xs font-black text-emerald-400 uppercase bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">{p.date.split('-').reverse().slice(0,2).join('/')}</div>
                    <div className="text-[10px] font-bold text-slate-300 mt-1.5 bg-slate-950 px-2 py-1 rounded-md border border-slate-800 inline-block shadow-inner">{format12h(p.startTime)} PT</div>
                  </div>
                </div>
                {p.description && <p className="text-xs text-slate-300 mt-4 pl-2 leading-relaxed opacity-90 border-l-2 border-slate-700 ml-1 pl-3">{p.description}</p>}
                <div className="mt-5 pl-2">
-                 <a href={p.roomLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white w-full sm:w-auto px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95">
-                   <LinkIcon size={14}/> Enter Room Link
-                 </a>
+                 {p.roomLink ? (
+                   <a href={p.roomLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white w-full sm:w-auto px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95">
+                     <LinkIcon size={14}/> Enter Room Link
+                   </a>
+                 ) : (
+                   <span className="inline-flex items-center justify-center gap-2 bg-slate-800 text-slate-500 w-full sm:w-auto px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest cursor-not-allowed">
+                     <LinkIcon size={14}/> Link Pending
+                   </span>
+                 )}
                </div>
             </div>
           ))
@@ -379,7 +388,7 @@ export default function App() {
                         key={`gap-${ds}-${i}`} 
                         onClick={() => { 
                           setEditingId(null); 
-                          setFormData({...formData, date: ds, startTime: minsToTime(b.s), hostName: userRole==='host'?`${currentUser?.username || ''} (${currentUser?.program || ''})` : '', description: '', roomLink: '', isPublic: false, publicPushMode: 'auto'}); 
+                          setFormData({...formData, date: ds, startTime: minsToTime(b.s), hostName: userRole==='host'?`${currentUser?.username || ''} (${currentUser?.program || ''})` : '', coHosts: '', description: '', roomLink: '', isPublic: false, publicPushMode: 'auto'}); 
                           setShowForm(true); 
                         }} 
                         className="p-3 md:p-4 border-2 border-dashed border-slate-700 rounded-xl opacity-50 hover:opacity-100 flex justify-between items-center text-xs font-bold text-slate-400 cursor-pointer transition-all"
@@ -408,7 +417,7 @@ export default function App() {
                            </div>
                         </div>
                         <h4 className="text-base md:text-lg font-black text-white uppercase tracking-tight leading-tight">{b.data.theme}</h4>
-                        <p className="text-xs text-slate-400 font-bold uppercase mt-1">{b.data.hostName}</p>
+                        <p className="text-xs text-slate-400 font-bold uppercase mt-1 truncate">{b.data.hostName}{b.data.coHosts ? ` + ${b.data.coHosts}` : ''}</p>
                         
                         <div className="mt-3 flex flex-wrap gap-2">
                            {b.data.status === 'pending' && (
@@ -484,7 +493,7 @@ export default function App() {
             )}
             <div className="mt-6 pt-6 border-t border-slate-800 text-center">
                <a href={GOOGLE_FORM_LINK} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 text-[11px] font-black text-slate-500 hover:text-indigo-400 uppercase tracking-widest transition-colors">
-                   <ExternalLink size={14} /> Party Request
+                   <ExternalLink size={14} /> Party Request Form
                </a>
             </div>
           </div>
@@ -508,7 +517,7 @@ export default function App() {
             <a href={GOOGLE_FORM_LINK} target="_blank" rel="noreferrer" className="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-all shadow hidden sm:block" title="Google Form">
                <ExternalLink size={18}/>
             </a>
-            <button onClick={()=>{setEditingId(null); setFormData({ hostName: userRole==='host'?`${currentUser?.username} (${currentUser?.program})` : '', theme: '', date: new Date().toISOString().split('T')[0], startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: false, publicPushMode: 'auto' }); setShowForm(true);}} className="bg-indigo-600 px-4 py-2 rounded-lg text-white font-black uppercase text-xs flex items-center gap-2 active:scale-90 transition-all shadow-lg"><Plus size={16}/><span className="hidden sm:inline">Schedule</span></button>
+            <button onClick={()=>{setEditingId(null); setFormData({ hostName: userRole==='host'?`${currentUser?.username} (${currentUser?.program})` : '', coHosts: '', theme: '', date: new Date().toISOString().split('T')[0], startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: false, publicPushMode: 'auto' }); setShowForm(true);}} className="bg-indigo-600 px-4 py-2 rounded-lg text-white font-black uppercase text-xs flex items-center gap-2 active:scale-90 transition-all shadow-lg"><Plus size={16}/><span className="hidden sm:inline">Schedule</span></button>
           </div>
         </div>
         <div className="flex border-t border-slate-800/50 bg-slate-950/20 overflow-x-auto px-3 py-2 gap-2 scrollbar-hide text-left">
@@ -556,7 +565,7 @@ export default function App() {
                                  {p.theme}
                                </td>
                                <td className="p-4 text-xs font-bold text-indigo-400 uppercase tracking-widest">
-                                 {p.hostName}
+                                 {p.hostName}{p.coHosts ? ` + ${p.coHosts}` : ''}
                                </td>
                                <td className="p-4 text-right flex justify-end items-center gap-2">
                                   {p.status === 'pending' && <span className="text-[9px] font-black bg-amber-500/10 text-amber-500 px-2 py-1 rounded uppercase border border-amber-500/20">Pending</span>}
@@ -620,6 +629,24 @@ export default function App() {
              <form onSubmit={saveEvent} className="space-y-5 text-left block">
                 {formError && <div className="bg-rose-500/10 text-rose-400 p-3 rounded-lg text-[10px] font-black uppercase border border-rose-500/20">{formError}</div>}
                 
+                {/* Host & Co-Host Identity Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                  <div className="space-y-1.5 block">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 block text-left">Main Host</label>
+                    {userRole === 'host' ? (
+                      <div className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-slate-400 font-bold shadow-inner cursor-not-allowed truncate">
+                        {formData.hostName || `${currentUser?.username} (${currentUser?.program})`}
+                      </div>
+                    ) : (
+                      <input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} placeholder="e.g. Mike (VUI)" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+                    )}
+                  </div>
+                  <div className="space-y-1.5 block">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 block text-left">Co-Host(s) <span className="opacity-50 lowercase">(Optional)</span></label>
+                    <input value={formData.coHosts || ''} onChange={e=>setFormData({...formData, coHosts: e.target.value})} placeholder="Optional" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+                  </div>
+                </div>
+
                 <div className="space-y-1.5 block">
                   <div className="flex justify-between items-center px-1">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Theme / Vibe</label>
@@ -642,8 +669,8 @@ export default function App() {
                 </div>
 
                 <div className="space-y-1.5 block">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Room Link</label>
-                  <input required value={formData.roomLink} onChange={e=>setFormData({...formData, roomLink: e.target.value})} placeholder="https://imvu.com/..." className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Room Link <span className="opacity-50 lowercase">(Optional)</span></label>
+                  <input value={formData.roomLink} onChange={e=>setFormData({...formData, roomLink: e.target.value})} placeholder="https://imvu.com/... (or to follow)" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
                 </div>
                 
                 <div className="space-y-1.5 block">
@@ -661,7 +688,7 @@ export default function App() {
                     <input type="checkbox" checked={formData.isPublic} onChange={e=>setFormData({...formData, isPublic: e.target.checked})} className="mt-1 w-5 h-5 rounded text-emerald-600 bg-slate-950 border-slate-800 focus:ring-0"/> 
                     <div>
                       <span className="text-sm font-black uppercase text-emerald-400 tracking-tighter">Community Sync</span>
-                      <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-widest">Push to official Guide on approval.</p>
+                      <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-widest">Publish on Community Schedule on approval.</p>
                     </div>
                   </label>
                   
@@ -682,7 +709,7 @@ export default function App() {
                   )}
                 </div>
 
-                <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all shadow-xl">Confirm Registry</button>
+                <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all shadow-xl">Submit</button>
              </form>
           </div>
         </div>
