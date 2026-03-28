@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, Plus, PartyPopper, X, ChevronLeft, ChevronRight, 
-  CalendarDays, Edit2, Trash2, Shield, LogOut, List as ListIcon, LayoutGrid, CheckCircle, Clock3, Eye, EyeOff, Crown, FileText, Sparkles, Loader2, Send, BellRing, UserPlus, Users, Zap, Globe, Link as LinkIcon, User, ExternalLink
+  CalendarDays, Edit2, Trash2, Shield, LogOut, List as ListIcon, LayoutGrid, CheckCircle, Clock3, Eye, EyeOff, Crown, FileText, Sparkles, Loader2, Send, BellRing, UserPlus, Users, Zap, Globe, Link as LinkIcon, User, ExternalLink, LogIn, ArrowLeft
 } from 'lucide-react';
 
 // --- FIREBASE INTEGRATION ---
@@ -33,7 +33,7 @@ const getPath = (colName) => {
 };
 
 // --- Static Config ---
-const SESSION_KEY = 'vu_party_hub_v161_production';
+const SESSION_KEY = 'vu_party_hub_v190_production';
 const GOOGLE_FORM_LINK = 'https://docs.google.com/forms/d/e/1FAIpQLSctHRAv0mdyL8_gwnB0AIOvVDWtZzwA5UYYo_h_rZ48LBnkNQ/viewform'; 
 
 const DAY_STYLES = [
@@ -64,6 +64,13 @@ const TimelineIcon = ({ size = 24, className = "" }) => (
   </svg>
 );
 
+const ds_is_future = (p) => {
+  const ptM = getCurrentPT();
+  if (p.date > ptM.dateStr) return true;
+  if (p.date === ptM.dateStr && (timeToMins(p.startTime) + (p.duration*60)) > ptM.mins) return true;
+  return false;
+};
+
 export default function App() {
   const [authUser, setAuthUser] = useState(null);
   const [accounts, setAccounts] = useState([]);
@@ -71,28 +78,64 @@ export default function App() {
   const [actionLogs, setActionLogs] = useState([]);
   const [dbLoaded, setDbLoaded] = useState(false);
 
+  // Authentication State
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem(SESSION_KEY);
     return saved ? JSON.parse(saved) : null;
   });
-
   const userRole = currentUser?.role || null;
+  
+  // UI States
+  const [showAuthGate, setShowAuthGate] = useState(!currentUser); 
+  const [view, setView] = useState('Guide'); 
+  const [baseDate, setBaseDate] = useState(new Date());
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [showDash, setShowDash] = useState(false);
+  const [dashTab, setDashTab] = useState('logs');
+  
+  // Custom Delete Confirm State
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
+  // Form States
+  const [formData, setFormData] = useState({ hostName: '', coHosts: '', theme: '', date: '', startTime: '', duration: 2, description: '', roomLink: '', isPublic: false, publicPushMode: 'auto' });
+  const [gateMode, setGateMode] = useState('login');
+  const [gateU, setGateU] = useState('');
+  const [gateP, setGateP] = useState('');
+  const [gateError, setGateError] = useState('');
+  const [eyeLogin, setEyeLogin] = useState(false);
+  const [eyeRegP, setEyeRegP] = useState(false);
+  const [eyeRegC, setEyeRegC] = useState(false);
+  const [regData, setRegData] = useState({ u: '', p: '', c: '', program: 'VUI' });
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [staffForm, setStaffForm] = useState({ u: '', r: 'admin', p: '' });
+  const [staffSuccess, setStaffSuccess] = useState('');
+
+  // 1. Initialize Firebase Auth (WITH CRASH FIX)
   useEffect(() => {
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
+          try {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } catch (tokenError) {
+            console.warn("Custom token mismatch, falling back to anonymous auth.");
+            await signInAnonymously(auth);
+          }
         } else {
           await signInAnonymously(auth);
         }
-      } catch (err) {}
+      } catch (err) {
+        console.error("Auth error:", err);
+      }
     };
     initAuth();
     const unsubAuth = onAuthStateChanged(auth, setAuthUser);
     return () => unsubAuth();
   }, []);
 
+  // 2. Fetch Real-time Database Information
   useEffect(() => {
     if (!authUser) return;
 
@@ -120,30 +163,7 @@ export default function App() {
     return () => { unsubP(); unsubA(); unsubL(); };
   }, [authUser]);
 
-  const [view, setView] = useState('Guide'); 
-  const [baseDate, setBaseDate] = useState(new Date());
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ hostName: '', coHosts: '', theme: '', date: '', startTime: '', duration: 2, description: '', roomLink: '', isPublic: false, publicPushMode: 'auto' });
-  
-  const [gateMode, setGateMode] = useState('login');
-  const [gateU, setGateU] = useState('');
-  const [gateP, setGateP] = useState('');
-  const [gateError, setGateError] = useState('');
-  
-  const [eyeLogin, setEyeLogin] = useState(false);
-  const [eyeRegP, setEyeRegP] = useState(false);
-  const [eyeRegC, setEyeRegC] = useState(false);
-  
-  const [regData, setRegData] = useState({ u: '', p: '', c: '', program: 'VUI' });
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [showDash, setShowDash] = useState(false);
-  const [dashTab, setDashTab] = useState('logs');
-  const [showLoginSummary, setShowLoginSummary] = useState(false);
-  const [formError, setFormError] = useState('');
-  const [staffForm, setStaffForm] = useState({ u: '', r: 'admin', p: '' });
-  const [staffSuccess, setStaffSuccess] = useState('');
-
+  // Logging & Helper Functions
   const logAction = async (msg, u = currentUser) => {
     if (!u || !authUser) return;
     const id = Date.now().toString();
@@ -161,13 +181,7 @@ export default function App() {
     return (ptM.mins >= s && ptM.mins < e) ? 'live' : (ptM.mins < s ? 'upcoming' : 'ended');
   };
 
-  const ds_is_future = (p) => {
-    const ptM = getCurrentPT();
-    if (p.date > ptM.dateStr) return true;
-    if (p.date === ptM.dateStr && (timeToMins(p.startTime) + (p.duration*60)) > ptM.mins) return true;
-    return false;
-  };
-
+  // Auth Functions
   const handleLogin = (e) => {
     e.preventDefault();
     const u = gateU.trim().toLowerCase();
@@ -175,13 +189,12 @@ export default function App() {
 
     if ((u === 'mike' && p === 'owner123') || (u === 'ash' && p === 'ash123')) {
       const f = u === 'mike' ? { id: '1', username: 'Mike', role: 'owner' } : { id: '2', username: 'Ash', role: 'staff' };
-      setCurrentUser(f); localStorage.setItem(SESSION_KEY, JSON.stringify(f)); setShowLoginSummary(true); return;
+      setCurrentUser(f); localStorage.setItem(SESSION_KEY, JSON.stringify(f)); setShowAuthGate(false); return;
     }
 
     const match = accounts.find(a => a.username.toLowerCase() === u && a.passcode === p);
     if (match) {
-      setCurrentUser(match); localStorage.setItem(SESSION_KEY, JSON.stringify(match));
-      if (['owner','admin','staff'].includes(match.role)) setShowLoginSummary(true);
+      setCurrentUser(match); localStorage.setItem(SESSION_KEY, JSON.stringify(match)); setShowAuthGate(false);
     } else { setGateError("Invalid credentials."); }
   };
 
@@ -195,6 +208,7 @@ export default function App() {
     
     setCurrentUser(n); 
     localStorage.setItem(SESSION_KEY, JSON.stringify(n));
+    setShowAuthGate(false);
     
     try {
       await setDoc(doc(db, getPath('accounts'), n.id), n);
@@ -205,8 +219,10 @@ export default function App() {
   const handleLogout = () => { 
     setCurrentUser(null); 
     localStorage.removeItem(SESSION_KEY); 
+    setShowAuthGate(true); 
   };
 
+  // Data Functions
   const handleAi = async (type) => {
     setIsAiLoading(true);
     try {
@@ -271,65 +287,101 @@ export default function App() {
     logAction(`Public Sync: ${p.theme}`);
   };
 
+  const handleUnpublish = async (p) => {
+    const updatedData = { ...p, pushedToPublic: false };
+    await setDoc(doc(db, getPath('parties'), p.id), updatedData);
+    logAction(`Unpublished: ${p.theme}`);
+  };
+
   const handleSignalReady = async (p) => {
     await setDoc(doc(db, getPath('parties'), p.id), { ...p, publicPushMode: 'ready' });
     logAction(`Host READY: ${p.theme}`);
   };
 
+  // ADDED: UI Modal Delete Party Logic
+  const handleDeleteParty = (id, theme) => {
+    setDeleteConfirm({ id, theme });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    try {
+      await deleteDoc(doc(db, getPath('parties'), deleteConfirm.id));
+      logAction(`Deleted Party: ${deleteConfirm.theme}`);
+      setDeleteConfirm(null);
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+  };
+
+  // Render Views
   const renderPublicGuide = () => {
     const publicParties = parties
       .filter(p => p.pushedToPublic && ds_is_future(p))
       .sort((a,b) => new Date(a.date) - new Date(b.date) || timeToMins(a.startTime) - timeToMins(b.startTime));
 
     return (
-      <div className="space-y-4">
-        <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/10 border-2 border-emerald-500/30 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between shadow-lg gap-4">
+      <div className="space-y-4 max-w-4xl mx-auto w-full">
+        <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/10 border-2 border-emerald-500/30 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between shadow-lg gap-4">
           <div>
-            <h2 className="text-sm font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2"><Globe size={16}/> Community Guide</h2>
-            <p className="text-[10px] text-emerald-500/70 font-bold uppercase mt-1">Official IMVU Public Schedule</p>
+            <h2 className="text-sm font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2"><Globe size={18}/> Hub Guide Preview</h2>
+            <p className="text-[11px] text-emerald-500/70 font-bold uppercase mt-1">What the public sees on the Official Tab</p>
           </div>
           <div className="flex items-center gap-3">
-            <a href={GOOGLE_FORM_LINK} target="_blank" rel="noreferrer" className="bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-emerald-500/50 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-md">
-              <ExternalLink size={12}/> Submit Event
+            <a href={GOOGLE_FORM_LINK} target="_blank" rel="noreferrer" className="bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-emerald-500/50 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-md active:scale-95">
+              <ExternalLink size={14}/> Submit Event
             </a>
-            <div className="bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-xl text-xs font-black shadow-inner">
+            <div className="bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-xl text-xs font-black shadow-inner border border-emerald-500/20">
               {publicParties.length} Live
             </div>
           </div>
         </div>
         
         {publicParties.length === 0 ? (
-           <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
+           <div className="flex flex-col items-center justify-center py-24 px-4 text-center bg-slate-900/50 border-2 border-dashed border-slate-800 rounded-3xl">
              <Globe size={48} className="text-emerald-500/20 mb-4"/>
              <h2 className="text-lg font-black text-slate-400 uppercase tracking-widest">No Events Listed</h2>
-             <p className="text-xs text-slate-500 font-bold mt-2">Check back later for official community parties.</p>
            </div>
         ) : (
           publicParties.map(p => (
-            <div key={p.id} className="bg-slate-900 border-2 border-slate-800 hover:border-emerald-500/40 transition-all rounded-2xl p-5 shadow-xl relative overflow-hidden group">
+            <div key={p.id} className="bg-slate-900 border-2 border-slate-800 hover:border-emerald-500/40 transition-all rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden group">
                <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
-               <div className="flex justify-between items-start mb-3 pl-2">
+               <div className="flex flex-col sm:flex-row sm:justify-between items-start gap-4 mb-4 pl-2">
                  <div>
-                   <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tighter leading-none">{p.theme}</h3>
-                   <p className="text-xs text-slate-400 font-bold uppercase mt-1.5 flex items-center gap-1.5">
-                     <User size={12} className="text-indigo-400 shrink-0"/> 
-                     <span className="truncate">{p.hostName}{p.coHosts ? ` + ${p.coHosts}` : ''}</span>
-                   </p>
+                   <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter leading-none mb-2">{p.theme}</h3>
+                   <div className="flex items-center gap-2 bg-slate-950 inline-flex px-3 py-1.5 rounded-lg border border-slate-800">
+                     <User size={14} className="text-indigo-400 shrink-0"/> 
+                     <span className="text-xs font-black text-slate-300 uppercase tracking-wide truncate">
+                       {p.hostName}{p.coHosts ? ` + ${p.coHosts}` : ''}
+                     </span>
+                   </div>
                  </div>
-                 <div className="text-right shrink-0 ml-4">
-                   <div className="text-xs font-black text-emerald-400 uppercase bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">{p.date.split('-').reverse().slice(0,2).join('/')}</div>
-                   <div className="text-[10px] font-bold text-slate-300 mt-1.5 bg-slate-950 px-2 py-1 rounded-md border border-slate-800 inline-block shadow-inner">{format12h(p.startTime)} PT</div>
+                 
+                 <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-1.5 shrink-0 bg-slate-950/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none w-full sm:w-auto border sm:border-0 border-slate-800">
+                   <div className="text-sm font-black text-emerald-400 uppercase bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+                     {p.date.split('-').reverse().slice(0,2).join('/')}
+                   </div>
+                   <div className="text-xs font-bold text-slate-300 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 shadow-inner flex items-center gap-2">
+                     <Clock3 size={14} className="text-slate-500"/>
+                     {format12h(p.startTime)} PT
+                   </div>
                  </div>
                </div>
-               {p.description && <p className="text-xs text-slate-300 mt-4 pl-2 leading-relaxed opacity-90 border-l-2 border-slate-700 ml-1 pl-3">{p.description}</p>}
-               <div className="mt-5 pl-2">
+
+               {p.description && (
+                 <div className="mt-4 pl-2">
+                   <p className="text-sm text-slate-300 leading-relaxed opacity-90 border-l-2 border-slate-700 ml-1 pl-4 py-1">{p.description}</p>
+                 </div>
+               )}
+
+               <div className="mt-6 pl-2 pt-6 border-t border-slate-800/50">
                  {p.roomLink ? (
-                   <a href={p.roomLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white w-full sm:w-auto px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95">
-                     <LinkIcon size={14}/> Enter Room Link
+                   <a href={p.roomLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white w-full sm:w-auto px-8 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] active:scale-95">
+                     <LinkIcon size={16}/> Enter Room Link
                    </a>
                  ) : (
-                   <span className="inline-flex items-center justify-center gap-2 bg-slate-800 text-slate-500 w-full sm:w-auto px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest cursor-not-allowed">
-                     <LinkIcon size={14}/> Link Pending
+                   <span className="inline-flex items-center justify-center gap-2 bg-slate-800 text-slate-500 w-full sm:w-auto px-8 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest cursor-not-allowed">
+                     <LinkIcon size={16}/> Link Pending
                    </span>
                  )}
                </div>
@@ -348,7 +400,7 @@ export default function App() {
     });
 
     return (
-      <div className="space-y-6 md:space-y-8">
+      <div className="space-y-6 md:space-y-8 max-w-6xl mx-auto w-full">
         {dates.map(ds => {
           const style = DAY_STYLES[new Date(ds + 'T00:00:00').getDay()];
           const daily = parties.filter(p => p.date === ds).sort((a,b) => timeToMins(a.startTime) - timeToMins(b.startTime));
@@ -394,13 +446,21 @@ export default function App() {
                            </span>
                            <div className="flex gap-2">
                              {['owner','admin','staff'].includes(userRole) && b.data.status === 'pending' && (
-                               <button onClick={()=>handleApprove(b.data)} className="p-2 text-emerald-400 bg-slate-950 rounded-lg hover:scale-105 transition-all shadow"><CheckCircle size={16}/></button>
+                               <button onClick={()=>handleApprove(b.data)} title="Approve" className="p-2 text-emerald-400 bg-slate-950 rounded-lg hover:scale-105 transition-all shadow"><CheckCircle size={16}/></button>
                              )}
-                             {['owner','admin','staff'].includes(userRole) && b.data.status === 'approved' && b.data.isPublic && !b.data.pushedToPublic && (
-                               <button onClick={()=>handleManualPush(b.data)} className={`p-2 rounded-lg hover:scale-105 transition-all shadow ${b.data.publicPushMode==='ready'?'text-amber-400 bg-amber-500/10 animate-pulse':'text-blue-400 bg-slate-950'}`}><Send size={16}/></button>
+                             {['owner','admin','staff'].includes(userRole) && b.data.status === 'approved' && b.data.isPublic && (
+                               b.data.pushedToPublic ? (
+                                 <button onClick={()=>handleUnpublish(b.data)} title="Unpublish from Public Guide" className="p-2 rounded-lg hover:scale-105 transition-all shadow text-rose-400 bg-rose-500/10"><EyeOff size={16}/></button>
+                               ) : (
+                                 <button onClick={()=>handleManualPush(b.data)} title="Push to Public Guide" className={`p-2 rounded-lg hover:scale-105 transition-all shadow ${b.data.publicPushMode==='ready'?'text-amber-400 bg-amber-500/10 animate-pulse':'text-blue-400 bg-slate-950'}`}><Send size={16}/></button>
+                               )
                              )}
                              {(userRole==='owner' || b.data.hostId === currentUser?.id) && (
-                               <button onClick={()=>{setEditingId(b.data.id); setFormData(b.data); setShowForm(true);}} className="p-2 text-indigo-400 bg-slate-950 rounded-lg hover:scale-105 transition-all shadow"><Edit2 size={16}/></button>
+                               <button onClick={()=>{setEditingId(b.data.id); setFormData(b.data); setShowForm(true);}} title="Edit Event" className="p-2 text-indigo-400 bg-slate-950 rounded-lg hover:scale-105 transition-all shadow"><Edit2 size={16}/></button>
+                             )}
+                             {/* THE DELETE BUTTON FOR TIMELINE */}
+                             {['owner','admin'].includes(userRole) && (
+                               <button onClick={()=>handleDeleteParty(b.data.id, b.data.theme)} title="Delete Event" className="p-2 text-rose-500 bg-slate-950 rounded-lg hover:scale-105 transition-all shadow"><Trash2 size={16}/></button>
                              )}
                            </div>
                         </div>
@@ -438,21 +498,25 @@ export default function App() {
     );
   };
 
-  if (!currentUser) {
+  // If NOT Logged In => Show Auth Gate IMMEDIATELY for Vercel Hub
+  if (showAuthGate || !currentUser) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans text-left">
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden relative animate-in fade-in zoom-in duration-300">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden relative animate-in slide-in-from-bottom-10 duration-300">
           <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-rose-500"></div>
-          <div className="p-8 text-center">
+          
+          <div className="p-8 pb-4 text-center mt-4">
             <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl"><PartyPopper className="text-white w-8 h-8" /></div>
             <h1 className="text-2xl md:text-3xl font-black text-white tracking-tighter uppercase leading-none">VU Party Hub</h1>
-            <p className="text-xs text-slate-500 uppercase tracking-widest font-black mt-2">Influencer & Storyteller Schedule</p>
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black mt-2">Influencer & Storyteller Schedule</p>
           </div>
-          <div className="flex border-b border-slate-800 px-6">
-            <button onClick={()=>setGateMode('login')} className={`flex-1 pb-3 text-sm font-black uppercase transition-all ${gateMode==='login'?'border-b-2 border-indigo-500 text-indigo-400':'text-slate-600'}`}>Sign In</button>
-            <button onClick={()=>setGateMode('register')} className={`flex-1 pb-3 text-sm font-black uppercase transition-all ${gateMode==='register'?'border-b-2 border-purple-500 text-purple-400':'text-slate-600'}`}>Register</button>
+          
+          <div className="flex border-b border-slate-800 px-6 mt-4">
+            <button onClick={()=>setGateMode('login')} className={`flex-1 pb-3 text-xs font-black uppercase tracking-widest transition-all ${gateMode==='login'?'border-b-2 border-indigo-500 text-indigo-400':'text-slate-600 hover:text-slate-400'}`}>Sign In</button>
+            <button onClick={()=>setGateMode('register')} className={`flex-1 pb-3 text-xs font-black uppercase tracking-widest transition-all ${gateMode==='register'?'border-b-2 border-purple-500 text-purple-400':'text-slate-600 hover:text-slate-400'}`}>Register</button>
           </div>
-          <div className="p-8">
+          
+          <div className="p-8 pt-6">
             {gateError && <div className="bg-rose-500/10 text-rose-400 p-3 rounded-lg text-xs font-bold mb-4 border border-rose-500/20">{gateError}</div>}
             {gateMode === 'login' ? (
               <form onSubmit={handleLogin} className="space-y-4">
@@ -461,7 +525,7 @@ export default function App() {
                   <input required type={eyeLogin?"text":"password"} value={gateP} onChange={e=>setGateP(e.target.value)} placeholder="Passcode" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
                   <button type="button" onClick={()=>setEyeLogin(!eyeLogin)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">{eyeLogin?<EyeOff size={18}/>:<Eye size={18}/>}</button>
                 </div>
-                <button type="submit" disabled={!dbLoaded} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl text-sm active:scale-95 transition-all">{dbLoaded ? 'Enter HUB' : 'Connecting...'}</button>
+                <button type="submit" disabled={!dbLoaded} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl text-xs active:scale-95 transition-all">{dbLoaded ? 'Enter HUB' : 'Connecting...'}</button>
               </form>
             ) : (
               <form onSubmit={handleRegister} className="space-y-4 text-left">
@@ -475,7 +539,7 @@ export default function App() {
                   <input required type={eyeRegC?"text":"password"} value={regData.c} onChange={e=>setRegData({...regData, c: e.target.value})} placeholder="Confirm Code" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-white outline-none font-bold shadow-inner"/>
                   <button type="button" onClick={()=>setEyeRegC(!eyeRegC)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">{eyeRegC?<EyeOff size={18}/>:<Eye size={18}/>}</button>
                 </div>
-                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl text-sm active:scale-95 transition-all">Create Profile</button>
+                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl text-xs active:scale-95 transition-all">Create Profile</button>
               </form>
             )}
             <div className="mt-6 pt-6 border-t border-slate-800 text-center">
@@ -491,9 +555,15 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col font-sans overflow-x-hidden">
+      {/* HEADER (Admin mode) */}
       <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-[100] shadow-xl text-left">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3 shrink-0"><PartyPopper size={20} className="text-indigo-500" /><h1 className="text-base md:text-lg font-black tracking-tighter uppercase text-white">VU HUB</h1></div>
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="p-1.5 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+              <CalendarDays size={18} className="text-indigo-500" />
+            </div>
+            <h1 className="text-base md:text-lg font-black tracking-tighter uppercase text-white">VU HUB</h1>
+          </div>
           <div className="flex items-center gap-2 md:gap-3">
             <div className="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-2 font-black uppercase text-[10px] text-indigo-300 shadow-inner">
                {currentUser?.role === 'owner' ? <Crown size={12} className="text-yellow-400"/> : <Shield size={12}/>}
@@ -501,24 +571,35 @@ export default function App() {
                <button onClick={handleLogout} className="text-rose-500/50 hover:text-rose-400 ml-1 transition-colors"><LogOut size={14}/></button>
             </div>
             {userRole==='owner' && <button onClick={()=>setShowDash(true)} className="p-2 bg-slate-800 rounded-lg text-indigo-400 hover:text-white transition-all shadow" title="Master Console"><FileText size={18}/></button>}
-            <a href={GOOGLE_FORM_LINK} target="_blank" rel="noreferrer" className="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-all shadow hidden sm:block" title="Google Form">
+            <a href={GOOGLE_FORM_LINK} target="_blank" rel="noreferrer" className="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-all shadow hidden sm:block" title="Party Schedule Form">
                <ExternalLink size={18}/>
             </a>
             <button onClick={()=>{setEditingId(null); setFormData({ hostName: userRole==='host'?`${currentUser?.username} (${currentUser?.program})` : '', coHosts: '', theme: '', date: new Date().toISOString().split('T')[0], startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: false, publicPushMode: 'auto' }); setShowForm(true);}} className="bg-indigo-600 px-4 py-2 rounded-lg text-white font-black uppercase text-xs flex items-center gap-2 active:scale-90 transition-all shadow-lg"><Plus size={16}/><span className="hidden sm:inline">Schedule</span></button>
           </div>
         </div>
+
+        {/* Navigation Tabs */}
         <div className="flex border-t border-slate-800/50 bg-slate-950/20 overflow-x-auto px-3 py-2 gap-2 scrollbar-hide text-left">
            <button onClick={()=>setView('Guide')} className={`flex-1 min-w-[80px] py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${view==='Guide'?'bg-emerald-600 text-white shadow-md':'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}><Globe size={12} className="inline mr-1"/> Guide</button>
            <button onClick={()=>setView('List')} className={`flex-1 min-w-[80px] py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${view==='List'?'bg-indigo-500 text-white shadow-md':'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}><ListIcon size={12} className="inline mr-1"/> List</button>
+           
+           {/* ADDED: PENDING APPROVAL TAB FOR ADMIN/STAFF/OWNER */}
+           {['owner', 'admin', 'staff'].includes(userRole) && (
+             <button onClick={()=>setView('Pending')} className={`flex-1 min-w-[80px] py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${view==='Pending'?'bg-amber-500 text-slate-950 shadow-md':'bg-slate-800 text-amber-500/70 hover:bg-slate-700 hover:text-amber-400'}`}>
+               <Clock3 size={12} className="inline mr-1"/> Pending {parties.filter(p => p.status === 'pending').length > 0 ? `(${parties.filter(p => p.status === 'pending').length})` : ''}
+             </button>
+           )}
+
            <button onClick={()=>setView('Monthly')} className={`flex-1 min-w-[80px] py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${view==='Monthly'?'bg-indigo-500 text-white shadow-md':'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}><LayoutGrid size={12} className="inline mr-1"/> Monthly</button>
            <button onClick={()=>setView('Weekly')} className={`flex-1 min-w-[80px] py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${view==='Weekly'?'bg-indigo-500 text-white shadow-md':'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}><TimelineIcon size={12} className="inline mr-1"/> Weekly</button>
            <button onClick={()=>setView('Daily')} className={`flex-1 min-w-[80px] py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${view==='Daily'?'bg-indigo-500 text-white shadow-md':'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}><CalendarDays size={12} className="inline mr-1"/> Daily</button>
         </div>
       </header>
 
+      {/* MAIN CONTENT */}
       <main className="flex-1 max-w-6xl mx-auto w-full p-4 sm:p-6 pb-24 text-left">
-        {view !== 'Guide' && (
-          <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-3 rounded-2xl mb-6 shadow-md relative group text-left">
+        {view !== 'Guide' && view !== 'List' && view !== 'Pending' && (
+          <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-3 rounded-2xl mb-6 shadow-md relative group text-left max-w-6xl mx-auto w-full">
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500/30"></div>
             <button onClick={()=>{const d=new Date(baseDate); d.setDate(d.getDate()-(view==='Weekly'?7:1)); setBaseDate(d);}} className="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all"><ChevronLeft size={20}/></button>
             <div className="text-center font-black uppercase tracking-widest text-xs md:text-sm text-white flex items-center gap-2"><Calendar size={16} className="text-indigo-500" />{view==='Monthly' ? baseDate.toLocaleDateString('en-US', {month:'long', year:'numeric'}) : baseDate.toLocaleDateString('en-US', {month:'short', day:'numeric', weekday:'short'})}</div>
@@ -526,20 +607,28 @@ export default function App() {
           </div>
         )}
 
-        {view === 'Guide' ? renderPublicGuide() : view === 'Weekly' || view === 'Daily' ? renderTimeline(view==='Weekly'?7:1) : view === 'List' ? (
-           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg text-left">
+        {view === 'Guide' ? renderPublicGuide() : view === 'Weekly' || view === 'Daily' ? renderTimeline(view==='Weekly'?7:1) : view === 'List' || view === 'Pending' ? (
+           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg text-left max-w-6xl mx-auto w-full">
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                    <thead className="bg-slate-950 border-b border-slate-800 text-xs font-black uppercase tracking-widest text-slate-500">
                      <tr>
                        <th className="p-4 text-left">Date</th>
-                       <th className="p-4 text-left">Theme / Vibe</th>
+                       <th className="p-4 text-left">Theme</th>
                        <th className="p-4 text-left">Host Name</th>
                        <th className="p-4 text-right">Approval</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-800/50">
+                      {parties.filter(p => view === 'Pending' ? p.status === 'pending' : true).length === 0 && (
+                        <tr>
+                          <td colSpan="4" className="p-8 text-center text-slate-500 font-bold uppercase tracking-widest text-xs">
+                            {view === 'Pending' ? 'No pending events to review' : 'No events found'}
+                          </td>
+                        </tr>
+                      )}
                       {parties
+                        .filter(p => view === 'Pending' ? p.status === 'pending' : true)
                         .sort((a, b) => new Date(b.date) - new Date(a.date))
                         .map((p) => {
                           const isPast = !ds_is_future(p);
@@ -561,14 +650,23 @@ export default function App() {
                                   
                                   {/* Action Buttons for Staff/Admin */}
                                   {['owner','admin','staff'].includes(userRole) && p.status === 'pending' && !isPast ? (
-                                    <button onClick={()=>handleApprove(p)} className="text-emerald-500 ml-2 hover:scale-110 transition-all shadow"><CheckCircle size={18}/></button>
+                                    <button onClick={()=>handleApprove(p)} title="Approve" className="text-emerald-500 ml-2 hover:scale-110 transition-all shadow"><CheckCircle size={18}/></button>
                                   ) : (
                                     <CheckCircle size={18} className={`ml-2 ${p.status==='approved'?'text-emerald-900/50':'text-slate-800'}`}/>
                                   )}
                                   
-                                  {/* Send Button for List View */}
-                                  {['owner','admin','staff'].includes(userRole) && p.status === 'approved' && p.isPublic && !p.pushedToPublic && !isPast && (
-                                    <button onClick={()=>handleManualPush(p)} className={`ml-1 p-1.5 rounded-lg hover:scale-110 transition-all shadow ${p.publicPushMode==='ready'?'text-amber-400 bg-amber-500/10 animate-pulse':'text-blue-400 bg-slate-950'}`}><Send size={16}/></button>
+                                  {/* Send / Unpublish Button for List View */}
+                                  {['owner','admin','staff'].includes(userRole) && p.status === 'approved' && p.isPublic && !isPast && (
+                                    p.pushedToPublic ? (
+                                      <button onClick={()=>handleUnpublish(p)} title="Unpublish Party" className="ml-1 p-1.5 rounded-lg hover:scale-110 transition-all shadow text-rose-400 bg-rose-500/10"><EyeOff size={16}/></button>
+                                    ) : (
+                                      <button onClick={()=>handleManualPush(p)} title="Push to Public Guide" className={`ml-1 p-1.5 rounded-lg hover:scale-110 transition-all shadow ${p.publicPushMode==='ready'?'text-amber-400 bg-amber-500/10 animate-pulse':'text-blue-400 bg-slate-950'}`}><Send size={16}/></button>
+                                    )
+                                  )}
+
+                                  {/* THE DELETE BUTTON (Uses custom modal instead of blocked window.confirm) */}
+                                  {['owner','admin'].includes(userRole) && (
+                                    <button onClick={()=>handleDeleteParty(p.id, p.theme)} title="Delete Party" className="ml-2 text-rose-500 hover:scale-110 transition-all shadow"><Trash2 size={16}/></button>
                                   )}
                                </td>
                             </tr>
@@ -579,7 +677,7 @@ export default function App() {
               </div>
            </div>
          ) : (
-           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-6 shadow-2xl grid grid-cols-7 gap-2 animate-in fade-in zoom-in-95 duration-500 text-left">
+           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-6 shadow-2xl grid grid-cols-7 gap-2 animate-in fade-in zoom-in-95 duration-500 text-left max-w-6xl mx-auto w-full">
               {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => <div key={`day-label-${i}`} className="text-center text-[10px] md:text-xs font-black text-slate-600 uppercase mb-2">{d}</div>)}
               {Array.from({length: new Date(baseDate.getFullYear(), baseDate.getMonth(), 1).getDay()}).map((_,i)=><div key={`grid-empty-${i}`} className="aspect-square bg-slate-950/20 rounded-xl"></div>)}
               {Array.from({ length: new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).getDate() }).map((_, i) => {
@@ -602,7 +700,7 @@ export default function App() {
          )}
       </main>
 
-      {/* FORM MODAL */}
+      {/* FORM MODAL (Admin Scheduling) */}
       {showForm && (
         <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-xl z-[200] p-4 overflow-y-auto scrollbar-hide text-left">
           <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-lg mx-auto my-6 relative shadow-2xl p-6 md:p-8">
@@ -626,12 +724,12 @@ export default function App() {
                         {formData.hostName || `${currentUser?.username} (${currentUser?.program})`}
                       </div>
                     ) : (
-                      <input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} placeholder="Username" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+                      <input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} placeholder="e.g. Mike (VUI)" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
                     )}
                   </div>
                   <div className="space-y-1.5 block">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 block text-left">Co-Host(s) <span className="opacity-50 lowercase">(Optional)</span></label>
-                    <input value={formData.coHosts || ''} onChange={e=>setFormData({...formData, coHosts: e.target.value})} placeholder="Optional)" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+                    <input value={formData.coHosts || ''} onChange={e=>setFormData({...formData, coHosts: e.target.value})} placeholder="co-hosts (Optional)" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
                   </div>
                 </div>
 
@@ -775,38 +873,23 @@ export default function App() {
         </div>
       )}
 
-      {/* LOGIN SUMMARY */}
-      {showLoginSummary && currentUser && (['owner', 'admin', 'staff'].includes(userRole)) && (
-        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[300] flex items-center justify-center p-6 animate-in fade-in duration-500 text-left">
-           <div className="bg-slate-900 border border-indigo-500/30 rounded-3xl w-full max-w-sm shadow-[0_0_100px_rgba(0,0,0,1)] relative overflow-hidden text-center p-8 text-left">
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500"></div>
-              <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-500/20">
-                {currentUser?.role === 'owner' ? <Crown className="w-10 h-10 text-yellow-400" /> : <Shield className="w-10 h-10 text-indigo-400" />}
-              </div>
-              <h2 className="text-2xl md:text-3xl font-black text-white mb-2 tracking-tighter uppercase leading-none text-center">Welcome, {currentUser?.username}!</h2>
-              
-              <div className="space-y-3 my-8 text-left block">
-                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-inner">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-amber-500/10 rounded-lg"><Clock3 size={18} className="text-amber-400" /></div>
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-400">Pending Review</span>
-                  </div>
-                  <span className="text-2xl font-black text-amber-400">{parties.filter(p => p.status === 'pending').length}</span>
-                </div>
-                
-                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-inner">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-500/10 rounded-lg"><Send size={18} className="text-blue-400" /></div>
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-400">Ready to Push</span>
-                  </div>
-                  <span className="text-2xl font-black text-blue-400">{parties.filter(p => p.status === 'approved' && p.isPublic && !p.pushedToPublic && p.publicPushMode === 'ready').length}</span>
-                </div>
-              </div>
-              
-              <button onClick={() => setShowLoginSummary(false)} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest active:scale-95 transition-all text-sm shadow-2xl">Enter Hub Dashboard</button>
-           </div>
+      {/* CUSTOM DELETE CONFIRM MODAL (Bypasses blocked window.confirm) */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-sm z-[300] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-rose-500/30 rounded-3xl w-full max-w-sm p-6 text-center shadow-[0_0_50px_rgba(0,0,0,1)] animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-rose-500 border border-rose-500/20">
+              <Trash2 size={32} />
+            </div>
+            <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Delete Event?</h3>
+            <p className="text-sm text-slate-400 mb-6 font-medium">Are you sure you want to permanently delete "{deleteConfirm.theme}"? This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-black uppercase tracking-widest text-xs transition-all">Cancel</button>
+              <button onClick={confirmDelete} className="flex-1 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition-all shadow-lg shadow-rose-900/20">Delete</button>
+            </div>
+          </div>
         </div>
       )}
+
     </div>
   );
 }
