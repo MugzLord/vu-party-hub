@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, Plus, PartyPopper, X, ChevronLeft, ChevronRight, 
-  CalendarDays, Edit2, Trash2, Shield, LogOut, List as ListIcon, LayoutGrid, CheckCircle, Clock3, Eye, EyeOff, Crown, FileText, Sparkles, Loader2, Send, BellRing, UserPlus, Users, Zap, Globe, Link as LinkIcon, User, ExternalLink, Link2
+  CalendarDays, Edit2, Trash2, Shield, LogOut, List as ListIcon, LayoutGrid, CheckCircle, Clock3, Eye, EyeOff, Crown, FileText, Sparkles, Loader2, Send, BellRing, UserPlus, Users, Zap, Globe, Link as LinkIcon, User, ExternalLink
 } from 'lucide-react';
 
 // --- FIREBASE INTEGRATION ---
@@ -33,7 +33,7 @@ const getPath = (colName) => {
 };
 
 // --- Static Config ---
-const SESSION_KEY = 'vu_party_hub_v160_production';
+const SESSION_KEY = 'vu_party_hub_v161_production';
 const GOOGLE_FORM_LINK = 'https://docs.google.com/forms/d/e/1FAIpQLSctHRAv0mdyL8_gwnB0AIOvVDWtZzwA5UYYo_h_rZ48LBnkNQ/viewform'; 
 
 const DAY_STYLES = [
@@ -70,9 +70,6 @@ export default function App() {
   const [parties, setParties] = useState([]);
   const [actionLogs, setActionLogs] = useState([]);
   const [dbLoaded, setDbLoaded] = useState(false);
-  
-  const [webhookUrl, setWebhookUrl] = useState('');
-  const [webhookStatus, setWebhookStatus] = useState('');
 
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem(SESSION_KEY);
@@ -102,7 +99,6 @@ export default function App() {
     const partiesCol = collection(db, getPath('parties'));
     const accountsCol = collection(db, getPath('accounts'));
     const logsCol = collection(db, getPath('actionLogs'));
-    const settingsDoc = doc(db, getPath('settings'), 'integration');
 
     const unsubP = onSnapshot(partiesCol, (s) => setParties(s.docs.map(d => d.data())), () => {});
     
@@ -121,11 +117,7 @@ export default function App() {
 
     const unsubL = onSnapshot(logsCol, (s) => setActionLogs(s.docs.map(d => d.data()).sort((a,b) => b.id - a.id)), () => {});
     
-    const unsubS = onSnapshot(settingsDoc, (d) => {
-      if (d.exists()) setWebhookUrl(d.data().url || '');
-    });
-    
-    return () => { unsubP(); unsubA(); unsubL(); unsubS(); };
+    return () => { unsubP(); unsubA(); unsubL(); };
   }, [authUser]);
 
   const [view, setView] = useState('Guide'); 
@@ -158,33 +150,6 @@ export default function App() {
     try {
       await setDoc(doc(db, getPath('actionLogs'), id), { id: Date.now(), time: new Date().toLocaleTimeString(), action: msg, username: u.username, role: u.role });
     } catch (e) {}
-  };
-
-  const pushToRailway = async (partyData) => {
-    if (!webhookUrl) return; 
-    try {
-      await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(partyData)
-      });
-      logAction(`Railway Sync Success: ${partyData.theme}`);
-    } catch (err) {
-      logAction(`Railway Sync Failed: ${partyData.theme}`);
-    }
-  };
-
-  const saveIntegrationSettings = async (e) => {
-    e.preventDefault();
-    setWebhookStatus("Saving...");
-    try {
-      await setDoc(doc(db, getPath('settings'), 'integration'), { url: webhookUrl });
-      setWebhookStatus("Saved & Active!");
-      logAction("Updated Webhook Settings");
-      setTimeout(() => setWebhookStatus(''), 3000);
-    } catch (err) {
-      setWebhookStatus("Error saving.");
-    }
   };
 
   const getStatus = (pt) => {
@@ -284,7 +249,6 @@ export default function App() {
       await setDoc(doc(db, getPath('parties'), id), data);
       setShowForm(false); setEditingId(null);
       logAction(editingId ? `Edited ${formData.theme}` : `Created ${formData.theme}`);
-      if (data.pushedToPublic) pushToRailway(data);
     } catch (err) {
       setFormError("Sync failed. Check connection.");
     }
@@ -299,14 +263,12 @@ export default function App() {
     };
     await setDoc(doc(db, getPath('parties'), p.id), updatedData);
     logAction(`Approved: ${p.theme}`);
-    if (updatedData.pushedToPublic) pushToRailway(updatedData);
   };
 
   const handleManualPush = async (p) => {
     const updatedData = { ...p, pushedToPublic: true };
     await setDoc(doc(db, getPath('parties'), p.id), updatedData);
     logAction(`Public Sync: ${p.theme}`);
-    pushToRailway(updatedData);
   };
 
   const handleSignalReady = async (p) => {
@@ -578,16 +540,17 @@ export default function App() {
                    </thead>
                    <tbody className="divide-y divide-slate-800/50">
                       {parties
-                        .filter((p) => ds_is_future(p))
-                        .sort((a, b) => new Date(a.date) - new Date(b.date))
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))
                         .map((p) => {
+                          const isPast = !ds_is_future(p);
                           return (
-                            <tr key={p.id} className="hover:bg-slate-800/30 transition-all text-left">
+                            <tr key={p.id} className={`hover:bg-slate-800/30 transition-all text-left ${isPast ? 'opacity-40 grayscale' : ''}`}>
                                <td className="p-4 text-sm font-bold text-slate-400 uppercase tracking-tighter">
                                  {p.date.split('-').slice(1).join('/')}
                                </td>
                                <td className="p-4 text-sm font-black text-white uppercase tracking-tight">
                                  {p.theme}
+                                 {isPast && <span className="ml-2 inline-block text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded shadow-inner tracking-widest border border-slate-700">ENDED</span>}
                                </td>
                                <td className="p-4 text-xs font-bold text-indigo-400 uppercase tracking-widest">
                                  {p.hostName}{p.coHosts ? ` + ${p.coHosts}` : ''}
@@ -597,14 +560,14 @@ export default function App() {
                                   {p.isPublic && <span className={`text-[9px] font-black px-2 py-1 rounded uppercase border ${p.pushedToPublic ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>{p.pushedToPublic ? 'Pub ✓' : 'Hold'}</span>}
                                   
                                   {/* Action Buttons for Staff/Admin */}
-                                  {['owner','admin','staff'].includes(userRole) && p.status === 'pending' ? (
+                                  {['owner','admin','staff'].includes(userRole) && p.status === 'pending' && !isPast ? (
                                     <button onClick={()=>handleApprove(p)} className="text-emerald-500 ml-2 hover:scale-110 transition-all shadow"><CheckCircle size={18}/></button>
                                   ) : (
                                     <CheckCircle size={18} className={`ml-2 ${p.status==='approved'?'text-emerald-900/50':'text-slate-800'}`}/>
                                   )}
                                   
                                   {/* Send Button for List View */}
-                                  {['owner','admin','staff'].includes(userRole) && p.status === 'approved' && p.isPublic && !p.pushedToPublic && (
+                                  {['owner','admin','staff'].includes(userRole) && p.status === 'approved' && p.isPublic && !p.pushedToPublic && !isPast && (
                                     <button onClick={()=>handleManualPush(p)} className={`ml-1 p-1.5 rounded-lg hover:scale-110 transition-all shadow ${p.publicPushMode==='ready'?'text-amber-400 bg-amber-500/10 animate-pulse':'text-blue-400 bg-slate-950'}`}><Send size={16}/></button>
                                   )}
                                </td>
@@ -755,7 +718,6 @@ export default function App() {
              <div className="flex border-b border-slate-800 bg-slate-950/50 px-8 shrink-0 gap-6 overflow-x-auto scrollbar-hide">
                <button onClick={() => setDashTab('logs')} className={`py-4 text-xs font-black uppercase tracking-widest border-b-4 transition-all whitespace-nowrap ${dashTab === 'logs' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-600 hover:text-slate-400'}`}>System Logs</button>
                <button onClick={() => setDashTab('accounts')} className={`py-4 text-xs font-black uppercase tracking-widest border-b-4 transition-all whitespace-nowrap ${dashTab === 'accounts' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-600 hover:text-slate-400'}`}>Accounts</button>
-               <button onClick={() => setDashTab('integration')} className={`py-4 text-xs font-black uppercase tracking-widest border-b-4 transition-all whitespace-nowrap ${dashTab === 'integration' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-600 hover:text-slate-400'}`}>External Sync</button>
              </div>
              
              <div className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-hide bg-slate-950/20 text-left">
@@ -770,21 +732,6 @@ export default function App() {
                          </div>
                        </div>
                      ))}
-                  </div>
-                ) : dashTab === 'integration' ? (
-                  <div className="max-w-2xl mx-auto space-y-6">
-                     <div className="bg-emerald-950/20 border-2 border-emerald-500/20 p-6 rounded-2xl">
-                       <h3 className="text-lg font-black text-emerald-400 uppercase tracking-tighter flex items-center gap-3"><Link2 size={20}/> Webhook Bridge</h3>
-                       <p className="text-xs text-slate-400 font-bold mt-2 leading-relaxed">Connect this Admin Hub back to your Railway App. When an event is "Pushed to Public," it will fire a JSON payload to this endpoint so it appears on your Railway calendar.</p>
-                     </div>
-                     <form onSubmit={saveIntegrationSettings} className="bg-slate-900 border-2 border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
-                       {webhookStatus && <div className="bg-indigo-500/10 text-indigo-400 p-3 rounded-lg text-xs font-black uppercase border border-indigo-500/20 tracking-widest">{webhookStatus}</div>}
-                       <div>
-                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Railway Endpoint URL</label>
-                         <input value={webhookUrl} onChange={e=>setWebhookUrl(e.target.value)} placeholder="https://imvu-calendar.up.railway.app/api/your-endpoint" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-white focus:border-yellow-500 outline-none font-bold shadow-inner"/>
-                       </div>
-                       <button type="submit" className="w-full bg-yellow-500 text-slate-950 py-4 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all shadow-lg">Save Sync Settings</button>
-                     </form>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
