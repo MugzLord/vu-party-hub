@@ -484,7 +484,7 @@ export default function App() {
           <div className="p-8 text-center">
             <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl"><PartyPopper className="text-white w-8 h-8" /></div>
             <h1 className="text-2xl md:text-3xl font-black text-white tracking-tighter uppercase leading-none">VU Party Hub</h1>
-            <p className="text-xs text-slate-500 uppercase tracking-widest font-black mt-2">INFLUENCER & STORYTELLER SCHEDULE</p>
+            <p className="text-xs text-slate-500 uppercase tracking-widest font-black mt-2">Influencer & Storyteller Schedule</p>
           </div>
           <div className="flex border-b border-slate-800 px-6">
             <button onClick={()=>setGateMode('login')} className={`flex-1 pb-3 text-sm font-black uppercase transition-all ${gateMode==='login'?'border-b-2 border-indigo-500 text-indigo-400':'text-slate-600'}`}>Sign In</button>
@@ -518,7 +518,7 @@ export default function App() {
             )}
             <div className="mt-6 pt-6 border-t border-slate-800 text-center">
                <a href={GOOGLE_FORM_LINK} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 text-[11px] font-black text-slate-500 hover:text-indigo-400 uppercase tracking-widest transition-colors">
-                   <ExternalLink size={14} /> PARTY REQUEST FORM
+                   <ExternalLink size={14} /> Party Schedule Form
                </a>
             </div>
           </div>
@@ -654,7 +654,7 @@ export default function App() {
              <form onSubmit={saveEvent} className="space-y-5 text-left block">
                 {formError && <div className="bg-rose-500/10 text-rose-400 p-3 rounded-lg text-[10px] font-black uppercase border border-rose-500/20">{formError}</div>}
                 
-                {/* Host & Co-Host Identity Fields */}
+                {/* Host & Co-Host Name Fields */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                   <div className="space-y-1.5 block">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 block text-left">Main Host</label>
@@ -663,12 +663,12 @@ export default function App() {
                         {formData.hostName || `${currentUser?.username} (${currentUser?.program})`}
                       </div>
                     ) : (
-                      <input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} placeholder="Username" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+                      <input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} placeholder="e.g. Mike (VUI)" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
                     )}
                   </div>
                   <div className="space-y-1.5 block">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 block text-left">Co-Host(s) <span className="opacity-50 lowercase">(Optional)</span></label>
-                    <input value={formData.coHosts || ''} onChange={e=>setFormData({...formData, coHosts: e.target.value})} placeholder="co-hosts" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+                    <input value={formData.coHosts || ''} onChange={e=>setFormData({...formData, coHosts: e.target.value})} placeholder="e.g. Ash, Taylor" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
                   </div>
                 </div>
 
@@ -705,7 +705,7 @@ export default function App() {
                       <Zap size={12}/> Hype It
                     </button>
                   </div>
-                  <textarea value={formData.description} onChange={e=>setFormData({...formData, description: e.target.value})} rows="3" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white outline-none resize-none font-medium leading-relaxed shadow-inner" placeholder="Tell everyone the vibe... (or the #VUParty_hashtag)"/>
+                  <textarea value={formData.description} onChange={e=>setFormData({...formData, description: e.target.value})} rows="3" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white outline-none resize-none font-medium leading-relaxed shadow-inner" placeholder="Tell everyone the vibe..."/>
                 </div>
 
                 <div className="bg-emerald-950/20 border-2 border-emerald-500/10 p-5 rounded-2xl space-y-4 text-left block shadow-inner">
@@ -734,7 +734,7 @@ export default function App() {
                   )}
                 </div>
 
-                <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all shadow-xl">Submit Party</button>
+                <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all shadow-xl">Confirm Registry</button>
              </form>
           </div>
         </div>
