@@ -631,7 +631,7 @@ export default function App() {
                   </div>
                   <div className="space-y-1.5 block">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 block text-left">Co-Host(s) <span className="opacity-50 lowercase">(Optional)</span></label>
-                    <input value={formData.coHosts || ''} onChange={e=>setFormData({...formData, coHosts: e.target.value})} placeholder="co-hosts (Optional)" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+                    <input value={formData.coHosts || ''} onChange={e=>setFormData({...formData, coHosts: e.target.value})} placeholder="Optional)" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
                   </div>
                 </div>
 
