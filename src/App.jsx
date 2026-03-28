@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, Plus, PartyPopper, X, ChevronLeft, ChevronRight, 
-  CalendarDays, Edit2, Trash2, Shield, LogOut, List as ListIcon, LayoutGrid, CheckCircle, Clock3, Eye, EyeOff, Crown, FileText, Sparkles, Loader2, Send, BellRing, UserPlus, Users, Zap, Globe, Link as LinkIcon, User, ExternalLink, LogIn, ArrowLeft
+  CalendarDays, Edit2, Trash2, Shield, LogOut, List as ListIcon, LayoutGrid, CheckCircle, Clock3, Eye, EyeOff, Crown, FileText, Sparkles, Loader2, Send, BellRing, UserPlus, Users, Zap, Globe, Link as LinkIcon, User, ExternalLink, LogIn, ArrowLeft, Key
 } from 'lucide-react';
 
 // --- FIREBASE INTEGRATION ---
@@ -97,6 +97,14 @@ export default function App() {
   // Custom Delete Confirm State
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
+  // Change Passcode State
+  const [showPasscodeForm, setShowPasscodeForm] = useState(false);
+  const [passcodeData, setPasscodeData] = useState({ current: '', new: '', confirm: '' });
+  const [passcodeError, setPasscodeError] = useState('');
+  const [passcodeSuccess, setPasscodeSuccess] = useState('');
+  const [eyePassCurrent, setEyePassCurrent] = useState(false);
+  const [eyePassNew, setEyePassNew] = useState(false);
+
   // Form States
   const [formData, setFormData] = useState({ hostName: '', coHosts: '', theme: '', date: '', startTime: '', duration: 2, description: '', roomLink: '', isPublic: false, publicPushMode: 'auto' });
   const [gateMode, setGateMode] = useState('login');
@@ -187,15 +195,18 @@ export default function App() {
     const u = gateU.trim().toLowerCase();
     const p = gateP.trim();
 
-    if ((u === 'mike' && p === 'owner123') || (u === 'ash' && p === 'ash123')) {
-      const f = u === 'mike' ? { id: '1', username: 'Mike', role: 'owner' } : { id: '2', username: 'Ash', role: 'staff' };
-      setCurrentUser(f); localStorage.setItem(SESSION_KEY, JSON.stringify(f)); setShowAuthGate(false); return;
-    }
-
+    // Check database first so that changed passcodes are honored
     const match = accounts.find(a => a.username.toLowerCase() === u && a.passcode === p);
+    
     if (match) {
       setCurrentUser(match); localStorage.setItem(SESSION_KEY, JSON.stringify(match)); setShowAuthGate(false);
-    } else { setGateError("Invalid credentials."); }
+    } else if ((u === 'mike' && p === 'owner123') || (u === 'ash' && p === 'ash123')) {
+      // Fallback in case the DB is reset
+      const f = u === 'mike' ? { id: '1', username: 'Mike', role: 'owner', passcode: 'owner123' } : { id: '2', username: 'Ash', role: 'staff', passcode: 'ash123' };
+      setCurrentUser(f); localStorage.setItem(SESSION_KEY, JSON.stringify(f)); setShowAuthGate(false); return;
+    } else { 
+      setGateError("Invalid credentials."); 
+    }
   };
 
   const handleRegister = async (e) => {
@@ -220,6 +231,35 @@ export default function App() {
     setCurrentUser(null); 
     localStorage.removeItem(SESSION_KEY); 
     setShowAuthGate(true); 
+  };
+
+  const handlePasscodeChange = async (e) => {
+    e.preventDefault();
+    setPasscodeError('');
+    setPasscodeSuccess('');
+    
+    if (passcodeData.new !== passcodeData.confirm) return setPasscodeError("New passcodes don't match.");
+    
+    const userInDb = accounts.find(a => a.id === currentUser.id);
+    const verifyPass = userInDb ? userInDb.passcode : currentUser.passcode;
+    
+    if (passcodeData.current !== verifyPass) return setPasscodeError("Current passcode is incorrect.");
+    
+    try {
+      const updatedData = { ...currentUser, passcode: passcodeData.new };
+      await setDoc(doc(db, getPath('accounts'), currentUser.id), updatedData, { merge: true });
+      setCurrentUser(updatedData);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(updatedData));
+      setPasscodeSuccess("Passcode updated!");
+      logAction("Changed Passcode");
+      setTimeout(() => {
+        setShowPasscodeForm(false);
+        setPasscodeData({ current: '', new: '', confirm: '' });
+        setPasscodeSuccess('');
+      }, 2000);
+    } catch (err) {
+      setPasscodeError("Failed to update passcode.");
+    }
   };
 
   // Data Functions
@@ -568,7 +608,8 @@ export default function App() {
             <div className="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-2 font-black uppercase text-[10px] text-indigo-300 shadow-inner">
                {currentUser?.role === 'owner' ? <Crown size={12} className="text-yellow-400"/> : <Shield size={12}/>}
                <span className="hidden sm:inline">{currentUser?.username}</span>
-               <button onClick={handleLogout} className="text-rose-500/50 hover:text-rose-400 ml-1 transition-colors"><LogOut size={14}/></button>
+               <button onClick={() => setShowPasscodeForm(true)} className="text-indigo-400/50 hover:text-indigo-300 ml-2 transition-colors" title="Change Passcode"><Key size={14}/></button>
+               <button onClick={handleLogout} className="text-rose-500/50 hover:text-rose-400 ml-1 transition-colors" title="Log Out"><LogOut size={14}/></button>
             </div>
             {userRole==='owner' && <button onClick={()=>setShowDash(true)} className="p-2 bg-slate-800 rounded-lg text-indigo-400 hover:text-white transition-all shadow" title="Master Console"><FileText size={18}/></button>}
             <a href={GOOGLE_FORM_LINK} target="_blank" rel="noreferrer" className="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-all shadow hidden sm:block" title="Party Schedule Form">
@@ -890,6 +931,39 @@ export default function App() {
         </div>
       )}
 
+      {/* CHANGE PASSCODE MODAL */}
+      {showPasscodeForm && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-xl z-[300] flex items-center justify-center p-4 text-left">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-6 relative shadow-2xl animate-in zoom-in-95 duration-200">
+             <button onClick={()=>{setShowPasscodeForm(false); setPasscodeError(''); setPasscodeSuccess('');}} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-all"><X size={20}/></button>
+             <h2 className="text-xl font-black text-white uppercase tracking-widest mb-6">Change Passcode</h2>
+             
+             <form onSubmit={handlePasscodeChange} className="space-y-4">
+                {passcodeError && <div className="bg-rose-500/10 text-rose-400 p-3 rounded-lg text-xs font-bold border border-rose-500/20">{passcodeError}</div>}
+                {passcodeSuccess && <div className="bg-emerald-500/10 text-emerald-400 p-3 rounded-lg text-xs font-bold border border-emerald-500/20">{passcodeSuccess}</div>}
+                
+                <div className="relative">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Current Passcode</label>
+                  <input required type={eyePassCurrent ? "text" : "password"} value={passcodeData.current} onChange={e=>setPasscodeData({...passcodeData, current: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+                  <button type="button" onClick={()=>setEyePassCurrent(!eyePassCurrent)} className="absolute right-4 top-1/2 translate-y-2 text-slate-500 hover:text-white transition-colors">{eyePassCurrent?<EyeOff size={18}/>:<Eye size={18}/>}</button>
+                </div>
+
+                <div className="relative">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-1 block">New Passcode</label>
+                  <input required type={eyePassNew ? "text" : "password"} value={passcodeData.new} onChange={e=>setPasscodeData({...passcodeData, new: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+                  <button type="button" onClick={()=>setEyePassNew(!eyePassNew)} className="absolute right-4 top-1/2 translate-y-2 text-slate-500 hover:text-white transition-colors">{eyePassNew?<EyeOff size={18}/>:<Eye size={18}/>}</button>
+                </div>
+                
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Confirm New Passcode</label>
+                  <input required type="password" value={passcodeData.confirm} onChange={e=>setPasscodeData({...passcodeData, confirm: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+                </div>
+
+                <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all shadow-xl mt-2">Update Passcode</button>
+             </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
