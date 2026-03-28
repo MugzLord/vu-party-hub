@@ -572,7 +572,7 @@ export default function App() {
                      <tr>
                        <th className="p-4 text-left">Date</th>
                        <th className="p-4 text-left">Theme / Vibe</th>
-                       <th className="p-4 text-left">Host Identity</th>
+                       <th className="p-4 text-left">Host Name</th>
                        <th className="p-4 text-right">Approval</th>
                      </tr>
                    </thead>
@@ -754,7 +754,7 @@ export default function App() {
              
              <div className="flex border-b border-slate-800 bg-slate-950/50 px-8 shrink-0 gap-6 overflow-x-auto scrollbar-hide">
                <button onClick={() => setDashTab('logs')} className={`py-4 text-xs font-black uppercase tracking-widest border-b-4 transition-all whitespace-nowrap ${dashTab === 'logs' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-600 hover:text-slate-400'}`}>System Logs</button>
-               <button onClick={() => setDashTab('accounts')} className={`py-4 text-xs font-black uppercase tracking-widest border-b-4 transition-all whitespace-nowrap ${dashTab === 'accounts' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-600 hover:text-slate-400'}`}>Identities</button>
+               <button onClick={() => setDashTab('accounts')} className={`py-4 text-xs font-black uppercase tracking-widest border-b-4 transition-all whitespace-nowrap ${dashTab === 'accounts' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-600 hover:text-slate-400'}`}>Accounts</button>
                <button onClick={() => setDashTab('integration')} className={`py-4 text-xs font-black uppercase tracking-widest border-b-4 transition-all whitespace-nowrap ${dashTab === 'integration' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-600 hover:text-slate-400'}`}>External Sync</button>
              </div>
              
@@ -789,7 +789,7 @@ export default function App() {
                 ) : (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
                      <div className="text-left space-y-4">
-                        <h3 className="text-sm font-black text-white uppercase flex items-center gap-2 tracking-tighter"><UserPlus size={18} className="text-yellow-500"/> Assign Identity</h3>
+                        <h3 className="text-sm font-black text-white uppercase flex items-center gap-2 tracking-tighter"><UserPlus size={18} className="text-yellow-500"/> Assign Account</h3>
                         <form onSubmit={async (e) => { 
                           e.preventDefault(); 
                           const id = Date.now().toString(); 
