@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, Plus, PartyPopper, X, ChevronLeft, ChevronRight, 
-  CalendarDays, Edit2, Trash2, Shield, LogOut, List as ListIcon, LayoutGrid, CheckCircle, Clock3, Eye, EyeOff, Crown, FileText, Sparkles, Loader2, Send, BellRing, UserPlus, Users, Zap, Globe, Link as LinkIcon, User, ExternalLink
+  CalendarDays, Edit2, Trash2, Shield, LogOut, List as ListIcon, LayoutGrid, CheckCircle, Clock3, Eye, EyeOff, Crown, FileText, Sparkles, Loader2, Send, BellRing, UserPlus, Users, Zap, Globe, Link as LinkIcon, User, ExternalLink, Link2
 } from 'lucide-react';
 
 // --- FIREBASE INTEGRATION ---
@@ -9,7 +9,6 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
 
-// Smart Database Connection: Uses Sandbox DB when previewing, uses your Real DB on Railway
 let firebaseConfig;
 if (typeof __firebase_config !== 'undefined') {
   firebaseConfig = JSON.parse(__firebase_config);
@@ -28,16 +27,13 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Smart Path Generator
 const getPath = (colName) => {
-  if (typeof __app_id !== 'undefined') {
-    return `artifacts/${__app_id}/public/data/${colName}`; // Canvas Preview Path
-  }
-  return colName; // Your Railway Production Path
+  if (typeof __app_id !== 'undefined') return `artifacts/${__app_id}/public/data/${colName}`;
+  return colName; 
 };
 
 // --- Static Config ---
-const SESSION_KEY = 'vu_party_hub_v150_production';
+const SESSION_KEY = 'vu_party_hub_v160_production';
 const GOOGLE_FORM_LINK = 'https://docs.google.com/forms/d/e/1FAIpQLSctHRAv0mdyL8_gwnB0AIOvVDWtZzwA5UYYo_h_rZ48LBnkNQ/viewform'; 
 
 const DAY_STYLES = [
@@ -74,6 +70,9 @@ export default function App() {
   const [parties, setParties] = useState([]);
   const [actionLogs, setActionLogs] = useState([]);
   const [dbLoaded, setDbLoaded] = useState(false);
+  
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookStatus, setWebhookStatus] = useState('');
 
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem(SESSION_KEY);
@@ -82,7 +81,6 @@ export default function App() {
 
   const userRole = currentUser?.role || null;
 
-  // --- Auth Initialization ---
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -91,22 +89,20 @@ export default function App() {
         } else {
           await signInAnonymously(auth);
         }
-      } catch (err) {
-        console.warn("Auth initializing...", err);
-      }
+      } catch (err) {}
     };
     initAuth();
     const unsubAuth = onAuthStateChanged(auth, setAuthUser);
     return () => unsubAuth();
   }, []);
 
-  // --- Firestore Sync ---
   useEffect(() => {
     if (!authUser) return;
 
     const partiesCol = collection(db, getPath('parties'));
     const accountsCol = collection(db, getPath('accounts'));
     const logsCol = collection(db, getPath('actionLogs'));
+    const settingsDoc = doc(db, getPath('settings'), 'integration');
 
     const unsubP = onSnapshot(partiesCol, (s) => setParties(s.docs.map(d => d.data())), () => {});
     
@@ -125,10 +121,13 @@ export default function App() {
 
     const unsubL = onSnapshot(logsCol, (s) => setActionLogs(s.docs.map(d => d.data()).sort((a,b) => b.id - a.id)), () => {});
     
-    return () => { unsubP(); unsubA(); unsubL(); };
+    const unsubS = onSnapshot(settingsDoc, (d) => {
+      if (d.exists()) setWebhookUrl(d.data().url || '');
+    });
+    
+    return () => { unsubP(); unsubA(); unsubL(); unsubS(); };
   }, [authUser]);
 
-  // --- UI State ---
   const [view, setView] = useState('Guide'); 
   const [baseDate, setBaseDate] = useState(new Date());
   const [showForm, setShowForm] = useState(false);
@@ -153,13 +152,39 @@ export default function App() {
   const [staffForm, setStaffForm] = useState({ u: '', r: 'admin', p: '' });
   const [staffSuccess, setStaffSuccess] = useState('');
 
-  // --- Action Helpers ---
   const logAction = async (msg, u = currentUser) => {
     if (!u || !authUser) return;
     const id = Date.now().toString();
     try {
       await setDoc(doc(db, getPath('actionLogs'), id), { id: Date.now(), time: new Date().toLocaleTimeString(), action: msg, username: u.username, role: u.role });
     } catch (e) {}
+  };
+
+  const pushToRailway = async (partyData) => {
+    if (!webhookUrl) return; 
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(partyData)
+      });
+      logAction(`Railway Sync Success: ${partyData.theme}`);
+    } catch (err) {
+      logAction(`Railway Sync Failed: ${partyData.theme}`);
+    }
+  };
+
+  const saveIntegrationSettings = async (e) => {
+    e.preventDefault();
+    setWebhookStatus("Saving...");
+    try {
+      await setDoc(doc(db, getPath('settings'), 'integration'), { url: webhookUrl });
+      setWebhookStatus("Saved & Active!");
+      logAction("Updated Webhook Settings");
+      setTimeout(() => setWebhookStatus(''), 3000);
+    } catch (err) {
+      setWebhookStatus("Error saving.");
+    }
   };
 
   const getStatus = (pt) => {
@@ -259,6 +284,7 @@ export default function App() {
       await setDoc(doc(db, getPath('parties'), id), data);
       setShowForm(false); setEditingId(null);
       logAction(editingId ? `Edited ${formData.theme}` : `Created ${formData.theme}`);
+      if (data.pushedToPublic) pushToRailway(data);
     } catch (err) {
       setFormError("Sync failed. Check connection.");
     }
@@ -273,20 +299,20 @@ export default function App() {
     };
     await setDoc(doc(db, getPath('parties'), p.id), updatedData);
     logAction(`Approved: ${p.theme}`);
+    if (updatedData.pushedToPublic) pushToRailway(updatedData);
   };
 
   const handleManualPush = async (p) => {
     const updatedData = { ...p, pushedToPublic: true };
     await setDoc(doc(db, getPath('parties'), p.id), updatedData);
     logAction(`Public Sync: ${p.theme}`);
+    pushToRailway(updatedData);
   };
 
   const handleSignalReady = async (p) => {
     await setDoc(doc(db, getPath('parties'), p.id), { ...p, publicPushMode: 'ready' });
     logAction(`Host READY: ${p.theme}`);
   };
-
-  // --- Visual Renderers ---
 
   const renderPublicGuide = () => {
     const publicParties = parties
@@ -450,7 +476,6 @@ export default function App() {
     );
   };
 
-  // --- Auth Gate ---
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans text-left">
@@ -493,7 +518,7 @@ export default function App() {
             )}
             <div className="mt-6 pt-6 border-t border-slate-800 text-center">
                <a href={GOOGLE_FORM_LINK} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 text-[11px] font-black text-slate-500 hover:text-indigo-400 uppercase tracking-widest transition-colors">
-                   <ExternalLink size={14} /> Party Request Form
+                   <ExternalLink size={14} /> PARTY REQUEST FORM
                </a>
             </div>
           </div>
@@ -638,12 +663,12 @@ export default function App() {
                         {formData.hostName || `${currentUser?.username} (${currentUser?.program})`}
                       </div>
                     ) : (
-                      <input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} placeholder="e.g. Mike (VUI)" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+                      <input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} placeholder="Username" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
                     )}
                   </div>
                   <div className="space-y-1.5 block">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 block text-left">Co-Host(s) <span className="opacity-50 lowercase">(Optional)</span></label>
-                    <input value={formData.coHosts || ''} onChange={e=>setFormData({...formData, coHosts: e.target.value})} placeholder="Optional" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+                    <input value={formData.coHosts || ''} onChange={e=>setFormData({...formData, coHosts: e.target.value})} placeholder="co-hosts" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
                   </div>
                 </div>
 
@@ -680,7 +705,7 @@ export default function App() {
                       <Zap size={12}/> Hype It
                     </button>
                   </div>
-                  <textarea value={formData.description} onChange={e=>setFormData({...formData, description: e.target.value})} rows="3" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white outline-none resize-none font-medium leading-relaxed shadow-inner" placeholder="Tell everyone the vibe..."/>
+                  <textarea value={formData.description} onChange={e=>setFormData({...formData, description: e.target.value})} rows="3" className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-sm text-white outline-none resize-none font-medium leading-relaxed shadow-inner" placeholder="Tell everyone the vibe... (or the #VUParty_hashtag)"/>
                 </div>
 
                 <div className="bg-emerald-950/20 border-2 border-emerald-500/10 p-5 rounded-2xl space-y-4 text-left block shadow-inner">
@@ -688,7 +713,7 @@ export default function App() {
                     <input type="checkbox" checked={formData.isPublic} onChange={e=>setFormData({...formData, isPublic: e.target.checked})} className="mt-1 w-5 h-5 rounded text-emerald-600 bg-slate-950 border-slate-800 focus:ring-0"/> 
                     <div>
                       <span className="text-sm font-black uppercase text-emerald-400 tracking-tighter">Community Sync</span>
-                      <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-widest">Publish on Community Schedule on approval.</p>
+                      <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-widest">Push to official Guide on approval.</p>
                     </div>
                   </label>
                   
@@ -709,7 +734,7 @@ export default function App() {
                   )}
                 </div>
 
-                <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all shadow-xl">Submit</button>
+                <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all shadow-xl">Submit Party</button>
              </form>
           </div>
         </div>
@@ -727,9 +752,10 @@ export default function App() {
                <button onClick={()=>setShowDash(false)} className="p-2 bg-slate-800 rounded-xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
              </div>
              
-             <div className="flex border-b border-slate-800 bg-slate-950/50 px-8 shrink-0 gap-6">
-               <button onClick={() => setDashTab('logs')} className={`py-4 text-xs font-black uppercase tracking-widest border-b-4 transition-all ${dashTab === 'logs' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-600 hover:text-slate-400'}`}>System Logs</button>
-               <button onClick={() => setDashTab('accounts')} className={`py-4 text-xs font-black uppercase tracking-widest border-b-4 transition-all ${dashTab === 'accounts' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-600 hover:text-slate-400'}`}>Identities</button>
+             <div className="flex border-b border-slate-800 bg-slate-950/50 px-8 shrink-0 gap-6 overflow-x-auto scrollbar-hide">
+               <button onClick={() => setDashTab('logs')} className={`py-4 text-xs font-black uppercase tracking-widest border-b-4 transition-all whitespace-nowrap ${dashTab === 'logs' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-600 hover:text-slate-400'}`}>System Logs</button>
+               <button onClick={() => setDashTab('accounts')} className={`py-4 text-xs font-black uppercase tracking-widest border-b-4 transition-all whitespace-nowrap ${dashTab === 'accounts' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-600 hover:text-slate-400'}`}>Identities</button>
+               <button onClick={() => setDashTab('integration')} className={`py-4 text-xs font-black uppercase tracking-widest border-b-4 transition-all whitespace-nowrap ${dashTab === 'integration' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-600 hover:text-slate-400'}`}>External Sync</button>
              </div>
              
              <div className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-hide bg-slate-950/20 text-left">
@@ -744,6 +770,21 @@ export default function App() {
                          </div>
                        </div>
                      ))}
+                  </div>
+                ) : dashTab === 'integration' ? (
+                  <div className="max-w-2xl mx-auto space-y-6">
+                     <div className="bg-emerald-950/20 border-2 border-emerald-500/20 p-6 rounded-2xl">
+                       <h3 className="text-lg font-black text-emerald-400 uppercase tracking-tighter flex items-center gap-3"><Link2 size={20}/> Webhook Bridge</h3>
+                       <p className="text-xs text-slate-400 font-bold mt-2 leading-relaxed">Connect this Admin Hub back to your Railway App. When an event is "Pushed to Public," it will fire a JSON payload to this endpoint so it appears on your Railway calendar.</p>
+                     </div>
+                     <form onSubmit={saveIntegrationSettings} className="bg-slate-900 border-2 border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
+                       {webhookStatus && <div className="bg-indigo-500/10 text-indigo-400 p-3 rounded-lg text-xs font-black uppercase border border-indigo-500/20 tracking-widest">{webhookStatus}</div>}
+                       <div>
+                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Railway Endpoint URL</label>
+                         <input value={webhookUrl} onChange={e=>setWebhookUrl(e.target.value)} placeholder="https://imvu-calendar.up.railway.app/api/your-endpoint" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-white focus:border-yellow-500 outline-none font-bold shadow-inner"/>
+                       </div>
+                       <button type="submit" className="w-full bg-yellow-500 text-slate-950 py-4 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all shadow-lg">Save Sync Settings</button>
+                     </form>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
