@@ -56,7 +56,13 @@ const DAY_STYLES = [
 ];
 
 const timeToMins = (t) => { if(!t) return 0; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
-const format12h = (t) => { if (!t) return ''; let [h, m] = t.split(':').map(Number); const am = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${am}`; };
+const format12h = (t) => { 
+  if (!t) return ''; 
+  let [h, m] = t.split(':').map(Number); 
+  const am = h >= 12 ? 'PM' : 'AM'; 
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2, '0')} ${am}`; 
+};
 
 // Calculate end time based on start time and duration
 const getEndTime = (startTime, duration) => {
@@ -121,7 +127,7 @@ export default function App() {
   const [staffForm, setStaffForm] = useState({ u: '', r: 'staff', p: '' });
   const [staffSuccess, setStaffSuccess] = useState('');
 
-  // Eye toggles for change passcode modal
+  // Eye toggles
   const [eyeCurrent, setEyeCurrent] = useState(false);
   const [eyeNew, setEyeNew] = useState(false);
   const [eyeConfirm, setEyeConfirm] = useState(false);
@@ -244,42 +250,23 @@ export default function App() {
             <div className="p-8 pt-10 text-left">
               {gateError && <div className="bg-red-500/10 text-red-400 p-3 rounded-xl text-[10px] font-bold uppercase mb-4 border border-red-500/20">{gateError}</div>}
               <form onSubmit={gateMode === 'login' ? handleLogin : handleRegister} className="space-y-6">
-                
-                {/* Isolated Username Field */}
                 <div className="space-y-1.5 text-left">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Username</label>
                   <input required value={gateMode === 'login' ? gateU : regData.u} onChange={e=> gateMode === 'login' ? setGateU(e.target.value) : setRegData({...regData, u: e.target.value})} placeholder="Username" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
                 </div>
-
-                {gateMode === 'register' && (
-                  <div className="space-y-1.5 text-left">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Program</label>
-                    <select value={regData.program} onChange={e=>setRegData({...regData, program: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-black uppercase tracking-widest shadow-inner cursor-pointer appearance-none">
-                      <option value="VUI">Influencer (VUI)</option>
-                      <option value="VUS">Storyteller (VUS)</option>
-                    </select>
-                  </div>
-                )}
-                
-                {/* Isolated Passcode Field */}
+                {gateMode === 'register' && (<div className="space-y-1.5 text-left"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Program</label><select value={regData.program} onChange={e=>setRegData({...regData, program: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-black uppercase tracking-widest shadow-inner cursor-pointer appearance-none"><option value="VUI">Influencer (VUI)</option><option value="VUS">Storyteller (VUS)</option></select></div>)}
                 <div className="space-y-1.5 relative text-left">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Passcode</label>
                   <input required type={eyeLogin?"text":"password"} value={gateMode === 'login' ? gateP : regData.p} onChange={e=> gateMode === 'login' ? setGateP(e.target.value) : setRegData({...regData, p: e.target.value})} placeholder="Passcode" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
-                  <button type="button" onClick={()=>setEyeLogin(!eyeLogin)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">
-                    {eyeLogin ? <EyeOff size={20}/> : <Eye size={20}/>}
-                  </button>
+                  <button type="button" onClick={()=>setEyeLogin(!eyeLogin)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">{eyeLogin?<EyeOff size={20}/>:<Eye size={20}/>}</button>
                 </div>
-
                 {gateMode === 'register' && (
                   <div className="space-y-1.5 relative text-left">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Confirm</label>
                     <input required type={eyeRegConfirm ? "text" : "password"} value={regData.c} onChange={e=>setRegData({...regData, c: e.target.value})} placeholder="Confirm Passcode" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
-                    <button type="button" onClick={()=>setEyeRegConfirm(!eyeRegConfirm)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">
-                      {eyeRegConfirm ? <EyeOff size={20}/> : <Eye size={20}/>}
-                    </button>
+                    <button type="button" onClick={()=>setEyeRegConfirm(!eyeRegConfirm)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">{eyeRegConfirm?<EyeOff size={20}/>:<Eye size={20}/>}</button>
                   </div>
                 )}
-                
                 <button type="submit" disabled={!dbLoaded} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 mt-4 text-[11px]">ENTER HUB</button>
               </form>
               <div className="mt-8 pt-6 border-t border-white/5 text-center"><a href={GOOGLE_FORM_LINK} target="_blank" className="text-[10px] font-black text-slate-600 hover:text-indigo-400 uppercase tracking-widest transition-colors flex items-center justify-center gap-2"><ExternalLink size={14}/> Party Request Form</a></div>
@@ -292,7 +279,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0a0f1d] text-slate-200 flex flex-col font-sans overflow-x-hidden text-left">
-      {/* Indigo Themed Browser Icons (Date, Time, Number Spinners) */}
       <style>{`
         input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator,
@@ -361,7 +347,7 @@ export default function App() {
                                )
                             )
                           )}
-                          <button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-1.5 text-slate-400 hover:text-white transition-all"><Edit2 size={14}/></button>
+                          {isStaff && <button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-1.5 text-slate-400 hover:text-white transition-all"><Edit2 size={14}/></button>}
                           {['owner','admin'].includes(userRole) && <button onClick={()=>setDeleteConfirm(p)} className="p-1.5 text-rose-500/60 hover:text-rose-500 transition-all"><Trash2 size={14}/></button>}
                       </td>
                     </tr>
@@ -393,8 +379,11 @@ export default function App() {
                   <div key={p.id} className="bg-[#111827] border border-white/5 p-4 rounded-2xl relative overflow-hidden group text-left">
                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 shadow-[0_0_10px_emerald]"></div>
                      <h3 className="text-base font-black text-white uppercase mb-0.5">{p.theme}</h3>
-                     <p className="text-[9px] font-bold text-indigo-400 uppercase mb-3">{p.coHosts ? `${p.hostName} + ${p.coHosts}` : p.hostName}</p>
-                     <div className="flex justify-between items-center text-[9px] font-black uppercase text-slate-500"><span>{p.date.split('-').reverse().slice(0,2).join('/')}</span><span>{format12h(p.startTime)} PT</span></div>
+                     <p className="text-[9px] font-bold text-indigo-400 uppercase mb-1">{p.coHosts ? `${p.hostName} + ${p.coHosts}` : p.hostName}</p>
+                     <div className="flex justify-between items-center text-[9px] font-black uppercase text-slate-500">
+                        <span>{p.date.split('-').reverse().slice(0,2).join('/')}</span>
+                        <span>{format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))} PT</span>
+                     </div>
                   </div>
                 ))}
               </div>
@@ -439,8 +428,16 @@ export default function App() {
                          <div className="space-y-2 text-left">
                            {daily.map(p => (
                              <div key={p.id} className="p-3 bg-[#111827] border border-white/5 rounded-xl flex justify-between items-center group text-left">
-                                <div className="text-left"><h4 className="text-sm font-black text-white uppercase text-left">{p.theme}</h4><p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5 text-left">{format12h(p.startTime)} PT — {p.coHosts ? `${p.hostName} + ${p.coHosts}` : p.hostName}</p></div>
-                                <div className="flex gap-2"><button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-1.5 text-indigo-400 bg-white/5 rounded-lg"><Edit2 size={12}/></button>{isStaff && <button onClick={()=>setDeleteConfirm(p)} className="p-1.5 text-rose-500/60 bg-white/5 rounded-lg"><Trash2 size={12}/></button>}</div>
+                                <div className="text-left">
+                                  <h4 className="text-sm font-black text-white uppercase text-left">{p.theme}</h4>
+                                  <p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5 text-left">
+                                    {format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))} PT — {p.coHosts ? `${p.hostName} + ${p.coHosts}` : p.hostName}
+                                  </p>
+                                </div>
+                                <div className="flex gap-2">
+                                  {isStaff && <button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-1.5 text-indigo-400 bg-white/5 rounded-lg"><Edit2 size={12}/></button>}
+                                  {isStaff && <button onClick={()=>setDeleteConfirm(p)} className="p-1.5 text-rose-500/60 bg-white/5 rounded-lg"><Trash2 size={12}/></button>}
+                                </div>
                              </div>
                            ))}
                            <div onClick={()=>{setEditingId(null); setFormData({hostName: userRole === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: ds, startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="p-3 bg-black/20 border border-white/5 rounded-xl border-dashed flex justify-between items-center group cursor-pointer hover:bg-white/5 transition-all text-left"><span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">8:00 AM - 11:59 PM OPEN</span><Plus size={14} className="text-slate-800 group-hover:text-white transition-all"/></div>
