@@ -57,6 +57,17 @@ const DAY_STYLES = [
 
 const timeToMins = (t) => { if(!t) return 0; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 const format12h = (t) => { if (!t) return ''; let [h, m] = t.split(':').map(Number); const am = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${am}`; };
+
+// Calculate end time based on start time and duration
+const getEndTime = (startTime, duration) => {
+  if (!startTime) return '';
+  const [h, m] = startTime.split(':').map(Number);
+  let totalMins = h * 60 + m + (duration * 60);
+  let endH = Math.floor(totalMins / 60) % 24;
+  let endM = totalMins % 60;
+  return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+};
+
 const getCurrentPT = () => {
   const ptDate = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
   return { 
@@ -327,7 +338,9 @@ export default function App() {
                   {sortedParties.filter(p => view === 'Pending' ? p.status === 'pending' : true).map(p => (
                     <tr key={p.id} className="hover:bg-white/5 transition-all text-left">
                       <td className="p-3 text-slate-400 font-bold uppercase">{p.date.split('-').slice(1).reverse().join('/')}</td>
-                      <td className="p-3 text-slate-400 font-bold uppercase">{format12h(p.startTime)}</td>
+                      <td className="p-3 text-slate-400 font-bold uppercase whitespace-nowrap">
+                        {format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))}
+                      </td>
                       <td className="p-3 text-white font-black uppercase">{p.theme}</td>
                       <td className="p-3 text-indigo-400 font-bold uppercase">{p.coHosts ? `${p.hostName} + ${p.coHosts}` : p.hostName}</td>
                       <td className="p-3 text-right flex justify-end gap-2 items-center text-left">
