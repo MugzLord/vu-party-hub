@@ -115,6 +115,7 @@ export default function App() {
   const [regData, setRegData] = useState({ u: '', p: '', c: '', program: 'VUI' });
   
   const [showForm, setShowForm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // NEW: Prevents multiple entries
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({ hostName: '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto' });
   
@@ -202,6 +203,9 @@ export default function App() {
 
   const saveEvent = async (e) => {
     e.preventDefault();
+    if (isSaving) return; // Guard against double submission
+    
+    setIsSaving(true);
     const id = editingId || Date.now().toString();
     const data = { 
       ...formData, 
@@ -211,9 +215,17 @@ export default function App() {
       hostId: editingId ? (formData.hostId || currentUser.id) : currentUser.id,
       hostName: editingId ? formData.hostName : (currentUser.role === 'host' ? `${currentUser.username} (${currentUser.program})` : formData.hostName)
     };
-    await setDoc(doc(db, getPath('parties'), id), data);
-    setShowForm(false); setEditingId(null);
-    logAction(editingId ? `Edited ${formData.theme}` : `Submitted ${formData.theme}`);
+
+    try {
+      await setDoc(doc(db, getPath('parties'), id), data);
+      await logAction(editingId ? `Edited ${formData.theme}` : `Submitted ${formData.theme}`);
+      setShowForm(false); 
+      setEditingId(null);
+    } catch (err) {
+      console.error("Save error:", err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleUnpublish = (p) => { setDoc(doc(db, getPath('parties'), p.id), { ...p, pushedToPublic: false }); logAction(`Unpublished ${p.theme}`); };
@@ -353,7 +365,7 @@ export default function App() {
                             isStaff ? (
                                p.pushedToPublic ? <button onClick={()=>handleUnpublish(p)} title="Unpublish" className="p-1.5 text-rose-400 bg-rose-500/10 rounded-lg hover:scale-105 transition-all"><EyeOff size={16}/></button> :
                                (p.publicPushMode === 'ready' || p.publicPushMode === 'auto') ? <button onClick={()=>handleManualPush(p)} title="Publish" className="p-1.5 text-indigo-400 bg-indigo-500/10 rounded-lg hover:scale-105 transition-all"><Send size={16}/></button> :
-                               <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest px-2 py-1 bg-white/5 rounded border border-white/5">On Hold</div>
+                               <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest px-2 py-1 bg-white/5 rounded border border-white/5">On Hold (for public calendar)</div>
                             ) : (
                                !p.pushedToPublic && p.publicPushMode === 'manual' && p.hostId === currentUser.id && (
                                  <button onClick={() => handleSignalReady(p)} className="flex items-center gap-1 text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-1 rounded hover:bg-amber-400/20 transition-all">
@@ -491,7 +503,9 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                  <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl active:scale-95 text-[10px] text-left text-center">SUBMIT PARTY</button>
+                  <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl active:scale-95 text-[10px] text-left text-center">
+                    {isSaving ? "SAVING..." : "SUBMIT PARTY"}
+                  </button>
             </form></div></div>
       )}
 
@@ -585,7 +599,7 @@ export default function App() {
                              <input required value={staffForm.u} onChange={e=>setStaffForm({...staffForm, u: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold text-left shadow-inner placeholder:text-slate-800"/>
                            </div>
                            <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left">Role</label>
-                             <select value={staffForm.r} onChange={e=>setStaffForm({...staffForm, r: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white outline-none font-black uppercase tracking-widest cursor-pointer text-left shadow-inner">
+                             <select value={staffForm.r} onChange={e=>setStaffForm({...staffForm, r: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white outline-none font-black uppercase tracking-widest shadow-inner cursor-pointer text-left shadow-inner">
                                 <option value="staff">Official Staff</option>
                                 <option value="admin">Administrator</option>
                                 <option value="host">Verified Host</option>
