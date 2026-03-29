@@ -127,7 +127,7 @@ export default function App() {
   const [staffForm, setStaffForm] = useState({ u: '', r: 'staff', p: '' });
   const [staffSuccess, setStaffSuccess] = useState('');
 
-  // Eye toggles
+  // Eye toggles for changes
   const [eyeCurrent, setEyeCurrent] = useState(false);
   const [eyeNew, setEyeNew] = useState(false);
   const [eyeConfirm, setEyeConfirm] = useState(false);
@@ -279,6 +279,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0a0f1d] text-slate-200 flex flex-col font-sans overflow-x-hidden text-left">
+      {/* Dynamic Browser Input Icon Theming */}
       <style>{`
         input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator,
@@ -286,7 +287,6 @@ export default function App() {
         input[type="number"]::-webkit-outer-spin-button {
           filter: invert(34%) sepia(98%) saturate(1906%) hue-rotate(224deg) brightness(91%) contrast(101%);
           cursor: pointer;
-          opacity: 1;
         }
       `}</style>
 
