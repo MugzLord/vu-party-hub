@@ -127,7 +127,7 @@ export default function App() {
   const [staffForm, setStaffForm] = useState({ u: '', r: 'staff', p: '' });
   const [staffSuccess, setStaffSuccess] = useState('');
 
-  // Eye toggles for changes
+  // Eye toggles
   const [eyeCurrent, setEyeCurrent] = useState(false);
   const [eyeNew, setEyeNew] = useState(false);
   const [eyeConfirm, setEyeConfirm] = useState(false);
@@ -250,23 +250,38 @@ export default function App() {
             <div className="p-8 pt-10 text-left">
               {gateError && <div className="bg-red-500/10 text-red-400 p-3 rounded-xl text-[10px] font-bold uppercase mb-4 border border-red-500/20">{gateError}</div>}
               <form onSubmit={gateMode === 'login' ? handleLogin : handleRegister} className="space-y-6">
+                
                 <div className="space-y-1.5 text-left">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Username</label>
                   <input required value={gateMode === 'login' ? gateU : regData.u} onChange={e=> gateMode === 'login' ? setGateU(e.target.value) : setRegData({...regData, u: e.target.value})} placeholder="Username" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
                 </div>
-                {gateMode === 'register' && (<div className="space-y-1.5 text-left"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Program</label><select value={regData.program} onChange={e=>setRegData({...regData, program: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-black uppercase tracking-widest shadow-inner cursor-pointer appearance-none"><option value="VUI">Influencer (VUI)</option><option value="VUS">Storyteller (VUS)</option></select></div>)}
+
+                {gateMode === 'register' && (
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Program</label>
+                    <select value={regData.program} onChange={e=>setRegData({...regData, program: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-black uppercase tracking-widest shadow-inner cursor-pointer appearance-none">
+                      <option value="VUI">Influencer (VUI)</option>
+                      <option value="VUS">Storyteller (VUS)</option>
+                    </select>
+                  </div>
+                )}
+                
                 <div className="space-y-1.5 relative text-left">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Passcode</label>
                   <input required type={eyeLogin?"text":"password"} value={gateMode === 'login' ? gateP : regData.p} onChange={e=> gateMode === 'login' ? setGateP(e.target.value) : setRegData({...regData, p: e.target.value})} placeholder="Passcode" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
-                  <button type="button" onClick={()=>setEyeLogin(!eyeLogin)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">{eyeLogin?<EyeOff size={20}/>:<Eye size={20}/>}</button>
+                  <button type="button" onClick={()=>setEyeLogin(!eyeLogin)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">
+                    {eyeLogin ? <EyeOff size={20}/> : <Eye size={20}/>}
+                  </button>
                 </div>
+
                 {gateMode === 'register' && (
                   <div className="space-y-1.5 relative text-left">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Confirm</label>
                     <input required type={eyeRegConfirm ? "text" : "password"} value={regData.c} onChange={e=>setRegData({...regData, c: e.target.value})} placeholder="Confirm Passcode" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
-                    <button type="button" onClick={()=>setEyeRegConfirm(!eyeRegConfirm)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">{eyeRegConfirm?<EyeOff size={20}/>:<Eye size={20}/>}</button>
+                    <button type="button" onClick={()=>setEyeRegConfirm(!eyeRegConfirm)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">{eyeRegConfirm ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
                   </div>
                 )}
+                
                 <button type="submit" disabled={!dbLoaded} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 mt-4 text-[11px]">ENTER HUB</button>
               </form>
               <div className="mt-8 pt-6 border-t border-white/5 text-center"><a href={GOOGLE_FORM_LINK} target="_blank" className="text-[10px] font-black text-slate-600 hover:text-indigo-400 uppercase tracking-widest transition-colors flex items-center justify-center gap-2"><ExternalLink size={14}/> Party Request Form</a></div>
@@ -279,7 +294,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0a0f1d] text-slate-200 flex flex-col font-sans overflow-x-hidden text-left">
-      {/* Dynamic Browser Input Icon Theming */}
+      {/* Dynamic Browser Input Icon Theming (Indigo) */}
       <style>{`
         input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator,
@@ -338,7 +353,7 @@ export default function App() {
                             isStaff ? (
                                p.pushedToPublic ? <button onClick={()=>handleUnpublish(p)} title="Unpublish" className="p-1.5 text-rose-400 bg-rose-500/10 rounded-lg hover:scale-105 transition-all"><EyeOff size={16}/></button> :
                                (p.publicPushMode === 'ready' || p.publicPushMode === 'auto') ? <button onClick={()=>handleManualPush(p)} title="Publish" className="p-1.5 text-indigo-400 bg-indigo-500/10 rounded-lg hover:scale-105 transition-all"><Send size={16}/></button> :
-                               <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest px-2 py-1 bg-white/5 rounded border border-white/5">On Hold(for public calendar)</div>
+                               <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest px-2 py-1 bg-white/5 rounded border border-white/5">On Hold</div>
                             ) : (
                                !p.pushedToPublic && p.publicPushMode === 'manual' && p.hostId === currentUser.id && (
                                  <button onClick={() => handleSignalReady(p)} className="flex items-center gap-1 text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-1 rounded hover:bg-amber-400/20 transition-all">
