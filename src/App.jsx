@@ -91,6 +91,7 @@ export default function App() {
   const [showAuthGate, setShowAuthGate] = useState(!currentUser);
   const [gateMode, setGateMode] = useState('login');
   const [eyeLogin, setEyeLogin] = useState(false);
+  const [eyeRegConfirm, setEyeRegConfirm] = useState(false);
   const [gateU, setGateU] = useState('');
   const [gateP, setGateP] = useState('');
   const [gateError, setGateError] = useState('');
@@ -108,6 +109,12 @@ export default function App() {
   const [dashTab, setDashTab] = useState('logs');
   const [staffForm, setStaffForm] = useState({ u: '', r: 'staff', p: '' });
   const [staffSuccess, setStaffSuccess] = useState('');
+
+  // Eye toggles for change passcode modal
+  const [eyeCurrent, setEyeCurrent] = useState(false);
+  const [eyeNew, setEyeNew] = useState(false);
+  const [eyeConfirm, setEyeConfirm] = useState(false);
+  const [eyeStaff, setEyeStaff] = useState(false);
 
   // Automatic Chronological Sorting
   const sortedParties = [...parties].sort((a, b) => {
@@ -184,7 +191,7 @@ export default function App() {
       id, 
       status: isStaff ? 'approved' : 'pending', 
       pushedToPublic: isStaff ? (formData.isPublic && formData.publicPushMode === 'auto') : false, 
-      hostId: editingId ? formData.hostId : currentUser.id,
+      hostId: editingId ? (formData.hostId || currentUser.id) : currentUser.id,
       hostName: editingId ? formData.hostName : (currentUser.role === 'host' ? `${currentUser.username} (${currentUser.program})` : formData.hostName)
     };
     await setDoc(doc(db, getPath('parties'), id), data);
@@ -226,10 +233,42 @@ export default function App() {
             <div className="p-8 pt-10 text-left">
               {gateError && <div className="bg-red-500/10 text-red-400 p-3 rounded-xl text-[10px] font-bold uppercase mb-4 border border-red-500/20">{gateError}</div>}
               <form onSubmit={gateMode === 'login' ? handleLogin : handleRegister} className="space-y-6">
-                <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Username</label><input required value={gateMode === 'login' ? gateU : regData.u} onChange={e=> gateMode === 'login' ? setGateU(e.target.value) : setRegData({...regData, u: e.target.value})} placeholder="Username" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/></div>
-                {gateMode === 'register' && (<div className="space-y-1.5 text-left"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Program</label><select value={regData.program} onChange={e=>setRegData({...regData, program: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-black uppercase tracking-widest shadow-inner cursor-pointer appearance-none"><option value="VUI">Influencer (VUI)</option><option value="VUS">Storyteller (VUS)</option></select></div>)}
-                <div className="space-y-1.5 relative text-left"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Passcode</label><input required type={eyeLogin?"text":"password"} value={gateMode === 'login' ? gateP : regData.p} onChange={e=> gateMode === 'login' ? setGateP(e.target.value) : setRegData({...regData, p: e.target.value})} placeholder="Passcode" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/><button type="button" onClick={()=>setEyeLogin(!eyeLogin)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">{eyeLogin?<EyeOff size={20}/>:<Eye size={20}/>}</button></div>
-                {gateMode === 'register' && (<div className="space-y-1.5 text-left"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Confirm</label><input required type="password" value={regData.c} onChange={e=>setRegData({...regData, c: e.target.value})} placeholder="Confirm Passcode" className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/></div>)}
+                
+                {/* Isolated Username Field */}
+                <div className="space-y-1.5 text-left">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Username</label>
+                  <input required value={gateMode === 'login' ? gateU : regData.u} onChange={e=> gateMode === 'login' ? setGateU(e.target.value) : setRegData({...regData, u: e.target.value})} placeholder="Username" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
+                </div>
+
+                {gateMode === 'register' && (
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Program</label>
+                    <select value={regData.program} onChange={e=>setRegData({...regData, program: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-black uppercase tracking-widest shadow-inner cursor-pointer appearance-none">
+                      <option value="VUI">Influencer (VUI)</option>
+                      <option value="VUS">Storyteller (VUS)</option>
+                    </select>
+                  </div>
+                )}
+                
+                {/* Isolated Passcode Field */}
+                <div className="space-y-1.5 relative text-left">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Passcode</label>
+                  <input required type={eyeLogin?"text":"password"} value={gateMode === 'login' ? gateP : regData.p} onChange={e=> gateMode === 'login' ? setGateP(e.target.value) : setRegData({...regData, p: e.target.value})} placeholder="Passcode" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
+                  <button type="button" onClick={()=>setEyeLogin(!eyeLogin)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">
+                    {eyeLogin ? <EyeOff size={20}/> : <Eye size={20}/>}
+                  </button>
+                </div>
+
+                {gateMode === 'register' && (
+                  <div className="space-y-1.5 relative text-left">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Confirm</label>
+                    <input required type={eyeRegConfirm ? "text" : "password"} value={regData.c} onChange={e=>setRegData({...regData, c: e.target.value})} placeholder="Confirm Passcode" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
+                    <button type="button" onClick={()=>setEyeRegConfirm(!eyeRegConfirm)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">
+                      {eyeRegConfirm ? <EyeOff size={20}/> : <Eye size={20}/>}
+                    </button>
+                  </div>
+                )}
+                
                 <button type="submit" disabled={!dbLoaded} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 mt-4 text-[11px]">ENTER HUB</button>
               </form>
               <div className="mt-8 pt-6 border-t border-white/5 text-center"><a href={GOOGLE_FORM_LINK} target="_blank" className="text-[10px] font-black text-slate-600 hover:text-indigo-400 uppercase tracking-widest transition-colors flex items-center justify-center gap-2"><ExternalLink size={14}/> Party Request Form</a></div>
@@ -242,6 +281,18 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0a0f1d] text-slate-200 flex flex-col font-sans overflow-x-hidden text-left">
+      {/* Indigo Themed Browser Icons (Date, Time, Number Spinners) */}
+      <style>{`
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator,
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+          filter: invert(34%) sepia(98%) saturate(1906%) hue-rotate(224deg) brightness(91%) contrast(101%);
+          cursor: pointer;
+          opacity: 1;
+        }
+      `}</style>
+
       <header className="bg-[#111827] border-b border-white/5 p-3 sticky top-0 z-[100] flex justify-between items-center shadow-xl">
         <div className="flex items-center gap-2 shrink-0"><div className="w-8 h-8 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30"><CalendarDays size={18} className="text-indigo-500" /></div><h1 className="font-black uppercase tracking-tighter text-base hidden sm:block text-left">VU HUB</h1></div>
         <div className="flex gap-2 items-center text-left"><div className="bg-[#1f2937] px-4 py-1.5 rounded-full flex items-center gap-2 font-black uppercase text-[9px] text-indigo-400 border border-white/5 shadow-inner text-left">{currentUser.role === 'owner' ? <Crown size={12} className="text-yellow-500"/> : <Shield size={12}/>}{currentUser.username}<button onClick={() => setShowPasscodeForm(true)} title="Change Passcode" className="ml-1 opacity-40 hover:opacity-100 transition-opacity"><Key size={14}/></button></div>{currentUser.role === 'owner' && (<button onClick={()=>{setDashTab('logs'); setShowDash(true);}} className="p-1.5 bg-[#1f2937] rounded-lg text-slate-400 hover:text-white border border-white/5 shadow"><FileText size={16}/></button>)}<a href={GOOGLE_FORM_LINK} target="_blank" className="p-1.5 bg-[#1f2937] rounded-lg text-slate-400 hover:text-white border border-white/5 shadow"><ExternalLink size={16}/></a><button onClick={()=>{setEditingId(null); setFormData({hostName: userRole === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="bg-indigo-600 px-4 py-1.5 rounded-xl text-white font-black uppercase text-[9px] shadow-lg active:scale-90 transition-all">+ Schedule</button><button onClick={()=>{setCurrentUser(null); localStorage.removeItem(SESSION_KEY); setShowAuthGate(true);}} className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"><LogOut size={16}/></button></div>
@@ -261,11 +312,22 @@ export default function App() {
       <main className="flex-1 p-2 sm:p-4 max-w-6xl mx-auto w-full text-left">
         {(view === 'List' || view === 'Pending') && (
           <div className="bg-[#111827] border border-white/5 rounded-2xl overflow-hidden shadow-2xl text-left">
-            <div className="overflow-x-auto text-left"><table className="w-full text-left border-collapse"><thead className="bg-[#0f172a] border-b border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500"><tr><th className="p-3 text-left">Date</th><th className="p-3 text-left">Theme</th><th className="p-3 text-left">Host</th><th className="p-3 text-right">Approval</th></tr></thead>
+            <div className="overflow-x-auto text-left">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-[#0f172a] border-b border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  <tr>
+                    <th className="p-3 text-left">Date</th>
+                    <th className="p-3 text-left">Time</th>
+                    <th className="p-3 text-left">Theme</th>
+                    <th className="p-3 text-left">Host</th>
+                    <th className="p-3 text-right">Approval</th>
+                  </tr>
+                </thead>
                 <tbody className="divide-y divide-white/5 text-[11px] text-left">
                   {sortedParties.filter(p => view === 'Pending' ? p.status === 'pending' : true).map(p => (
                     <tr key={p.id} className="hover:bg-white/5 transition-all text-left">
                       <td className="p-3 text-slate-400 font-bold uppercase">{p.date.split('-').slice(1).reverse().join('/')}</td>
+                      <td className="p-3 text-slate-400 font-bold uppercase">{format12h(p.startTime)}</td>
                       <td className="p-3 text-white font-black uppercase">{p.theme}</td>
                       <td className="p-3 text-indigo-400 font-bold uppercase">{p.coHosts ? `${p.hostName} + ${p.coHosts}` : p.hostName}</td>
                       <td className="p-3 text-right flex justify-end gap-2 items-center text-left">
@@ -279,12 +341,18 @@ export default function App() {
                                (p.publicPushMode === 'ready' || p.publicPushMode === 'auto') ? <button onClick={()=>handleManualPush(p)} title="Publish" className="p-1.5 text-indigo-400 bg-indigo-500/10 rounded-lg hover:scale-105 transition-all"><Send size={16}/></button> :
                                <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest px-2 py-1 bg-white/5 rounded border border-white/5">On Hold</div>
                             ) : (
-                               !p.pushedToPublic && p.publicPushMode === 'manual' && (<button onClick={() => handleSignalReady(p)} className="flex items-center gap-1 text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-1 rounded hover:bg-amber-400/20 transition-all"><BellRing size={12}/> <span className="text-[8px] font-black uppercase tracking-widest">Signal Ready</span></button>)
+                               !p.pushedToPublic && p.publicPushMode === 'manual' && p.hostId === currentUser.id && (
+                                 <button onClick={() => handleSignalReady(p)} className="flex items-center gap-1 text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-1 rounded hover:bg-amber-400/20 transition-all">
+                                   <BellRing size={12}/> <span className="text-[8px] font-black uppercase tracking-widest">Signal Ready</span>
+                                 </button>
+                               )
                             )
                           )}
                           <button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-1.5 text-slate-400 hover:text-white transition-all"><Edit2 size={14}/></button>
                           {['owner','admin'].includes(userRole) && <button onClick={()=>setDeleteConfirm(p)} className="p-1.5 text-rose-500/60 hover:text-rose-500 transition-all"><Trash2 size={14}/></button>}
-                      </td></tr>))}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -345,17 +413,17 @@ export default function App() {
                   })}
                 </div>
               ) : (
-                <div className="space-y-8 text-left text-left">
+                <div className="space-y-8 text-left">
                    {Array.from({length: view === 'Weekly' ? 7 : 1}).map((_,i) => {
                     const d = new Date(baseDate); d.setDate(d.getDate()+i);
                     const ds = d.toISOString().split('T')[0];
                     const daily = sortedParties.filter(p => p.date === ds);
                     const style = DAY_STYLES[d.getDay()];
                     return (
-                      <div key={i} className="relative pl-6 text-left text-left">
+                      <div key={i} className="relative pl-6 text-left">
                          <div className={`absolute left-1.5 top-1.5 bottom-0 w-0.5 ${style.border} bg-current opacity-20 rounded-full`}></div>
                          <h3 className={`text-base font-black uppercase tracking-tighter mb-3 ${style.text}`}>{d.getDate()} {d.toLocaleDateString('en-US', {weekday:'long'}).toUpperCase()}</h3>
-                         <div className="space-y-2 text-left text-left">
+                         <div className="space-y-2 text-left">
                            {daily.map(p => (
                              <div key={p.id} className="p-3 bg-[#111827] border border-white/5 rounded-xl flex justify-between items-center group text-left">
                                 <div className="text-left"><h4 className="text-sm font-black text-white uppercase text-left">{p.theme}</h4><p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5 text-left">{format12h(p.startTime)} PT — {p.coHosts ? `${p.hostName} + ${p.coHosts}` : p.hostName}</p></div>
@@ -382,8 +450,24 @@ export default function App() {
                    <div className="space-y-1 text-left col-span-1 text-left text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">TIME</label><input type="time" required value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-[10px] cursor-pointer text-left"/></div>
                    <div className="space-y-1 text-left col-span-1 text-left text-left text-left text-left text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left text-left text-left">HRS</label><input type="number" step="0.5" required value={formData.duration} onChange={e=>setFormData({...formData, duration: Number(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-[10px] text-left"/></div>
                  </div>
-                 <div className="bg-[#13231f] border border-emerald-500/10 p-4 rounded-2xl space-y-4 shadow-inner text-left text-left"><label className="flex items-start gap-4 cursor-pointer text-left"><input type="checkbox" checked={formData.isPublic} onChange={e=>setFormData({...formData, isPublic: e.target.checked})} className="mt-1 w-5 h-5 rounded text-indigo-600 bg-black border-white/10 focus:ring-0 shadow-inner text-left"/><div className="text-left text-left"><span className="text-xs font-black uppercase text-emerald-400 tracking-tight leading-none block text-left">COMMUNITY SYNC</span><p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1 leading-none text-left text-left">Show in Official Calendar</p></div></label>
-                    {formData.isPublic && (<div className="pl-9 pt-3 border-t border-white/5 flex flex-col gap-3 animate-in slide-in-from-top-2 duration-300 text-left text-left"><div className="flex gap-6 text-left text-white text-[9px] font-black uppercase text-left"><label className="flex items-center gap-2.5 cursor-pointer text-left"><input type="radio" checked={formData.publicPushMode==='auto'} onChange={()=>setFormData({...formData, publicPushMode:'auto'})} className="w-3.5 h-3.5 text-indigo-600 bg-black border-white/10 focus:ring-0 shadow-inner cursor-pointer appearance-none border border-white/20 checked:bg-indigo-600 rounded-full text-left"/> IMMEDIATE</label><label className="flex items-center gap-2.5 cursor-pointer text-left"><input type="radio" checked={formData.publicPushMode==='manual'} onChange={()=>setFormData({...formData, publicPushMode:'manual'})} className="w-3.5 h-3.5 text-emerald-600 bg-black border-white/10 focus:ring-0 shadow-inner cursor-pointer appearance-none border border-white/20 checked:bg-indigo-600 rounded-full text-left text-left"/> HOLD</label></div></div>)}</div><button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl active:scale-95 text-[10px] text-left text-center">SUBMIT PARTY</button></form></div></div>
+                 <div className="bg-[#13231f] border border-emerald-500/10 p-4 rounded-2xl space-y-4 shadow-inner text-left text-left"><label className="flex items-start gap-4 cursor-pointer text-left"><input type="checkbox" checked={formData.isPublic} onChange={e=>setFormData({...formData, isPublic: e.target.checked})} className="mt-1 w-5 h-5 rounded text-indigo-600 bg-black border-white/10 focus:ring-0 shadow-inner text-left"/><div className="text-left text-left"><span className="text-xs font-black uppercase text-emerald-400 tracking-tight leading-none block text-left">COMMUNITY SYNC</span><p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1 leading-none text-left text-left">Show in Community Calendar</p></div></label>
+                    {formData.isPublic && (
+                      <div className="pl-9 pt-3 border-t border-white/5 flex flex-col gap-3 animate-in slide-in-from-top-2 duration-300 text-left">
+                        <div className="flex flex-col gap-2.5">
+                          <label className="flex items-center gap-2.5 cursor-pointer text-[9px] font-black uppercase text-white">
+                            <input type="radio" checked={formData.publicPushMode==='auto'} onChange={()=>setFormData({...formData, publicPushMode:'auto'})} className="w-3.5 h-3.5 text-indigo-600 bg-black border-white/20 focus:ring-0 shadow-inner cursor-pointer appearance-none border border-white/20 checked:bg-indigo-600 rounded-full"/>
+                            AUTO-POST (public upon approval)
+                          </label>
+                          <label className="flex items-center gap-2.5 cursor-pointer text-[9px] font-black uppercase text-white">
+                            <input type="radio" checked={formData.publicPushMode==='manual'} onChange={()=>setFormData({...formData, publicPushMode:'manual'})} className="w-3.5 h-3.5 text-emerald-600 bg-black border-white/20 focus:ring-0 shadow-inner cursor-pointer appearance-none border border-white/20 checked:bg-indigo-600 rounded-full"/>
+                            HOLD (Wait for my signal)
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl active:scale-95 text-[10px] text-left text-center">SUBMIT PARTY</button>
+            </form></div></div>
       )}
 
       {/* DELETE CONFIRMATION MODAL */}
@@ -420,14 +504,17 @@ export default function App() {
               setShowPasscodeForm(false);
               alert("Passcode updated successfully.");
             }} className="space-y-5">
-              <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Current Code</label>
-                <input required type="password" value={passcodeData.current} onChange={e=>setPasscodeData({...passcodeData, current: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+              <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Current Code</label>
+                <input required type={eyeCurrent ? "text" : "password"} value={passcodeData.current} onChange={e=>setPasscodeData({...passcodeData, current: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
+                <button type="button" onClick={()=>setEyeCurrent(!eyeCurrent)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">{eyeCurrent?<EyeOff size={18}/>:<Eye size={18}/>}</button>
               </div>
-              <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">New Code</label>
-                <input required type="password" value={passcodeData.new} onChange={e=>setPasscodeData({...passcodeData, new: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+              <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">New Code</label>
+                <input required type={eyeNew ? "text" : "password"} value={passcodeData.new} onChange={e=>setPasscodeData({...passcodeData, new: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
+                <button type="button" onClick={()=>setEyeNew(!eyeNew)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">{eyeNew?<EyeOff size={18}/>:<Eye size={18}/>}</button>
               </div>
-              <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Confirm New</label>
-                <input required type="password" value={passcodeData.confirm} onChange={e=>setPasscodeData({...passcodeData, confirm: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner"/>
+              <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Confirm New</label>
+                <input required type={eyeConfirm ? "text" : "password"} value={passcodeData.confirm} onChange={e=>setPasscodeData({...passcodeData, confirm: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
+                <button type="button" onClick={()=>setEyeConfirm(!eyeConfirm)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">{eyeConfirm?<EyeOff size={18}/>:<Eye size={18}/>}</button>
               </div>
               <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 mt-4 text-[11px]">Update Security</button>
             </form>
@@ -465,22 +552,23 @@ export default function App() {
                  </div>
                ) : (
                  <div className="flex-1 overflow-y-auto p-8 scrollbar-hide text-left">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left text-left">
-                       <div className="space-y-6 text-left text-left text-left">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                       <div className="space-y-6 text-left">
                          <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><UserPlus size={18} className="text-indigo-500"/> Provision New Account</h3>
                          <form onSubmit={handleCreateAccount} className="space-y-4 text-left">
-                           <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left text-left">Username</label>
-                             <input required value={staffForm.u} onChange={e=>setStaffForm({...staffForm, u: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold text-left"/>
+                           <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left">Username</label>
+                             <input required value={staffForm.u} onChange={e=>setStaffForm({...staffForm, u: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold text-left shadow-inner placeholder:text-slate-800"/>
                            </div>
-                           <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left text-left">Role</label>
-                             <select value={staffForm.r} onChange={e=>setStaffForm({...staffForm, r: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white outline-none font-black uppercase tracking-widest cursor-pointer text-left">
+                           <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left">Role</label>
+                             <select value={staffForm.r} onChange={e=>setStaffForm({...staffForm, r: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white outline-none font-black uppercase tracking-widest cursor-pointer text-left shadow-inner">
                                 <option value="staff">Official Staff</option>
                                 <option value="admin">Administrator</option>
                                 <option value="host">Verified Host</option>
                              </select>
                            </div>
-                           <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left text-left text-left">Initial Passcode</label>
-                             <input required type="password" value={staffForm.p} onChange={e=>setStaffForm({...staffForm, p: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold text-left"/>
+                           <div className="space-y-1.5 relative"><label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left text-left text-left">Initial Passcode</label>
+                             <input required type={eyeStaff ? "text" : "password"} value={staffForm.p} onChange={e=>setStaffForm({...staffForm, p: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold text-left shadow-inner placeholder:text-slate-800"/>
+                             <button type="button" onClick={()=>setEyeStaff(!eyeStaff)} className="absolute right-4 top-[38px] text-slate-600 hover:text-white transition-colors">{eyeStaff?<EyeOff size={18}/>:<Eye size={18}/>}</button>
                            </div>
                            <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-emerald-900/10 text-left text-center">Activate Access</button>
                            {staffSuccess && <div className="text-emerald-400 font-black uppercase text-[9px] tracking-widest text-center mt-2 animate-pulse">{staffSuccess}</div>}
