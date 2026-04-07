@@ -376,7 +376,7 @@ export default function App() {
                 </thead>
                 <tbody className="divide-y divide-white/5 text-[11px] text-left">
                   {sortedParties.filter(p => view === 'Pending' ? p.status === 'pending' : true).map(p => (
-                    <tr key={p.id} className="hover:bg-white/5 transition-all text-left">
+                    <tr key={p.id} className={`hover:bg-white/5 transition-all text-left ${!ds_is_future(p) ? 'opacity-40 grayscale' : ''}`}>
                       <td className="p-3 text-slate-400 font-bold uppercase">{p.date.split('-').slice(1).reverse().join('/')}</td>
                       <td className="p-3 text-slate-400 font-bold uppercase whitespace-nowrap">
                         {format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))}
@@ -481,7 +481,7 @@ export default function App() {
                          <h3 className={`text-base font-black uppercase tracking-tighter mb-3 ${style.text}`}>{d.getDate()} {d.toLocaleDateString('en-US', {weekday:'long'}).toUpperCase()}</h3>
                          <div className="space-y-2 text-left">
                            {daily.map(p => (
-                             <div key={p.id} className="p-3 bg-[#111827] border border-white/5 rounded-xl flex justify-between items-center group text-left">
+                             <div key={p.id} className={`p-3 bg-[#111827] border border-white/5 rounded-xl flex justify-between items-center group text-left ${!ds_is_future(p) ? 'opacity-40 grayscale' : ''}`}>
                                 <div className="text-left">
                                   <h4 className="text-sm font-black text-white uppercase text-left">{p.theme}</h4>
                                   <p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5 text-left">
