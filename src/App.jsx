@@ -95,6 +95,7 @@ export default function App() {
   const [parties, setParties] = useState([]);
   const [actionLogs, setActionLogs] = useState([]);
   const [dbLoaded, setDbLoaded] = useState(false);
+  const [formError, setFormError] = useState(''); // <-- Pop this right here
   
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem(SESSION_KEY);
