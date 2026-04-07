@@ -371,7 +371,7 @@ export default function App() {
                     <th className="p-3 text-left">Time</th>
                     <th className="p-3 text-left">Theme</th>
                     <th className="p-3 text-left">Host</th>
-                    <th className="p-3 text-right">Approval</th>
+                    <th className="p-3 text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-[11px] text-left">
@@ -394,10 +394,14 @@ export default function App() {
                                (p.publicPushMode === 'ready' || p.publicPushMode === 'auto') ? <button onClick={()=>handleManualPush(p)} title="Publish" className="p-1.5 text-indigo-400 bg-indigo-500/10 rounded-lg hover:scale-105 transition-all"><Send size={16}/></button> :
                                <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest px-2 py-1 bg-white/5 rounded border border-white/5">On Hold (for public calendar)</div>
                             ) : (
-                               !p.pushedToPublic && p.publicPushMode === 'manual' && p.hostId === currentUser.id && (
+                               (!p.pushedToPublic && p.publicPushMode === 'manual' && p.hostId === currentUser.id) ? (
                                  <button onClick={() => handleSignalReady(p)} className="flex items-center gap-1 text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-1 rounded hover:bg-amber-400/20 transition-all">
                                    <BellRing size={12}/> <span className="text-[8px] font-black uppercase tracking-widest">Signal Ready</span>
                                  </button>
+                               ) : p.pushedToPublic ? (
+                                 <div className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg"><CheckCircle size={12}/> <span className="text-[8px] font-black uppercase tracking-widest">Published</span></div>
+                               ) : (
+                                 <div className="flex items-center gap-1 text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-1 rounded-lg"><CheckCircle size={12}/> <span className="text-[8px] font-black uppercase tracking-widest">Approved</span></div>
                                )
                             )
                           )}
