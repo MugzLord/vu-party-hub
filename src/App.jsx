@@ -118,6 +118,7 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false); // NEW: Prevents multiple entries
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({ hostName: '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto' });
+  const [formError, setFormError] = useState('');
   
   const [baseDate, setBaseDate] = useState(new Date());
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -203,8 +204,33 @@ export default function App() {
 
   const saveEvent = async (e) => {
     e.preventDefault();
-    if (isSaving) return; // Guard against double submission
-    
+    if (isSaving) return; 
+  
+    setFormError(''); // Clear any previous errors
+  
+    // --- CLASH DETECTION LOGIC ---
+    const newStart = timeToMins(formData.startTime);
+    const newEnd = newStart + (formData.duration * 60);
+  
+    const clash = parties.find(p => {
+      // Ignore different dates, and ignore the current party if we are editing it
+      if (p.date !== formData.date || p.id === editingId) return false;
+      
+      const existingStart = timeToMins(p.startTime);
+      const existingEnd = existingStart + (p.duration || 2) * 60;
+  
+      // A clash happens if the new party starts before the existing one ends, 
+      // AND ends after the existing one starts.
+      return newStart < existingEnd && newEnd > existingStart;
+    });
+  
+    if (clash) {
+      // We use format12h and getEndTime to make the error message user-friendly
+      setFormError(`Clash detected! "${clash.theme}" is already running from ${format12h(clash.startTime)} to ${format12h(getEndTime(clash.startTime, clash.duration || 2))}.`);
+      return; // Stop the save process
+    }
+    // -----------------------------
+  
     setIsSaving(true);
     const id = editingId || Date.now().toString();
     const data = { 
@@ -215,7 +241,7 @@ export default function App() {
       hostId: editingId ? (formData.hostId || currentUser.id) : currentUser.id,
       hostName: editingId ? formData.hostName : (currentUser.role === 'host' ? `${currentUser.username} (${currentUser.program})` : formData.hostName)
     };
-
+  
     try {
       await setDoc(doc(db, getPath('parties'), id), data);
       await logAction(editingId ? `Edited ${formData.theme}` : `Submitted ${formData.theme}`);
