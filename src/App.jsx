@@ -95,7 +95,7 @@ export default function App() {
   const [parties, setParties] = useState([]);
   const [actionLogs, setActionLogs] = useState([]);
   const [dbLoaded, setDbLoaded] = useState(false);
-  const [formError, setFormError] = useState(''); // <-- Pop this right here
+  const [formError, setFormError] = useState('');
   
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem(SESSION_KEY);
@@ -116,7 +116,7 @@ export default function App() {
   const [regData, setRegData] = useState({ u: '', p: '', c: '', program: 'VUI' });
   
   const [showForm, setShowForm] = useState(false);
-  const [isSaving, setIsSaving] = useState(false); // NEW: Prevents multiple entries
+  const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({ hostName: '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto' });
 
@@ -346,7 +346,7 @@ export default function App() {
 
       <header className="bg-[#111827] border-b border-white/5 p-3 sticky top-0 z-[100] flex justify-between items-center shadow-xl">
         <div className="flex items-center gap-2 shrink-0"><div className="w-8 h-8 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30"><CalendarDays size={18} className="text-indigo-500" /></div><h1 className="font-black uppercase tracking-tighter text-base hidden sm:block text-left">VU HUB</h1></div>
-        <div className="flex gap-2 items-center text-left"><div className="bg-[#1f2937] px-4 py-1.5 rounded-full flex items-center gap-2 font-black uppercase text-[9px] text-indigo-400 border border-white/5 shadow-inner text-left">{currentUser.role === 'owner' ? <Crown size={12} className="text-yellow-500"/> : <Shield size={12}/>}{currentUser.username}<button onClick={() => setShowPasscodeForm(true)} title="Change Passcode" className="ml-1 opacity-40 hover:opacity-100 transition-opacity"><Key size={14}/></button></div>{currentUser.role === 'owner' && (<button onClick={()=>{setDashTab('logs'); setShowDash(true);}} className="p-1.5 bg-[#1f2937] rounded-lg text-slate-400 hover:text-white border border-white/5 shadow"><FileText size={16}/></button>)}<a href={GOOGLE_FORM_LINK} target="_blank" className="p-1.5 bg-[#1f2937] rounded-lg text-slate-400 hover:text-white border border-white/5 shadow"><ExternalLink size={16}/></a><button onClick={()=>{setEditingId(null); setFormData({hostName: userRole === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="bg-indigo-600 px-4 py-1.5 rounded-xl text-white font-black uppercase text-[9px] shadow-lg active:scale-90 transition-all">+ Schedule</button><button onClick={()=>{setCurrentUser(null); localStorage.removeItem(SESSION_KEY); setShowAuthGate(true);}} className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"><LogOut size={16}/></button></div>
+        <div className="flex gap-2 items-center text-left"><div className="bg-[#1f2937] px-4 py-1.5 rounded-full flex items-center gap-2 font-black uppercase text-[9px] text-indigo-400 border border-white/5 shadow-inner text-left">{currentUser.role === 'owner' ? <Crown size={12} className="text-yellow-500"/> : <Shield size={12}/>}{currentUser.username}<button onClick={() => setShowPasscodeForm(true)} title="Change Passcode" className="ml-1 opacity-40 hover:opacity-100 transition-opacity"><Key size={14}/></button></div>{currentUser.role === 'owner' && (<button onClick={()=>{setDashTab('logs'); setShowDash(true);}} className="p-1.5 bg-[#1f2937] rounded-lg text-slate-400 hover:text-white border border-white/5 shadow"><FileText size={16}/></button>)}<a href={GOOGLE_FORM_LINK} target="_blank" className="p-1.5 bg-[#1f2937] rounded-lg text-slate-400 hover:text-white border border-white/5 shadow"><ExternalLink size={16}/></a><button onClick={()=>{setEditingId(null); setFormError(''); setFormData({hostName: userRole === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="bg-indigo-600 px-4 py-1.5 rounded-xl text-white font-black uppercase text-[9px] shadow-lg active:scale-90 transition-all">+ Schedule</button><button onClick={()=>{setCurrentUser(null); localStorage.removeItem(SESSION_KEY); setShowAuthGate(true);}} className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"><LogOut size={16}/></button></div>
       </header>
 
       <div className="bg-[#111827]/50 border-b border-white/5 flex overflow-x-auto gap-1 p-2 scrollbar-hide">
@@ -401,7 +401,7 @@ export default function App() {
                                )
                             )
                           )}
-                          {isStaff && <button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-1.5 text-slate-400 hover:text-white transition-all"><Edit2 size={14}/></button>}
+                          {isStaff && <button onClick={()=>{setEditingId(p.id); setFormError(''); setFormData(p); setShowForm(true);}} className="p-1.5 text-slate-400 hover:text-white transition-all"><Edit2 size={14}/></button>}
                           {['owner','admin'].includes(userRole) && <button onClick={()=>setDeleteConfirm(p)} className="p-1.5 text-rose-500/60 hover:text-rose-500 transition-all"><Trash2 size={14}/></button>}
                       </td>
                     </tr>
@@ -489,12 +489,12 @@ export default function App() {
                                   </p>
                                 </div>
                                 <div className="flex gap-2">
-                                  {isStaff && <button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-1.5 text-indigo-400 bg-white/5 rounded-lg"><Edit2 size={12}/></button>}
+                                  {isStaff && <button onClick={()=>{setEditingId(p.id); setFormError(''); setFormData(p); setShowForm(true);}} className="p-1.5 text-indigo-400 bg-white/5 rounded-lg"><Edit2 size={12}/></button>}
                                   {isStaff && <button onClick={()=>setDeleteConfirm(p)} className="p-1.5 text-rose-500/60 bg-white/5 rounded-lg"><Trash2 size={12}/></button>}
                                 </div>
                              </div>
                            ))}
-                           <div onClick={()=>{setEditingId(null); setFormData({hostName: userRole === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: ds, startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="p-3 bg-black/20 border border-white/5 rounded-xl border-dashed flex justify-between items-center group cursor-pointer hover:bg-white/5 transition-all text-left"><span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">8:00 AM - 11:59 PM OPEN</span><Plus size={14} className="text-slate-800 group-hover:text-white transition-all"/></div>
+                           <div onClick={()=>{setEditingId(null); setFormError(''); setFormData({hostName: userRole === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: ds, startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="p-3 bg-black/20 border border-white/5 rounded-xl border-dashed flex justify-between items-center group cursor-pointer hover:bg-white/5 transition-all text-left"><span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">8:00 AM - 11:59 PM OPEN</span><Plus size={14} className="text-slate-800 group-hover:text-white transition-all"/></div>
                          </div>
                       </div>
                     );
@@ -507,17 +507,18 @@ export default function App() {
 
       {/* NEW REGISTRY MODAL */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 overflow-y-auto scrollbar-hide text-left"><div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-w-sm p-6 relative my-auto shadow-2xl text-left"><button onClick={()=>setShowForm(false)} className="absolute top-5 right-5 text-slate-500 hover:text-white transition-all text-left"><X size={20}/></button><h2 className="text-xl font-black text-white uppercase tracking-tighter mb-6 leading-none text-left">NEW REGISTRY</h2>
-
-{/* THIS IS THE MISSING WARNING BOX */}
-{formError && (
-  <div className="bg-rose-500/10 text-rose-400 p-3 rounded-xl text-[10px] font-bold uppercase mb-4 border border-rose-500/20 shadow-inner">
-    {formError}
-  </div>
-)}
-{/* ------------------------------- */}
-
-<form onSubmit={saveEvent} className="space-y-4 text-left"><div className="grid grid-cols-2 gap-3 text-left text-left"><div className="space-y-1 text-left text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">HOST</label><input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-xs text-left"/></div><div className="space-y-1 text-left text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">CO-HOST</label><input value={formData.coHosts || ''} onChange={e=>setFormData({...formData, coHosts: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-xs text-left"/></div></div><div className="space-y-1 text-left text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">THEME TITLE</label><input required value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-xs text-left"/></div>
+        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 overflow-y-auto scrollbar-hide text-left">
+          <div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-w-sm p-6 relative my-auto shadow-2xl text-left">
+            <button onClick={()=>setShowForm(false)} className="absolute top-5 right-5 text-slate-500 hover:text-white transition-all text-left"><X size={20}/></button>
+            <h2 className="text-xl font-black text-white uppercase tracking-tighter mb-6 leading-none text-left">NEW REGISTRY</h2>
+            
+            {formError && (
+              <div className="bg-rose-500/10 text-rose-400 p-3 rounded-xl text-[10px] font-bold uppercase mb-4 border border-rose-500/20 shadow-inner">
+                {formError}
+              </div>
+            )}
+            
+            <form onSubmit={saveEvent} className="space-y-4 text-left"><div className="grid grid-cols-2 gap-3 text-left text-left"><div className="space-y-1 text-left text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">HOST</label><input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-xs text-left"/></div><div className="space-y-1 text-left text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">CO-HOST</label><input value={formData.coHosts || ''} onChange={e=>setFormData({...formData, coHosts: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-xs text-left"/></div></div><div className="space-y-1 text-left text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">THEME TITLE</label><input required value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-xs text-left"/></div>
                  <div className="space-y-1 text-left text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">ROOM LINK</label><input value={formData.roomLink} onChange={e=>setFormData({...formData, roomLink: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-xs text-left" placeholder="https://imvu.com/..."/></div>
                  <div className="grid grid-cols-3 gap-2 text-left text-left text-left">
                    <div className="space-y-1 text-left col-span-1 text-left text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">DATE</label><input type="date" required value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-[10px] cursor-pointer text-left"/></div>
@@ -539,10 +540,10 @@ export default function App() {
                         </div>
                       </div>
                     )}
-                  </div>
-                  <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl active:scale-95 text-[10px] text-left text-center">
+                 </div>
+                 <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl active:scale-95 text-[10px] text-left text-center">
                     {isSaving ? "SAVING..." : "SUBMIT PARTY"}
-                  </button>
+                 </button>
             </form></div></div>
       )}
 
