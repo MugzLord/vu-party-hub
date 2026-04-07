@@ -119,7 +119,7 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false); // NEW: Prevents multiple entries
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({ hostName: '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto' });
-  const [formError, setFormError] = useState('');
+
   
   const [baseDate, setBaseDate] = useState(new Date());
   const [deleteConfirm, setDeleteConfirm] = useState(null);
