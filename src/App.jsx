@@ -293,23 +293,27 @@ export default function App() {
             <div className="p-8 pt-10 text-left">
               {gateError && <div className="bg-red-500/10 text-red-400 p-3 rounded-xl text-[10px] font-bold uppercase mb-4 border border-red-500/20">{gateError}</div>}
               <form onSubmit={gateMode === 'login' ? handleLogin : handleRegister} className="space-y-6">
-                <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Username</label>
+                <div className="space-y-1.5 text-left">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Username</label>
                   <input required value={gateMode === 'login' ? gateU : regData.u} onChange={e=> gateMode === 'login' ? setGateU(e.target.value) : setRegData({...regData, u: e.target.value})} placeholder="Username" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
                 </div>
                 {gateMode === 'register' && (
-                  <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Program</label>
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Program</label>
                     <select value={regData.program} onChange={e=>setRegData({...regData, program: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-black uppercase tracking-widest shadow-inner cursor-pointer appearance-none">
                       <option value="VUI">Influencer (VUI)</option>
                       <option value="VUS">Storyteller (VUS)</option>
                     </select>
                   </div>
                 )}
-                <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Passcode</label>
+                <div className="space-y-1.5 relative text-left">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Passcode</label>
                   <input required type={eyeLogin ? "text" : "password"} value={gateMode === 'login' ? gateP : regData.p} onChange={e=> gateMode === 'login' ? setGateP(e.target.value) : setRegData({...regData, p: e.target.value})} placeholder="Passcode" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
                   <button type="button" onClick={()=>setEyeLogin(!eyeLogin)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">{eyeLogin ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
                 </div>
                 {gateMode === 'register' && (
-                  <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Confirm</label>
+                  <div className="space-y-1.5 relative text-left">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Confirm</label>
                     <input required type={eyeRegConfirm ? "text" : "password"} value={regData.c} onChange={e=>setRegData({...regData, c: e.target.value})} placeholder="Confirm Passcode" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
                     <button type="button" onClick={()=>setEyeRegConfirm(!eyeRegConfirm)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">{eyeRegConfirm ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
                   </div>
@@ -338,7 +342,7 @@ export default function App() {
           {currentUser.role === 'owner' && (
             <button onClick={()=>{setDashTab('logs'); setShowDash(true);}} className="p-1.5 bg-[#1f2937] rounded-lg text-slate-400 hover:text-white border border-white/5 shadow"><FileText size={16}/></button>
           )}
-          <button onClick={()=>{setEditingId(null); setFormError(''); setFormData({hostName: currentUser.role === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="bg-indigo-600 px-4 py-1.5 rounded-xl text-white font-black uppercase text-[9px] shadow-lg active:scale-90 transition-all">+ Schedule</button>
+          <button onClick={()=>{setEditingId(null); setFormError(''); setFormData({hostName: currentUser.role === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="bg-indigo-600 px-4 py-1.5 rounded-xl text-white font-black uppercase text-[9px] shadow-lg active:scale-90 transition-all">+ Schedule</button>
           <button onClick={()=>{setCurrentUser(null); localStorage.removeItem(SESSION_KEY); setShowAuthGate(true);}} className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg"><LogOut size={16}/></button>
         </div>
       </header>
@@ -496,22 +500,47 @@ export default function App() {
 
       {/* MODALS */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-w-sm p-6 relative">
+        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 overflow-y-auto scrollbar-hide">
+          <div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-w-sm p-6 relative my-auto shadow-2xl">
             <button onClick={()=>setShowForm(false)} className="absolute top-5 right-5 text-slate-500"><X size={20}/></button>
             <h2 className="text-xl font-black text-white uppercase tracking-tighter mb-6">{editingId ? 'EDIT' : 'NEW'} PARTY</h2>
             {formError && <div className="bg-rose-500/10 text-rose-400 p-3 rounded-xl text-[10px] font-bold uppercase mb-4 border border-rose-500/20">{formError}</div>}
             <form onSubmit={saveEvent} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase">HOST</label><input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs"/></div>
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase">THEME</label><input required value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs"/></div>
+                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">HOST</label><input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs outline-none focus:border-indigo-500"/></div>
+                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">THEME TITLE</label><input required value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs outline-none focus:border-indigo-500"/></div>
               </div>
+              <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">ROOM LINK</label><input value={formData.roomLink || ''} onChange={e=>setFormData({...formData, roomLink: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs outline-none focus:border-indigo-500" placeholder="https://imvu.com/..."/></div>
               <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase">DATE</label><input type="date" required value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px]"/></div>
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase">TIME</label><input type="time" required value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px]"/></div>
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase">HRS</label><input type="number" step="0.5" required value={formData.duration} onChange={e=>setFormData({...formData, duration: Number(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px]"/></div>
+                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">DATE</label><input type="date" required value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px] outline-none"/></div>
+                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">TIME</label><input type="time" required value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px] outline-none"/></div>
+                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">HRS</label><input type="number" step="0.5" required value={formData.duration} onChange={e=>setFormData({...formData, duration: Number(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px] outline-none"/></div>
               </div>
-              <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black uppercase text-[10px]">SAVE PARTY</button>
+
+              {/* COMMUNITY SYNC SECTION */}
+              <div className="bg-[#13231f] border border-emerald-500/10 p-4 rounded-2xl space-y-4 shadow-inner">
+                <label className="flex items-start gap-4 cursor-pointer">
+                  <input type="checkbox" checked={formData.isPublic} onChange={e=>setFormData({...formData, isPublic: e.target.checked})} className="mt-1 w-5 h-5 rounded text-indigo-600 bg-black border-white/10 focus:ring-0 shadow-inner"/>
+                  <div className="text-left">
+                    <span className="text-xs font-black uppercase text-emerald-400 tracking-tight leading-none block">COMMUNITY SYNC</span>
+                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1">Show in Community Calendar</p>
+                  </div>
+                </label>
+                {formData.isPublic && (
+                  <div className="pl-9 pt-3 border-t border-white/5 flex flex-col gap-3 animate-in slide-in-from-top-2">
+                    <div className="flex flex-col gap-2.5">
+                      <label className="flex items-center gap-2.5 cursor-pointer text-[9px] font-black uppercase text-white">
+                        <input type="radio" checked={formData.publicPushMode==='auto'} onChange={()=>setFormData({...formData, publicPushMode:'auto'})} className="w-3.5 h-3.5 text-indigo-600 bg-black border-white/20 focus:ring-0 appearance-none rounded-full border checked:bg-indigo-600"/> AUTO-POST
+                      </label>
+                      <label className="flex items-center gap-2.5 cursor-pointer text-[9px] font-black uppercase text-white">
+                        <input type="radio" checked={formData.publicPushMode==='manual'} onChange={()=>setFormData({...formData, publicPushMode:'manual'})} className="w-3.5 h-3.5 text-emerald-600 bg-black border-white/20 focus:ring-0 appearance-none rounded-full border checked:bg-emerald-600"/> HOLD (Wait for signal)
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black uppercase text-[10px] shadow-xl active:scale-95 transition-all">SAVE PARTY</button>
             </form>
           </div>
         </div>
@@ -576,7 +605,7 @@ export default function App() {
                          </form>
                        </div>
                        <div className="space-y-6"><h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><Users size={18} className="text-indigo-500"/> Registered Hub Access</h3>
-                         <div className="space-y-3">{accounts.map(acc => (<div key={acc.id} className="p-4 bg-black/40 border border-white/5 rounded-2xl flex justify-between items-center group"><div><div className="text-[11px] font-black text-white uppercase">{acc.username}</div><div className="text-[8px] font-black text-indigo-500 uppercase">{acc.role}</div></div><div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all"><button onClick={async ()=>{ if(confirm(`Revoke access for ${acc.username}?`)) { await deleteDoc(doc(db, getPath('accounts'), acc.id)); logAction(`Revoked Access: ${acc.username}`); }}} className="p-2 bg-white/5 text-rose-500/60 hover:text-rose-500 rounded-lg"><Trash2 size={12}/></button></div></div>))}</div>
+                         <div className="space-y-3">{accounts.map(acc => (<div key={acc.id} className="p-4 bg-black/40 border border-white/5 rounded-2xl flex justify-between items-center group"><div><div className="text-[11px] font-black text-white uppercase">{acc.username}</div><div className="text-[8px] font-black text-indigo-400 uppercase">{acc.role}</div></div><div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all"><button onClick={async ()=>{ if(confirm(`Revoke access for ${acc.username}?`)) { await deleteDoc(doc(db, getPath('accounts'), acc.id)); logAction(`Revoked Access: ${acc.username}`); }}} className="p-2 bg-white/5 text-rose-500/60 hover:text-rose-500 rounded-lg"><Trash2 size={12}/></button></div></div>))}</div>
                        </div>
                     </div>
                  </div>
