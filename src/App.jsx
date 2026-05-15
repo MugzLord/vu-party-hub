@@ -5,30 +5,54 @@ import {
 } from 'lucide-react';
 
 // --- FIREBASE INTEGRATION ---
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
 
-// Safe Config Parsing
+// Safe environment variable access for Vercel & Vite environments
+const getViteEnv = (key) => {
+  try {
+    const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {};
+    return env[key] || null;
+  } catch (e) { return null; }
+};
+
+// Safe Config Parsing with fallback to Vite env variables
 const getSafeConfig = () => {
   try {
+    // Priority 1: Injected Global Config (Canvas Environment)
     if (typeof __firebase_config !== 'undefined' && __firebase_config && __firebase_config !== "undefined") {
       return JSON.parse(__firebase_config);
     }
   } catch (e) {
     console.error("Firebase config parse error", e);
   }
-  return { apiKey: "", authDomain: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" };
+
+  // Priority 2: Environment Variables (Local/Vercel Environment)
+  return {
+    apiKey: getViteEnv('VITE_FIREBASE_API_KEY') || "",
+    authDomain: getViteEnv('VITE_FIREBASE_AUTH_DOMAIN') || "",
+    projectId: getViteEnv('VITE_FIREBASE_PROJECT_ID') || "",
+    storageBucket: getViteEnv('VITE_FIREBASE_STORAGE_BUCKET') || "",
+    messagingSenderId: getViteEnv('VITE_FIREBASE_MESSAGING_SENDER_ID') || "",
+    appId: getViteEnv('VITE_FIREBASE_APP_ID') || ""
+  };
 };
 
 const firebaseConfig = getSafeConfig();
 
-// Only initialize if we have at least an API key to avoid immediate crash
+// Global handles for Firebase services
 let app, auth, db;
-if (firebaseConfig.apiKey) {
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
+
+// Attempt to initialize Firebase, but don't crash if config is partial
+try {
+  if (firebaseConfig.apiKey) {
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    auth = getAuth(app);
+    db = getFirestore(app);
+  }
+} catch (e) {
+  console.error("Firebase Initialization Error:", e);
 }
 
 const getPath = (colName) => {
@@ -81,7 +105,6 @@ const getEndTime = (startTime, duration) => {
 
 const getCurrentPT = () => {
   try {
-    // Attempt PT conversion, fallback to local if it fails
     const ptDate = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
     return { 
       dateStr: `${ptDate.getFullYear()}-${String(ptDate.getMonth()+1).padStart(2,'0')}-${String(ptDate.getDate()).padStart(2,'0')}`, 
@@ -296,14 +319,14 @@ export default function App() {
   const handleSignalReady = (p) => { if(!db) return; setDoc(doc(db, getPath('parties'), p.id), { ...p, publicPushMode: 'ready' }); logAction(`Host Signal Ready: ${p.theme}`); };
   const confirmDelete = async () => { if (deleteConfirm && db) { await deleteDoc(doc(db, getPath('parties'), deleteConfirm.id)); logAction(`Deleted ${deleteConfirm.theme}`); setDeleteConfirm(null); } };
 
-  // Error State Render if Firebase config is missing
+  // Improved Error State: Show if Firebase config is missing AND env variables are missing
   if (!firebaseConfig.apiKey) {
     return (
       <div className="min-h-screen bg-[#0a0f1d] flex flex-col items-center justify-center p-8 text-center">
         <div className="bg-rose-500/10 border border-rose-500/20 p-8 rounded-3xl max-w-md shadow-2xl">
           <Shield className="text-rose-500 mx-auto mb-4" size={48} />
           <h1 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Config Error</h1>
-          <p className="text-slate-400 text-sm font-medium leading-relaxed">Firebase configuration is missing or invalid. Please check your environment variables to restore the Hub.</p>
+          <p className="text-slate-400 text-sm font-medium leading-relaxed">Firebase configuration is missing. Please check your environment variables or provide a config to restore the Hub.</p>
         </div>
       </div>
     );
