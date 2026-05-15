@@ -9,21 +9,30 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
 
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+// Safe Config Parsing
+const getSafeConfig = () => {
+  try {
+    if (typeof __firebase_config !== 'undefined' && __firebase_config && __firebase_config !== "undefined") {
+      return JSON.parse(__firebase_config);
+    }
+  } catch (e) {
+    console.error("Firebase config parse error", e);
+  }
+  return { apiKey: "", authDomain: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" };
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+const firebaseConfig = getSafeConfig();
+
+// Only initialize if we have at least an API key to avoid immediate crash
+let app, auth, db;
+if (firebaseConfig.apiKey) {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+}
 
 const getPath = (colName) => {
-  const appId = typeof __app_id !== 'undefined' ? __app_id : 'vu-party-hub';
+  const appId = typeof __app_id !== 'undefined' && __app_id ? __app_id : 'vu-party-hub';
   return `artifacts/${appId}/public/data/${colName}`; 
 };
 
@@ -60,7 +69,9 @@ const format12h = (t) => {
 
 const getEndTime = (startTime, duration) => {
   if (!startTime || isNaN(duration)) return '';
-  const [h, m] = startTime.split(':').map(Number);
+  const parts = startTime.split(':');
+  if (parts.length < 2) return '';
+  const [h, m] = parts.map(Number);
   if (isNaN(h) || isNaN(m)) return '';
   let totalMins = h * 60 + m + (duration * 60);
   let endH = Math.floor(totalMins / 60) % 24;
@@ -69,16 +80,25 @@ const getEndTime = (startTime, duration) => {
 };
 
 const getCurrentPT = () => {
-  const ptDate = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
-  return { 
-    dateStr: `${ptDate.getFullYear()}-${String(ptDate.getMonth()+1).padStart(2,'0')}-${String(ptDate.getDate()).padStart(2,'0')}`, 
-    mins: ptDate.getHours() * 60 + ptDate.getMinutes() 
-  };
+  try {
+    // Attempt PT conversion, fallback to local if it fails
+    const ptDate = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+    return { 
+      dateStr: `${ptDate.getFullYear()}-${String(ptDate.getMonth()+1).padStart(2,'0')}-${String(ptDate.getDate()).padStart(2,'0')}`, 
+      mins: ptDate.getHours() * 60 + ptDate.getMinutes() 
+    };
+  } catch (e) {
+    const d = new Date();
+    return { 
+      dateStr: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`, 
+      mins: d.getHours() * 60 + d.getMinutes() 
+    };
+  }
 };
 
 const ds_is_future = (p) => {
   const ptM = getCurrentPT();
-  if (!p.date || !p.startTime) return false;
+  if (!p || !p.date || !p.startTime) return false;
   if (p.date > ptM.dateStr) return true;
   if (p.date === ptM.dateStr && (timeToMins(p.startTime) + (p.duration || 2)*60) > ptM.mins) return true;
   return false;
@@ -93,8 +113,10 @@ export default function App() {
   const [formError, setFormError] = useState('');
   
   const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem(SESSION_KEY);
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem(SESSION_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) { return null; }
   });
 
   const userRole = currentUser?.role || null;
@@ -131,10 +153,15 @@ export default function App() {
 
   // Sorting and Archiving Logic
   const sortedParties = useMemo(() => {
+    if (!Array.isArray(parties)) return [];
     return [...parties].sort((a, b) => {
-      const dateComp = a.date.localeCompare(b.date);
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+      const dateComp = dateA.localeCompare(dateB);
       if (dateComp !== 0) return dateComp;
-      return a.startTime.localeCompare(b.startTime);
+      const timeA = a.startTime || '';
+      const timeB = b.startTime || '';
+      return timeA.localeCompare(timeB);
     });
   }, [parties]);
 
@@ -143,13 +170,20 @@ export default function App() {
     const archived = {};
 
     sortedParties.forEach(p => {
+      if (!p) return;
       if (ds_is_future(p)) {
         active.push(p);
-      } else {
-        const d = new Date(p.date + 'T12:00:00');
-        const monthYear = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        if (!archived[monthYear]) archived[monthYear] = [];
-        archived[monthYear].push(p);
+      } else if (p.date) {
+        try {
+          const d = new Date(p.date + 'T12:00:00');
+          const monthYear = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+          if (monthYear === "Invalid Date") throw new Error();
+          if (!archived[monthYear]) archived[monthYear] = [];
+          archived[monthYear].push(p);
+        } catch (e) {
+          if (!archived["Unknown Month"]) archived["Unknown Month"] = [];
+          archived["Unknown Month"].push(p);
+        }
       }
     });
 
@@ -157,6 +191,7 @@ export default function App() {
   }, [sortedParties]);
 
   useEffect(() => {
+    if (!auth) return;
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -170,7 +205,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!authUser) return;
+    if (!authUser || !db) return;
     const unsubParties = onSnapshot(collection(db, getPath('parties')), (s) => setParties(s.docs.map(d => d.data())), (e) => console.error(e));
     const unsubAccounts = onSnapshot(collection(db, getPath('accounts')), (s) => {
       setAccounts(s.docs.map(d => d.data()));
@@ -184,25 +219,27 @@ export default function App() {
   }, [authUser]);
 
   const logAction = async (msg, u = currentUser) => {
-    if (!u || !authUser) return;
+    if (!u || !authUser || !db) return;
     const id = Date.now().toString();
-    await setDoc(doc(db, getPath('actionLogs'), id), { 
-      id: Date.now(), 
-      time: new Date().toLocaleTimeString(), 
-      action: msg, 
-      username: u.username, 
-      role: u.role 
-    });
+    try {
+      await setDoc(doc(db, getPath('actionLogs'), id), { 
+        id: Date.now(), 
+        time: new Date().toLocaleTimeString(), 
+        action: msg, 
+        username: u.username || 'Unknown', 
+        role: u.role || 'user'
+      });
+    } catch (e) {}
   };
 
   const handleLogin = (e) => {
     e.preventDefault();
     const u = gateU.trim().toLowerCase();
     const p = gateP.trim();
-    const match = accounts.find(a => a.username.toLowerCase() === u && a.passcode === p);
+    const match = accounts.find(a => (a.username || '').toLowerCase() === u && a.passcode === p);
     if (match) {
       setCurrentUser(match); localStorage.setItem(SESSION_KEY, JSON.stringify(match)); setShowAuthGate(false);
-      logAction("Logged In");
+      logAction("Logged In", match);
     } else if ((u === 'mike' && p === 'owner123')) {
       const f = { id: '1', username: 'Mike', role: 'owner', passcode: 'owner123' };
       setCurrentUser(f); localStorage.setItem(SESSION_KEY, JSON.stringify(f)); setShowAuthGate(false);
@@ -214,14 +251,14 @@ export default function App() {
     if (regData.p !== regData.c) return setGateError("Passwords mismatch.");
     const n = { id: Date.now().toString(), username: regData.u.trim(), role: 'host', program: regData.program, passcode: regData.p };
     setCurrentUser(n); localStorage.setItem(SESSION_KEY, JSON.stringify(n));
-    await setDoc(doc(db, getPath('accounts'), n.id), n);
+    if (db) await setDoc(doc(db, getPath('accounts'), n.id), n);
     setShowAuthGate(false);
-    logAction("Account Registered");
+    logAction("Account Registered", n);
   };
 
   const saveEvent = async (e) => {
     e.preventDefault();
-    if (isSaving) return; 
+    if (isSaving || !db) return; 
     setFormError('');
     const newStart = timeToMins(formData.startTime);
     const newEnd = newStart + (formData.duration * 60);
@@ -253,11 +290,24 @@ export default function App() {
     } catch (err) { console.error("Save error:", err); } finally { setIsSaving(false); }
   };
 
-  const handleUnpublish = (p) => { setDoc(doc(db, getPath('parties'), p.id), { ...p, pushedToPublic: false }); logAction(`Unpublished ${p.theme}`); };
-  const handleApprove = (p) => { setDoc(doc(db, getPath('parties'), p.id), { ...p, status: 'approved', pushedToPublic: p.publicPushMode === 'auto' }); logAction(`Approved ${p.theme}`); };
-  const handleManualPush = (p) => { setDoc(doc(db, getPath('parties'), p.id), { ...p, pushedToPublic: true }); logAction(`Published ${p.theme}`); };
-  const handleSignalReady = (p) => { setDoc(doc(db, getPath('parties'), p.id), { ...p, publicPushMode: 'ready' }); logAction(`Host Signal Ready: ${p.theme}`); };
-  const confirmDelete = async () => { if (deleteConfirm) { await deleteDoc(doc(db, getPath('parties'), deleteConfirm.id)); logAction(`Deleted ${deleteConfirm.theme}`); setDeleteConfirm(null); } };
+  const handleUnpublish = (p) => { if(!db) return; setDoc(doc(db, getPath('parties'), p.id), { ...p, pushedToPublic: false }); logAction(`Unpublished ${p.theme}`); };
+  const handleApprove = (p) => { if(!db) return; setDoc(doc(db, getPath('parties'), p.id), { ...p, status: 'approved', pushedToPublic: p.publicPushMode === 'auto' }); logAction(`Approved ${p.theme}`); };
+  const handleManualPush = (p) => { if(!db) return; setDoc(doc(db, getPath('parties'), p.id), { ...p, pushedToPublic: true }); logAction(`Published ${p.theme}`); };
+  const handleSignalReady = (p) => { if(!db) return; setDoc(doc(db, getPath('parties'), p.id), { ...p, publicPushMode: 'ready' }); logAction(`Host Signal Ready: ${p.theme}`); };
+  const confirmDelete = async () => { if (deleteConfirm && db) { await deleteDoc(doc(db, getPath('parties'), deleteConfirm.id)); logAction(`Deleted ${deleteConfirm.theme}`); setDeleteConfirm(null); } };
+
+  // Error State Render if Firebase config is missing
+  if (!firebaseConfig.apiKey) {
+    return (
+      <div className="min-h-screen bg-[#0a0f1d] flex flex-col items-center justify-center p-8 text-center">
+        <div className="bg-rose-500/10 border border-rose-500/20 p-8 rounded-3xl max-w-md shadow-2xl">
+          <Shield className="text-rose-500 mx-auto mb-4" size={48} />
+          <h1 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Config Error</h1>
+          <p className="text-slate-400 text-sm font-medium leading-relaxed">Firebase configuration is missing or invalid. Please check your environment variables to restore the Hub.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (showAuthGate || !currentUser) {
     return (
@@ -355,7 +405,7 @@ export default function App() {
                 <tbody className="divide-y divide-white/5 text-[11px]">
                   {(view === 'Pending' ? parties.filter(p => p.status === 'pending') : activeParties).map(p => (
                     <tr key={p.id} className="hover:bg-white/5 transition-all">
-                      <td className="p-3 text-slate-400 font-bold uppercase">{p.date.split('-').slice(1).reverse().join('/')}</td>
+                      <td className="p-3 text-slate-400 font-bold uppercase">{p.date ? p.date.split('-').slice(1).reverse().join('/') : '--/--'}</td>
                       <td className="p-3 text-slate-400 font-bold uppercase whitespace-nowrap">
                         {format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))}
                       </td>
@@ -414,9 +464,9 @@ export default function App() {
                   <div className="bg-[#111827]/40 border border-white/5 rounded-2xl overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
                     <table className="w-full text-left">
                       <tbody className="divide-y divide-white/5 text-[10px]">
-                        {archivedPartiesByMonth[month].reverse().map(p => (
+                        {archivedPartiesByMonth[month].slice().reverse().map(p => (
                           <tr key={p.id} className="hover:bg-white/5 transition-all">
-                            <td className="p-4 text-slate-500 font-bold w-20">{p.date.split('-').reverse().slice(0,2).join('/')}</td>
+                            <td className="p-4 text-slate-500 font-bold w-20">{p.date ? p.date.split('-').reverse().slice(0,2).join('/') : '--/--'}</td>
                             <td className="p-4 text-white font-black uppercase tracking-tight">{p.theme}</td>
                             <td className="p-4 text-slate-400 font-bold uppercase truncate max-w-[150px]">{p.hostName}</td>
                             <td className="p-4 text-right">
@@ -454,7 +504,7 @@ export default function App() {
                    <h3 className="text-base font-black text-white uppercase mb-0.5">{p.theme}</h3>
                    <p className="text-[9px] font-bold text-indigo-400 uppercase mb-1">{p.coHosts ? `${p.hostName} + ${p.coHosts}` : p.hostName}</p>
                    <div className="flex justify-between items-center text-[9px] font-black uppercase text-slate-500">
-                     <span>{p.date.split('-').reverse().slice(0,2).join('/')}</span>
+                     <span>{p.date ? p.date.split('-').reverse().slice(0,2).join('/') : '--/--'}</span>
                      <span>{format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))} PT</span>
                    </div>
                 </div>
@@ -527,7 +577,7 @@ export default function App() {
       {/* NEW REGISTRY MODAL */}
       {showForm && (
         <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 overflow-y-auto scrollbar-hide">
-          <div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-w-sm p-6 relative my-auto shadow-2xl">
+          <div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-sm:p-4 p-6 relative my-auto shadow-2xl">
             <button onClick={()=>setShowForm(false)} className="absolute top-5 right-5 text-slate-500 hover:text-white"><X size={20}/></button>
             <h2 className="text-xl font-black text-white uppercase tracking-tighter mb-6 leading-none">{editingId ? 'EDIT REGISTRY' : 'NEW REGISTRY'}</h2>
             {formError && (
@@ -583,7 +633,7 @@ export default function App() {
               e.preventDefault();
               if (passcodeData.current !== currentUser.passcode) return alert("Current code incorrect.");
               if (passcodeData.new !== passcodeData.confirm) return alert("Codes mismatch.");
-              await setDoc(doc(db, getPath('accounts'), currentUser.id), { ...currentUser, passcode: passcodeData.new }, { merge: true });
+              if (db) await setDoc(doc(db, getPath('accounts'), currentUser.id), { ...currentUser, passcode: passcodeData.new }, { merge: true });
               logAction("Changed Passcode");
               setShowPasscodeForm(false);
             }} className="space-y-5">
@@ -639,6 +689,7 @@ export default function App() {
                          <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><UserPlus size={18} className="text-indigo-500"/> Provision New Account</h3>
                          <form onSubmit={async (e) => {
                             e.preventDefault();
+                            if(!db) return;
                             const id = Date.now().toString();
                             const n = { id, username: staffForm.u.trim(), role: staffForm.r, passcode: staffForm.p };
                             await setDoc(doc(db, getPath('accounts'), id), n);
@@ -671,7 +722,7 @@ export default function App() {
                               <div key={acc.id} className="p-4 bg-black/40 border border-white/5 rounded-2xl flex justify-between items-center group">
                                  <div><div className="text-[11px] font-black text-white uppercase tracking-tight">{acc.username}</div><div className="text-[8px] font-black text-indigo-500 uppercase tracking-[0.2em] mt-0.5">{acc.role}</div></div>
                                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                                   <button onClick={async ()=>{ if(confirm(`Revoke access for ${acc.username}?`)) { await deleteDoc(doc(db, getPath('accounts'), acc.id)); logAction(`Revoked Access: ${acc.username}`); }}} className="p-2 bg-white/5 text-rose-500/60 hover:text-rose-500 rounded-lg"><Trash2 size={12}/></button>
+                                   <button onClick={async ()=>{ if(db && confirm(`Revoke access for ${acc.username}?`)) { await deleteDoc(doc(db, getPath('accounts'), acc.id)); logAction(`Revoked Access: ${acc.username}`); }}} className="p-2 bg-white/5 text-rose-500/60 hover:text-rose-500 rounded-lg"><Trash2 size={12}/></button>
                                  </div>
                               </div>
                             ))}
