@@ -9,7 +9,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
 
-// Safe environment variable access for Vercel & Vite environments
+// Safe environment variable access
 const getViteEnv = (key) => {
   try {
     const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {};
@@ -17,50 +17,32 @@ const getViteEnv = (key) => {
   } catch (e) { return null; }
 };
 
-// Safe Config Parsing with fallback to Vite env variables
+// --- CONFIG RESTORATION ---
 const getSafeConfig = () => {
-  try {
-    // Priority 1: Injected Global Config (Canvas Environment)
-    if (typeof __firebase_config !== 'undefined' && __firebase_config && __firebase_config !== "undefined") {
-      return JSON.parse(__firebase_config);
-    }
-  } catch (e) {
-    console.error("Firebase config parse error", e);
+  if (typeof __firebase_config !== 'undefined' && __firebase_config && __firebase_config !== "undefined") {
+    return JSON.parse(__firebase_config);
   }
-
-  // Priority 2: Environment Variables (Local/Vercel Environment)
   return {
-    apiKey: getViteEnv('VITE_FIREBASE_API_KEY') || "",
-    authDomain: getViteEnv('VITE_FIREBASE_AUTH_DOMAIN') || "",
-    projectId: getViteEnv('VITE_FIREBASE_PROJECT_ID') || "",
-    storageBucket: getViteEnv('VITE_FIREBASE_STORAGE_BUCKET') || "",
-    messagingSenderId: getViteEnv('VITE_FIREBASE_MESSAGING_SENDER_ID') || "",
-    appId: getViteEnv('VITE_FIREBASE_APP_ID') || ""
+    apiKey: getViteEnv('VITE_FIREBASE_API_KEY'),
+    authDomain: getViteEnv('VITE_FIREBASE_AUTH_DOMAIN'),
+    projectId: getViteEnv('VITE_FIREBASE_PROJECT_ID'),
+    storageBucket: getViteEnv('VITE_FIREBASE_STORAGE_BUCKET'),
+    messagingSenderId: getViteEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+    appId: getViteEnv('VITE_FIREBASE_APP_ID')
   };
 };
 
 const firebaseConfig = getSafeConfig();
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-// Global handles for Firebase services
-let app, auth, db;
-
-// Attempt to initialize Firebase, but don't crash if config is partial
-try {
-  if (firebaseConfig.apiKey) {
-    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    auth = getAuth(app);
-    db = getFirestore(app);
-  }
-} catch (e) {
-  console.error("Firebase Initialization Error:", e);
-}
-
+// --- PATH RESTORATION (CRITICAL: Matches your original version) ---
 const getPath = (colName) => {
-  const appId = typeof __app_id !== 'undefined' && __app_id ? __app_id : 'vu-party-hub';
-  return `artifacts/${appId}/public/data/${colName}`; 
+  if (typeof __app_id !== 'undefined') return `artifacts/${__app_id}/public/data/${colName}`;
+  return colName; 
 };
 
-// --- Static Config ---
 const SESSION_KEY = 'vu_party_hub_v350_pro_final';
 const GOOGLE_FORM_LINK = 'https://docs.google.com/forms/d/e/1FAIpQLSctHRAv0mdyL8_gwnB0AIOvVDWtZzwA5UYYo_h_rZ48LBnkNQ/viewform'; 
 const RAILWAY_GUIDE_URL = 'https://imvu-calendar.up.railway.app/';
@@ -75,7 +57,7 @@ const DAY_STYLES = [
   { name: 'Sat', border: 'border-fuchsia-500', bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-500' },
 ];
 
-// Utility functions
+// Utility functions with NaN protection
 const timeToMins = (t) => { 
   if(!t || typeof t !== 'string' || !t.includes(':')) return 0; 
   const [h, m] = t.split(':').map(Number); 
@@ -112,10 +94,7 @@ const getCurrentPT = () => {
     };
   } catch (e) {
     const d = new Date();
-    return { 
-      dateStr: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`, 
-      mins: d.getHours() * 60 + d.getMinutes() 
-    };
+    return { dateStr: d.toISOString().split('T')[0], mins: d.getHours() * 60 + d.getMinutes() };
   }
 };
 
@@ -136,24 +115,22 @@ export default function App() {
   const [formError, setFormError] = useState('');
   
   const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem(SESSION_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) { return null; }
+    const saved = localStorage.getItem(SESSION_KEY);
+    return saved ? JSON.parse(saved) : null;
   });
 
+  const isStaff = ['owner', 'admin', 'staff'].includes(currentUser?.role);
   const userRole = currentUser?.role || null;
-  const isStaff = ['owner', 'admin', 'staff'].includes(userRole);
 
   const [view, setView] = useState('List'); 
   const [showAuthGate, setShowAuthGate] = useState(!currentUser);
   const [gateMode, setGateMode] = useState('login');
-  const [eyeLogin, setEyeLogin] = useState(false);
-  const [eyeRegConfirm, setEyeRegConfirm] = useState(false);
   const [gateU, setGateU] = useState('');
   const [gateP, setGateP] = useState('');
   const [gateError, setGateError] = useState('');
   const [regData, setRegData] = useState({ u: '', p: '', c: '', program: 'VUI' });
+  const [eyeLogin, setEyeLogin] = useState(false);
+  const [eyeRegConfirm, setEyeRegConfirm] = useState(false);
   
   const [showForm, setShowForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -174,17 +151,12 @@ export default function App() {
   const [eyeConfirm, setEyeConfirm] = useState(false);
   const [eyeStaff, setEyeStaff] = useState(false);
 
-  // Sorting and Archiving Logic
+  // Grouping Logic
   const sortedParties = useMemo(() => {
-    if (!Array.isArray(parties)) return [];
     return [...parties].sort((a, b) => {
-      const dateA = a.date || '';
-      const dateB = b.date || '';
-      const dateComp = dateA.localeCompare(dateB);
+      const dateComp = (a.date || '').localeCompare(b.date || '');
       if (dateComp !== 0) return dateComp;
-      const timeA = a.startTime || '';
-      const timeB = b.startTime || '';
-      return timeA.localeCompare(timeB);
+      return (a.startTime || '').localeCompare(b.startTime || '');
     });
   }, [parties]);
 
@@ -193,19 +165,17 @@ export default function App() {
     const archived = {};
 
     sortedParties.forEach(p => {
-      if (!p) return;
       if (ds_is_future(p)) {
         active.push(p);
       } else if (p.date) {
         try {
           const d = new Date(p.date + 'T12:00:00');
           const monthYear = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-          if (monthYear === "Invalid Date") throw new Error();
           if (!archived[monthYear]) archived[monthYear] = [];
           archived[monthYear].push(p);
         } catch (e) {
-          if (!archived["Unknown Month"]) archived["Unknown Month"] = [];
-          archived["Unknown Month"].push(p);
+          if (!archived["Other"]) archived["Other"] = [];
+          archived["Other"].push(p);
         }
       }
     });
@@ -214,7 +184,6 @@ export default function App() {
   }, [sortedParties]);
 
   useEffect(() => {
-    if (!auth) return;
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -223,36 +192,31 @@ export default function App() {
       } catch (err) {}
     };
     initAuth();
-    const unsubscribe = onAuthStateChanged(auth, setAuthUser);
-    return () => unsubscribe();
+    return onAuthStateChanged(auth, setAuthUser);
   }, []);
 
   useEffect(() => {
-    if (!authUser || !db) return;
-    const unsubParties = onSnapshot(collection(db, getPath('parties')), (s) => setParties(s.docs.map(d => d.data())), (e) => console.error(e));
-    const unsubAccounts = onSnapshot(collection(db, getPath('accounts')), (s) => {
+    if (!authUser) return;
+    onSnapshot(collection(db, getPath('parties')), (s) => setParties(s.docs.map(d => d.data())), (e) => console.error(e));
+    onSnapshot(collection(db, getPath('accounts')), (s) => {
       setAccounts(s.docs.map(d => d.data()));
       setDbLoaded(true);
     }, (e) => console.error(e));
-    const unsubLogs = onSnapshot(collection(db, getPath('actionLogs')), (s) => {
+    onSnapshot(collection(db, getPath('actionLogs')), (s) => {
       setActionLogs(s.docs.map(d => d.data()).sort((a,b) => b.id - a.id));
     }, (e) => console.error(e));
-
-    return () => { unsubParties(); unsubAccounts(); unsubLogs(); };
   }, [authUser]);
 
   const logAction = async (msg, u = currentUser) => {
-    if (!u || !authUser || !db) return;
+    if (!u || !authUser) return;
     const id = Date.now().toString();
-    try {
-      await setDoc(doc(db, getPath('actionLogs'), id), { 
-        id: Date.now(), 
-        time: new Date().toLocaleTimeString(), 
-        action: msg, 
-        username: u.username || 'Unknown', 
-        role: u.role || 'user'
-      });
-    } catch (e) {}
+    await setDoc(doc(db, getPath('actionLogs'), id), { 
+      id: Date.now(), 
+      time: new Date().toLocaleTimeString(), 
+      action: msg, 
+      username: u.username, 
+      role: u.role 
+    });
   };
 
   const handleLogin = (e) => {
@@ -262,7 +226,7 @@ export default function App() {
     const match = accounts.find(a => (a.username || '').toLowerCase() === u && a.passcode === p);
     if (match) {
       setCurrentUser(match); localStorage.setItem(SESSION_KEY, JSON.stringify(match)); setShowAuthGate(false);
-      logAction("Logged In", match);
+      logAction("Logged In");
     } else if ((u === 'mike' && p === 'owner123')) {
       const f = { id: '1', username: 'Mike', role: 'owner', passcode: 'owner123' };
       setCurrentUser(f); localStorage.setItem(SESSION_KEY, JSON.stringify(f)); setShowAuthGate(false);
@@ -274,14 +238,14 @@ export default function App() {
     if (regData.p !== regData.c) return setGateError("Passwords mismatch.");
     const n = { id: Date.now().toString(), username: regData.u.trim(), role: 'host', program: regData.program, passcode: regData.p };
     setCurrentUser(n); localStorage.setItem(SESSION_KEY, JSON.stringify(n));
-    if (db) await setDoc(doc(db, getPath('accounts'), n.id), n);
+    await setDoc(doc(db, getPath('accounts'), n.id), n);
     setShowAuthGate(false);
-    logAction("Account Registered", n);
+    logAction("Account Registered");
   };
 
   const saveEvent = async (e) => {
     e.preventDefault();
-    if (isSaving || !db) return; 
+    if (isSaving) return; 
     setFormError('');
     const newStart = timeToMins(formData.startTime);
     const newEnd = newStart + (formData.duration * 60);
@@ -313,24 +277,11 @@ export default function App() {
     } catch (err) { console.error("Save error:", err); } finally { setIsSaving(false); }
   };
 
-  const handleUnpublish = (p) => { if(!db) return; setDoc(doc(db, getPath('parties'), p.id), { ...p, pushedToPublic: false }); logAction(`Unpublished ${p.theme}`); };
-  const handleApprove = (p) => { if(!db) return; setDoc(doc(db, getPath('parties'), p.id), { ...p, status: 'approved', pushedToPublic: p.publicPushMode === 'auto' }); logAction(`Approved ${p.theme}`); };
-  const handleManualPush = (p) => { if(!db) return; setDoc(doc(db, getPath('parties'), p.id), { ...p, pushedToPublic: true }); logAction(`Published ${p.theme}`); };
-  const handleSignalReady = (p) => { if(!db) return; setDoc(doc(db, getPath('parties'), p.id), { ...p, publicPushMode: 'ready' }); logAction(`Host Signal Ready: ${p.theme}`); };
-  const confirmDelete = async () => { if (deleteConfirm && db) { await deleteDoc(doc(db, getPath('parties'), deleteConfirm.id)); logAction(`Deleted ${deleteConfirm.theme}`); setDeleteConfirm(null); } };
-
-  // Improved Error State: Show if Firebase config is missing AND env variables are missing
-  if (!firebaseConfig.apiKey) {
-    return (
-      <div className="min-h-screen bg-[#0a0f1d] flex flex-col items-center justify-center p-8 text-center">
-        <div className="bg-rose-500/10 border border-rose-500/20 p-8 rounded-3xl max-w-md shadow-2xl">
-          <Shield className="text-rose-500 mx-auto mb-4" size={48} />
-          <h1 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Config Error</h1>
-          <p className="text-slate-400 text-sm font-medium leading-relaxed">Firebase configuration is missing. Please check your environment variables or provide a config to restore the Hub.</p>
-        </div>
-      </div>
-    );
-  }
+  const handleUnpublish = (p) => { setDoc(doc(db, getPath('parties'), p.id), { ...p, pushedToPublic: false }); logAction(`Unpublished ${p.theme}`); };
+  const handleApprove = (p) => { setDoc(doc(db, getPath('parties'), p.id), { ...p, status: 'approved', pushedToPublic: p.publicPushMode === 'auto' }); logAction(`Approved ${p.theme}`); };
+  const handleManualPush = (p) => { setDoc(doc(db, getPath('parties'), p.id), { ...p, pushedToPublic: true }); logAction(`Published ${p.theme}`); };
+  const handleSignalReady = (p) => { setDoc(doc(db, getPath('parties'), p.id), { ...p, publicPushMode: 'ready' }); logAction(`Host Signal Ready: ${p.theme}`); };
+  const confirmDelete = async () => { if (deleteConfirm) { await deleteDoc(doc(db, getPath('parties'), deleteConfirm.id)); logAction(`Deleted ${deleteConfirm.theme}`); setDeleteConfirm(null); } };
 
   if (showAuthGate || !currentUser) {
     return (
@@ -342,27 +293,23 @@ export default function App() {
             <div className="p-8 pt-10 text-left">
               {gateError && <div className="bg-red-500/10 text-red-400 p-3 rounded-xl text-[10px] font-bold uppercase mb-4 border border-red-500/20">{gateError}</div>}
               <form onSubmit={gateMode === 'login' ? handleLogin : handleRegister} className="space-y-6">
-                <div className="space-y-1.5 text-left">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Username</label>
+                <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Username</label>
                   <input required value={gateMode === 'login' ? gateU : regData.u} onChange={e=> gateMode === 'login' ? setGateU(e.target.value) : setRegData({...regData, u: e.target.value})} placeholder="Username" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
                 </div>
                 {gateMode === 'register' && (
-                  <div className="space-y-1.5 text-left">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Program</label>
+                  <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Program</label>
                     <select value={regData.program} onChange={e=>setRegData({...regData, program: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-black uppercase tracking-widest shadow-inner cursor-pointer appearance-none">
                       <option value="VUI">Influencer (VUI)</option>
                       <option value="VUS">Storyteller (VUS)</option>
                     </select>
                   </div>
                 )}
-                <div className="space-y-1.5 relative text-left">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Passcode</label>
-                  <input required type={eyeLogin?"text":"password"} value={gateMode === 'login' ? gateP : regData.p} onChange={e=> gateMode === 'login' ? setGateP(e.target.value) : setRegData({...regData, p: e.target.value})} placeholder="Passcode" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
+                <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Passcode</label>
+                  <input required type={eyeLogin ? "text" : "password"} value={gateMode === 'login' ? gateP : regData.p} onChange={e=> gateMode === 'login' ? setGateP(e.target.value) : setRegData({...regData, p: e.target.value})} placeholder="Passcode" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
                   <button type="button" onClick={()=>setEyeLogin(!eyeLogin)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">{eyeLogin ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
                 </div>
                 {gateMode === 'register' && (
-                  <div className="space-y-1.5 relative text-left">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Confirm</label>
+                  <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Confirm</label>
                     <input required type={eyeRegConfirm ? "text" : "password"} value={regData.c} onChange={e=>setRegData({...regData, c: e.target.value})} placeholder="Confirm Passcode" className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
                     <button type="button" onClick={()=>setEyeRegConfirm(!eyeRegConfirm)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-colors">{eyeRegConfirm ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
                   </div>
@@ -380,22 +327,19 @@ export default function App() {
     <div className="min-h-screen bg-[#0a0f1d] text-slate-200 flex flex-col font-sans overflow-x-hidden text-left">
       <header className="bg-[#111827] border-b border-white/5 p-3 sticky top-0 z-[100] flex justify-between items-center shadow-xl">
         <div className="flex items-center gap-2 shrink-0">
-          <div className="w-8 h-8 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30">
-            <CalendarDays size={18} className="text-indigo-500" />
-          </div>
+          <div className="w-8 h-8 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30"><CalendarDays size={18} className="text-indigo-500" /></div>
           <h1 className="font-black uppercase tracking-tighter text-base hidden sm:block">VU HUB</h1>
         </div>
         <div className="flex gap-2 items-center">
           <div className="bg-[#1f2937] px-4 py-1.5 rounded-full flex items-center gap-2 font-black uppercase text-[9px] text-indigo-400 border border-white/5 shadow-inner">
-            {currentUser.role === 'owner' ? <Crown size={12} className="text-yellow-500"/> : <Shield size={12}/>}
-            {currentUser.username}
+            {currentUser.role === 'owner' ? <Crown size={12} className="text-yellow-500"/> : <Shield size={12}/>}{currentUser.username}
             <button onClick={() => setShowPasscodeForm(true)} title="Change Passcode" className="ml-1 opacity-40 hover:opacity-100"><Key size={14}/></button>
           </div>
           {currentUser.role === 'owner' && (
             <button onClick={()=>{setDashTab('logs'); setShowDash(true);}} className="p-1.5 bg-[#1f2937] rounded-lg text-slate-400 hover:text-white border border-white/5 shadow"><FileText size={16}/></button>
           )}
-          <button onClick={()=>{setEditingId(null); setFormError(''); setFormData({hostName: userRole === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="bg-indigo-600 px-4 py-1.5 rounded-xl text-white font-black uppercase text-[9px] shadow-lg active:scale-90 transition-all">+ Schedule</button>
-          <button onClick={()=>{setCurrentUser(null); localStorage.removeItem(SESSION_KEY); setShowAuthGate(true);}} className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"><LogOut size={16}/></button>
+          <button onClick={()=>{setEditingId(null); setFormError(''); setFormData({hostName: currentUser.role === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="bg-indigo-600 px-4 py-1.5 rounded-xl text-white font-black uppercase text-[9px] shadow-lg active:scale-90 transition-all">+ Schedule</button>
+          <button onClick={()=>{setCurrentUser(null); localStorage.removeItem(SESSION_KEY); setShowAuthGate(true);}} className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg"><LogOut size={16}/></button>
         </div>
       </header>
 
@@ -417,47 +361,22 @@ export default function App() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead className="bg-[#0f172a] border-b border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                  <tr>
-                    <th className="p-3">Date</th>
-                    <th className="p-3">Time</th>
-                    <th className="p-3">Theme</th>
-                    <th className="p-3">Host</th>
-                    <th className="p-3 text-right">Status</th>
-                  </tr>
+                  <tr><th className="p-3">Date</th><th className="p-3">Time</th><th className="p-3">Theme</th><th className="p-3 text-right">Status</th></tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-[11px]">
                   {(view === 'Pending' ? parties.filter(p => p.status === 'pending') : activeParties).map(p => (
                     <tr key={p.id} className="hover:bg-white/5 transition-all">
-                      <td className="p-3 text-slate-400 font-bold uppercase">{p.date ? p.date.split('-').slice(1).reverse().join('/') : '--/--'}</td>
-                      <td className="p-3 text-slate-400 font-bold uppercase whitespace-nowrap">
-                        {format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))}
-                      </td>
+                      <td className="p-3 text-slate-400">{p.date.split('-').slice(1).reverse().join('/')}</td>
+                      <td className="p-3 text-slate-400 whitespace-nowrap">{format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))}</td>
                       <td className="p-3 text-white font-black uppercase">{p.theme}</td>
-                      <td className="p-3 text-indigo-400 font-bold uppercase">{p.coHosts ? `${p.hostName} + ${p.coHosts}` : p.hostName}</td>
                       <td className="p-3 text-right flex justify-end gap-2 items-center">
                           {p.status === 'pending' ? (
-                            isStaff ? (
-                              <button onClick={()=>handleApprove(p)} className="p-1.5 text-emerald-400 bg-emerald-500/10 rounded-lg border border-emerald-500/20"><CheckCircle size={16}/></button>
-                            ) : (<div className="flex items-center gap-1 text-amber-500 px-2 py-1 bg-amber-500/5 rounded-lg border border-amber-500/20"><Clock3 size={12}/> <span className="text-[8px] font-black uppercase tracking-widest">Pending</span></div>)
+                            isStaff ? <button onClick={()=>handleApprove(p)} className="p-1.5 text-emerald-400 bg-emerald-500/10 rounded-lg"><CheckCircle size={16}/></button> : <span className="text-[8px] uppercase text-amber-500 bg-amber-500/5 px-2 py-1 rounded border border-amber-500/20">Pending</span>
                           ) : (
-                            isStaff ? (
-                               p.pushedToPublic ? <button onClick={()=>handleUnpublish(p)} className="p-1.5 text-rose-400 bg-rose-500/10 rounded-lg"><EyeOff size={16}/></button> :
-                               (p.publicPushMode === 'ready' || p.publicPushMode === 'auto') ? <button onClick={()=>handleManualPush(p)} className="p-1.5 text-indigo-400 bg-indigo-500/10 rounded-lg"><Send size={16}/></button> :
-                               <div className="text-[8px] font-black text-slate-600 px-2 py-1 bg-white/5 rounded">On Hold</div>
-                            ) : (
-                               (!p.pushedToPublic && p.publicPushMode === 'manual' && p.hostId === currentUser.id) ? (
-                                 <button onClick={() => handleSignalReady(p)} className="flex items-center gap-1 text-amber-400 bg-amber-400/10 px-2 py-1 rounded border border-amber-400/20">
-                                   <BellRing size={12}/> <span className="text-[8px] font-black uppercase">Signal Ready</span>
-                                 </button>
-                               ) : p.pushedToPublic ? (
-                                 <div className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20"><CheckCircle size={12}/> <span className="text-[8px] font-black uppercase">Published</span></div>
-                               ) : (
-                                 <div className="flex items-center gap-1 text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-lg border border-indigo-500/20"><CheckCircle size={12}/> <span className="text-[8px] font-black uppercase">Approved</span></div>
-                               )
-                            )
+                            <div className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20"><CheckCircle size={12}/> <span className="text-[8px] font-black uppercase">Active</span></div>
                           )}
-                          {isStaff && <button onClick={()=>{setEditingId(p.id); setFormError(''); setFormData(p); setShowForm(true);}} className="p-1.5 text-slate-400 hover:text-white"><Edit2 size={14}/></button>}
-                          {['owner','admin'].includes(userRole) && <button onClick={()=>setDeleteConfirm(p)} className="p-1.5 text-rose-500/60 hover:text-rose-500"><Trash2 size={14}/></button>}
+                          {isStaff && <button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-1.5 text-slate-400 hover:text-white"><Edit2 size={14}/></button>}
+                          {isStaff && <button onClick={()=>setDeleteConfirm(p)} className="p-1.5 text-rose-500"><Trash2 size={14}/></button>}
                       </td>
                     </tr>
                   ))}
@@ -468,33 +387,21 @@ export default function App() {
         )}
 
         {view === 'Archive' && (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex items-center gap-3 mb-2">
-              <Library className="text-indigo-500" size={24} />
-              <h2 className="text-xl font-black text-white uppercase tracking-tighter">Event Archives</h2>
-            </div>
+          <div className="space-y-6 animate-in fade-in duration-500">
             {Object.keys(archivedPartiesByMonth).length === 0 ? (
-              <div className="text-center py-20 bg-[#111827] rounded-3xl border border-white/5">
-                <Clock3 size={40} className="mx-auto text-slate-800 mb-4" />
-                <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">No Archived Parties Found</p>
-              </div>
+               <div className="text-center py-20 bg-[#111827] rounded-3xl border border-white/5"><Clock3 size={40} className="mx-auto text-slate-800 mb-4" /><p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">No Archived Parties</p></div>
             ) : (
               Object.keys(archivedPartiesByMonth).sort((a,b) => new Date(b) - new Date(a)).map(month => (
-                <div key={month} className="space-y-3">
-                  <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] ml-2 flex items-center gap-2">
-                    <span className="w-8 h-[1px] bg-indigo-500/30"></span> {month}
-                  </h3>
-                  <div className="bg-[#111827]/40 border border-white/5 rounded-2xl overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
-                    <table className="w-full text-left">
-                      <tbody className="divide-y divide-white/5 text-[10px]">
+                <div key={month} className="space-y-2">
+                  <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-2 flex items-center gap-2"><span className="w-8 h-[1px] bg-indigo-500/30"></span> {month}</h3>
+                  <div className="bg-[#111827]/60 border border-white/5 rounded-2xl overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
+                    <table className="w-full text-left text-[10px]">
+                      <tbody className="divide-y divide-white/5">
                         {archivedPartiesByMonth[month].slice().reverse().map(p => (
                           <tr key={p.id} className="hover:bg-white/5 transition-all">
-                            <td className="p-4 text-slate-500 font-bold w-20">{p.date ? p.date.split('-').reverse().slice(0,2).join('/') : '--/--'}</td>
-                            <td className="p-4 text-white font-black uppercase tracking-tight">{p.theme}</td>
-                            <td className="p-4 text-slate-400 font-bold uppercase truncate max-w-[150px]">{p.hostName}</td>
-                            <td className="p-4 text-right">
-                               {isStaff && <button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-2 text-slate-600 hover:text-white transition-colors"><Edit2 size={12}/></button>}
-                            </td>
+                            <td className="p-3 text-slate-500 w-20">{p.date.split('-').reverse().slice(0,2).join('/')}</td>
+                            <td className="p-3 text-white font-bold uppercase">{p.theme}</td>
+                            <td className="p-3 text-slate-500 truncate max-w-[120px]">{p.hostName}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -505,7 +412,7 @@ export default function App() {
             )}
           </div>
         )}
-        
+
         {view === 'Guide' && (
           <div className="space-y-4">
             <a href={RAILWAY_GUIDE_URL} target="_blank" className="block bg-[#0f2e26]/30 border border-emerald-500/20 p-6 rounded-3xl flex items-center justify-between hover:bg-[#0f2e26]/50 transition-all cursor-pointer group shadow-xl">
@@ -516,27 +423,22 @@ export default function App() {
                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1.5">What the public sees on the Community Calendar</p>
                  </div>
                </div>
-               <div className="bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-2xl text-[9px] font-black uppercase border border-emerald-500/20">
-                 {activeParties.filter(p => p.pushedToPublic).length} Live
-               </div>
+               <div className="bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-2xl text-[9px] font-black uppercase border border-emerald-500/20">{activeParties.filter(p => p.pushedToPublic).length} Live</div>
             </a>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {activeParties.filter(p => p.pushedToPublic).map(p => (
                 <div key={p.id} className="bg-[#111827] border border-white/5 p-4 rounded-2xl relative overflow-hidden group">
                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 shadow-[0_0_10px_emerald]"></div>
                    <h3 className="text-base font-black text-white uppercase mb-0.5">{p.theme}</h3>
-                   <p className="text-[9px] font-bold text-indigo-400 uppercase mb-1">{p.coHosts ? `${p.hostName} + ${p.coHosts}` : p.hostName}</p>
-                   <div className="flex justify-between items-center text-[9px] font-black uppercase text-slate-500">
-                     <span>{p.date ? p.date.split('-').reverse().slice(0,2).join('/') : '--/--'}</span>
-                     <span>{format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))} PT</span>
-                   </div>
+                   <p className="text-[9px] font-bold text-indigo-400 uppercase mb-1">{p.hostName}</p>
+                   <div className="flex justify-between items-center text-[9px] font-black uppercase text-slate-500"><span>{p.date.split('-').reverse().slice(0,2).join('/')}</span><span>{format12h(p.startTime)} PT</span></div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {(view === 'Weekly' || view === 'Daily' || view === 'Monthly') && (
+        {(view === 'Monthly' || view === 'Weekly' || view === 'Daily') && (
           <div className="space-y-6">
             <div className="bg-[#111827] border border-white/5 rounded-xl p-3 flex items-center justify-between shadow-xl">
                <button onClick={()=>{const d=new Date(baseDate); d.setDate(d.getDate()-(view==='Weekly'?7:1)); setBaseDate(d);}} className="p-1.5 bg-[#1f2937] rounded-lg text-slate-500 hover:text-white transition-all"><ChevronLeft size={18}/></button>
@@ -574,19 +476,14 @@ export default function App() {
                            <div key={p.id} className="p-3 bg-[#111827] border border-white/5 rounded-xl flex justify-between items-center group">
                               <div>
                                 <h4 className="text-sm font-black text-white uppercase">{p.theme}</h4>
-                                <p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">
-                                  {format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))} PT — {p.coHosts ? `${p.hostName} + ${p.coHosts}` : p.hostName}
-                                </p>
+                                <p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">{format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))} PT</p>
                               </div>
                               <div className="flex gap-2">
-                                {isStaff && <button onClick={()=>{setEditingId(p.id); setFormError(''); setFormData(p); setShowForm(true);}} className="p-1.5 text-indigo-400 bg-white/5 rounded-lg"><Edit2 size={12}/></button>}
+                                {isStaff && <button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-1.5 text-indigo-400 bg-white/5 rounded-lg"><Edit2 size={12}/></button>}
                               </div>
                            </div>
                          ))}
-                         <div onClick={()=>{setEditingId(null); setFormData({hostName: userRole === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: ds, startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="p-3 bg-black/20 border border-white/5 border-dashed rounded-xl flex justify-between items-center group cursor-pointer hover:bg-white/5 transition-all">
-                            <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">8:00 AM - 11:59 PM OPEN</span>
-                            <Plus size={14} className="text-slate-800 group-hover:text-white transition-all"/>
-                         </div>
+                         <div onClick={()=>{setEditingId(null); setFormData({hostName: currentUser.role === 'host' ? `${currentUser.username} (${currentUser.program})` : '', theme: '', date: ds, startTime: '20:00', duration: 2, isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="p-3 bg-black/20 border border-white/5 border-dashed rounded-xl flex justify-between items-center group cursor-pointer hover:bg-white/5 transition-all"><span className="text-[9px] font-black text-slate-600 uppercase">ADD TO {d.toLocaleDateString('en-US', {weekday:'short'}).toUpperCase()}</span><Plus size={14} className="text-slate-800 group-hover:text-white"/></div>
                        </div>
                     </div>
                   );
@@ -597,82 +494,59 @@ export default function App() {
         )}
       </main>
 
-      {/* NEW REGISTRY MODAL */}
+      {/* MODALS */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 overflow-y-auto scrollbar-hide">
-          <div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-sm:p-4 p-6 relative my-auto shadow-2xl">
-            <button onClick={()=>setShowForm(false)} className="absolute top-5 right-5 text-slate-500 hover:text-white"><X size={20}/></button>
-            <h2 className="text-xl font-black text-white uppercase tracking-tighter mb-6 leading-none">{editingId ? 'EDIT REGISTRY' : 'NEW REGISTRY'}</h2>
-            {formError && (
-              <div className="bg-rose-500/10 text-rose-400 p-3 rounded-xl text-[10px] font-bold uppercase mb-4 border border-rose-500/20 shadow-inner">
-                {formError}
-              </div>
-            )}
+        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4">
+          <div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-w-sm p-6 relative">
+            <button onClick={()=>setShowForm(false)} className="absolute top-5 right-5 text-slate-500"><X size={20}/></button>
+            <h2 className="text-xl font-black text-white uppercase tracking-tighter mb-6">{editingId ? 'EDIT' : 'NEW'} PARTY</h2>
+            {formError && <div className="bg-rose-500/10 text-rose-400 p-3 rounded-xl text-[10px] font-bold uppercase mb-4 border border-rose-500/20">{formError}</div>}
             <form onSubmit={saveEvent} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1">HOST</label><input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-xs"/></div>
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1">CO-HOST</label><input value={formData.coHosts || ''} onChange={e=>setFormData({...formData, coHosts: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-xs"/></div>
+                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase">HOST</label><input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs"/></div>
+                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase">THEME</label><input required value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs"/></div>
               </div>
-              <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1">THEME TITLE</label><input required value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-xs"/></div>
-              <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1">ROOM LINK</label><input value={formData.roomLink} onChange={e=>setFormData({...formData, roomLink: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 font-bold shadow-inner text-xs" placeholder="https://imvu.com/..."/></div>
               <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1">DATE</label><input type="date" required value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-[10px]"/></div>
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1">TIME</label><input type="time" required value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-[10px]"/></div>
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1">HRS</label><input type="number" step="0.5" required value={formData.duration} onChange={e=>setFormData({...formData, duration: Number(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-[10px]"/></div>
+                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase">DATE</label><input type="date" required value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px]"/></div>
+                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase">TIME</label><input type="time" required value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px]"/></div>
+                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase">HRS</label><input type="number" step="0.5" required value={formData.duration} onChange={e=>setFormData({...formData, duration: Number(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px]"/></div>
               </div>
-              <div className="bg-[#13231f] border border-emerald-500/10 p-4 rounded-2xl space-y-4 shadow-inner">
-                <label className="flex items-start gap-4 cursor-pointer">
-                  <input type="checkbox" checked={formData.isPublic} onChange={e=>setFormData({...formData, isPublic: e.target.checked})} className="mt-1 w-5 h-5 rounded text-indigo-600 bg-black border-white/10 focus:ring-0 shadow-inner"/>
-                  <div><span className="text-xs font-black uppercase text-emerald-400 tracking-tight leading-none block">COMMUNITY SYNC</span><p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1">Show in Community Calendar</p></div>
-                </label>
-                {formData.isPublic && (
-                  <div className="pl-9 pt-3 border-t border-white/5 flex flex-col gap-3 animate-in slide-in-from-top-2">
-                    <div className="flex flex-col gap-2.5">
-                      <label className="flex items-center gap-2.5 cursor-pointer text-[9px] font-black uppercase text-white">
-                        <input type="radio" name="push_mode" checked={formData.publicPushMode==='auto'} onChange={()=>setFormData({...formData, publicPushMode:'auto'})} className="w-3.5 h-3.5 text-indigo-600 bg-black border-white/20 focus:ring-0"/> AUTO-POST
-                      </label>
-                      <label className="flex items-center gap-2.5 cursor-pointer text-[9px] font-black uppercase text-white">
-                        <input type="radio" name="push_mode" checked={formData.publicPushMode==='manual'} onChange={()=>setFormData({...formData, publicPushMode:'manual'})} className="w-3.5 h-3.5 text-emerald-600 bg-black border-white/20 focus:ring-0"/> HOLD (Wait for signal)
-                      </label>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl active:scale-95 text-[10px]">
-                {isSaving ? "SAVING..." : (editingId ? "UPDATE PARTY" : "SUBMIT PARTY")}
-              </button>
+              <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black uppercase text-[10px]">SAVE PARTY</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* DASHBOARD & SECURITY MODALS */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center p-4">
+          <div className="bg-[#111827] border border-rose-500/20 p-8 rounded-3xl max-w-xs w-full text-center">
+            <Trash2 className="text-rose-500 mx-auto mb-6" size={30} /><h2 className="text-lg font-black text-white uppercase mb-2">Delete Party?</h2>
+            <div className="flex gap-3"><button onClick={() => setDeleteConfirm(null)} className="flex-1 py-4 bg-[#1f2937] text-slate-400 rounded-xl font-black uppercase text-[10px]">Cancel</button><button onClick={confirmDelete} className="flex-1 py-4 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px]">Delete</button></div>
+          </div>
+        </div>
+      )}
+
       {showPasscodeForm && (
         <div className="fixed inset-0 bg-black/95 z-[300] flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-w-sm p-8 shadow-2xl relative">
+          <div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-w-sm p-8 relative">
             <button onClick={() => setShowPasscodeForm(false)} className="absolute top-6 right-6 text-slate-500 hover:text-white"><X size={20}/></button>
-            <h2 className="text-xl font-black text-white uppercase tracking-tighter mb-8 leading-none">Security Settings</h2>
+            <h2 className="text-xl font-black text-white uppercase mb-8">Security Settings</h2>
             <form onSubmit={async (e) => {
               e.preventDefault();
               if (passcodeData.current !== currentUser.passcode) return alert("Current code incorrect.");
               if (passcodeData.new !== passcodeData.confirm) return alert("Codes mismatch.");
-              if (db) await setDoc(doc(db, getPath('accounts'), currentUser.id), { ...currentUser, passcode: passcodeData.new }, { merge: true });
-              logAction("Changed Passcode");
-              setShowPasscodeForm(false);
+              await setDoc(doc(db, getPath('accounts'), currentUser.id), { ...currentUser, passcode: passcodeData.new }, { merge: true });
+              logAction("Changed Passcode"); setShowPasscodeForm(false); alert("Success.");
             }} className="space-y-5">
-              <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Current Code</label>
-                <input required type={eyeCurrent ? "text" : "password"} value={passcodeData.current} onChange={e=>setPasscodeData({...passcodeData, current: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
+              <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Current Code</label>
+                <input required type={eyeCurrent ? "text" : "password"} value={passcodeData.current} onChange={e=>setPasscodeData({...passcodeData, current: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-bold"/>
                 <button type="button" onClick={()=>setEyeCurrent(!eyeCurrent)} className="absolute right-5 top-[42px] text-slate-600">{eyeCurrent?<EyeOff size={18}/>:<Eye size={18}/>}</button>
               </div>
-              <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">New Code</label>
-                <input required type={eyeNew ? "text" : "password"} value={passcodeData.new} onChange={e=>setPasscodeData({...passcodeData, new: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
+              <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">New Code</label>
+                <input required type={eyeNew ? "text" : "password"} value={passcodeData.new} onChange={e=>setPasscodeData({...passcodeData, new: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-bold"/>
                 <button type="button" onClick={()=>setEyeNew(!eyeNew)} className="absolute right-5 top-[42px] text-slate-600">{eyeNew?<EyeOff size={18}/>:<Eye size={18}/>}</button>
               </div>
-              <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Confirm New</label>
-                <input required type={eyeConfirm ? "text" : "password"} value={passcodeData.confirm} onChange={e=>setPasscodeData({...passcodeData, confirm: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white focus:border-indigo-500 outline-none font-bold shadow-inner placeholder:text-slate-800"/>
-                <button type="button" onClick={()=>setEyeConfirm(!eyeConfirm)} className="absolute right-5 top-[42px] text-slate-600">{eyeConfirm?<EyeOff size={18}/>:<Eye size={18}/>}</button>
-              </div>
-              <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 mt-4 text-[11px]">Update Security</button>
+              <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black uppercase text-[11px]">Update Security</button>
             </form>
           </div>
         </div>
@@ -680,95 +554,33 @@ export default function App() {
 
       {showDash && (
         <div className="fixed inset-0 bg-[#0a0f1d] z-[250] flex flex-col p-4 sm:p-8">
-          <header className="flex justify-between items-center mb-10 max-w-6xl mx-auto w-full">
-            <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">Console</h2>
-            <button onClick={() => setShowDash(false)} className="p-3 bg-white/5 rounded-2xl text-slate-500 hover:text-white"><X size={24}/></button>
-          </header>
+          <header className="flex justify-between items-center mb-10 max-w-6xl mx-auto w-full"><h2 className="text-3xl font-black text-white uppercase tracking-tighter">Console</h2><button onClick={() => setShowDash(false)} className="p-3 bg-white/5 rounded-2xl text-slate-500"><X size={24}/></button></header>
           <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col lg:flex-row gap-8 overflow-hidden">
-            <nav className="flex lg:flex-col gap-2 shrink-0">
-               <button onClick={()=>setDashTab('logs')} className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all text-left flex items-center gap-3 ${dashTab==='logs'?'bg-indigo-600 text-white shadow-xl':'bg-white/5 text-slate-500 hover:text-slate-300'}`}><FileText size={18}/> Activity</button>
-               <button onClick={()=>setDashTab('accounts')} className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all text-left flex items-center gap-3 ${dashTab==='accounts'?'bg-indigo-600 text-white shadow-xl':'bg-white/5 text-slate-500 hover:text-slate-300'}`}><Shield size={18}/> Access Control</button>
+            <nav className="flex lg:flex-col gap-2">
+               <button onClick={()=>setDashTab('logs')} className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${dashTab==='logs'?'bg-indigo-600 text-white shadow-xl':'bg-white/5 text-slate-500 hover:text-slate-300'}`}><FileText size={18} className="mr-3 inline"/> Activity</button>
+               <button onClick={()=>setDashTab('accounts')} className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${dashTab==='accounts'?'bg-indigo-600 text-white shadow-xl':'bg-white/5 text-slate-500 hover:text-slate-300'}`}><Shield size={18} className="mr-3 inline"/> Access Control</button>
             </nav>
             <div className="flex-1 bg-[#111827] border border-white/5 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
                {dashTab === 'logs' ? (
-                 <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
-                    <table className="w-full border-collapse">
-                       <thead className="bg-[#0f172a] border-b border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500 sticky top-0 z-10"><tr className="text-left"><th className="p-4">Time</th><th className="p-4">User</th><th className="p-4">Event</th></tr></thead>
-                       <tbody className="divide-y divide-white/5">
-                          {actionLogs.map(l => (
-                            <tr key={l.id} className="text-[10px] hover:bg-white/5 transition-all">
-                               <td className="p-4 font-bold text-slate-500">{l.time}</td>
-                               <td className="p-4 font-black uppercase text-indigo-400">{l.username}</td>
-                               <td className="p-4 font-black uppercase text-white tracking-tight">{l.action}</td>
-                            </tr>
-                          ))}
-                       </tbody>
-                    </table>
-                 </div>
+                 <div className="flex-1 overflow-y-auto p-2 scrollbar-hide"><table className="w-full border-collapse"><thead className="bg-[#0f172a] border-b border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500 sticky top-0"><tr className="text-left"><th className="p-4">Time</th><th className="p-4">User</th><th className="p-4">Event</th></tr></thead><tbody className="divide-y divide-white/5">{actionLogs.map(l => (<tr key={l.id} className="text-[10px] hover:bg-white/5"><td className="p-4 font-bold text-slate-500">{l.time}</td><td className="p-4 font-black uppercase text-indigo-400">{l.username}</td><td className="p-4 font-black uppercase text-white tracking-tight">{l.action}</td></tr>))}</tbody></table></div>
                ) : (
                  <div className="flex-1 overflow-y-auto p-8 scrollbar-hide">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                       <div className="space-y-6">
-                         <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><UserPlus size={18} className="text-indigo-500"/> Provision New Account</h3>
-                         <form onSubmit={async (e) => {
-                            e.preventDefault();
-                            if(!db) return;
-                            const id = Date.now().toString();
-                            const n = { id, username: staffForm.u.trim(), role: staffForm.r, passcode: staffForm.p };
-                            await setDoc(doc(db, getPath('accounts'), id), n);
-                            setStaffForm({u:'', r:'staff', p:''});
-                            setStaffSuccess(`Account Activated!`);
-                            setTimeout(()=>setStaffSuccess(''), 3000);
-                         }} className="space-y-4">
-                           <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Username</label>
-                             <input required value={staffForm.u} onChange={e=>setStaffForm({...staffForm, u: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold"/>
-                           </div>
-                           <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Role</label>
-                             <select value={staffForm.r} onChange={e=>setStaffForm({...staffForm, r: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white outline-none font-black uppercase">
-                                <option value="staff">Official Staff</option>
-                                <option value="admin">Administrator</option>
-                                <option value="host">Verified Host</option>
-                             </select>
-                           </div>
-                           <div className="space-y-1.5 relative"><label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Initial Passcode</label>
-                             <input required type={eyeStaff ? "text" : "password"} value={staffForm.p} onChange={e=>setStaffForm({...staffForm, p: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white focus:border-indigo-500 outline-none font-bold"/>
-                             <button type="button" onClick={()=>setEyeStaff(!eyeStaff)} className="absolute right-4 top-[38px] text-slate-600">{eyeStaff?<EyeOff size={18}/>:<Eye size={18}/>}</button>
-                           </div>
-                           <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all">Activate Access</button>
-                           {staffSuccess && <div className="text-emerald-400 font-black uppercase text-[9px] text-center mt-2 animate-pulse">{staffSuccess}</div>}
+                       <div className="space-y-6"><h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><UserPlus size={18} className="text-indigo-500"/> Provision Account</h3>
+                         <form onSubmit={async (e) => { e.preventDefault(); const id = Date.now().toString(); const n = { id, username: staffForm.u.trim(), role: staffForm.r, passcode: staffForm.p }; await setDoc(doc(db, getPath('accounts'), id), n); setStaffForm({u:'', r:'staff', p:''}); setStaffSuccess(`Active!`); setTimeout(()=>setStaffSuccess(''), 3000); }} className="space-y-4">
+                           <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-500 uppercase">Username</label><input required value={staffForm.u} onChange={e=>setStaffForm({...staffForm, u: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white font-bold"/></div>
+                           <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-500 uppercase">Role</label><select value={staffForm.r} onChange={e=>setStaffForm({...staffForm, r: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white font-black uppercase"><option value="staff">Staff</option><option value="admin">Admin</option><option value="host">Host</option></select></div>
+                           <div className="space-y-1.5 relative"><label className="text-[9px] font-black text-slate-500 uppercase">Passcode</label><input required type={eyeStaff ? "text" : "password"} value={staffForm.p} onChange={e=>setStaffForm({...staffForm, p: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white font-bold"/><button type="button" onClick={()=>setEyeStaff(!eyeStaff)} className="absolute right-4 top-[38px] text-slate-600">{eyeStaff?<EyeOff size={18}/>:<Eye size={18}/>}</button></div>
+                           <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-black uppercase text-[10px]">Activate Access</button>
+                           {staffSuccess && <div className="text-emerald-400 font-black text-[9px] text-center mt-2">{staffSuccess}</div>}
                          </form>
                        </div>
-                       <div className="space-y-6">
-                         <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><Users size={18} className="text-indigo-500"/> Registered Hub Access</h3>
-                         <div className="space-y-3">
-                            {accounts.map(acc => (
-                              <div key={acc.id} className="p-4 bg-black/40 border border-white/5 rounded-2xl flex justify-between items-center group">
-                                 <div><div className="text-[11px] font-black text-white uppercase tracking-tight">{acc.username}</div><div className="text-[8px] font-black text-indigo-500 uppercase tracking-[0.2em] mt-0.5">{acc.role}</div></div>
-                                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                                   <button onClick={async ()=>{ if(db && confirm(`Revoke access for ${acc.username}?`)) { await deleteDoc(doc(db, getPath('accounts'), acc.id)); logAction(`Revoked Access: ${acc.username}`); }}} className="p-2 bg-white/5 text-rose-500/60 hover:text-rose-500 rounded-lg"><Trash2 size={12}/></button>
-                                 </div>
-                              </div>
-                            ))}
-                         </div>
+                       <div className="space-y-6"><h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><Users size={18} className="text-indigo-500"/> Registered Hub Access</h3>
+                         <div className="space-y-3">{accounts.map(acc => (<div key={acc.id} className="p-4 bg-black/40 border border-white/5 rounded-2xl flex justify-between items-center group"><div><div className="text-[11px] font-black text-white uppercase">{acc.username}</div><div className="text-[8px] font-black text-indigo-500 uppercase">{acc.role}</div></div><div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all"><button onClick={async ()=>{ if(confirm(`Revoke access for ${acc.username}?`)) { await deleteDoc(doc(db, getPath('accounts'), acc.id)); logAction(`Revoked Access: ${acc.username}`); }}} className="p-2 bg-white/5 text-rose-500/60 hover:text-rose-500 rounded-lg"><Trash2 size={12}/></button></div></div>))}</div>
                        </div>
                     </div>
                  </div>
                )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* DELETE CONFIRMATION MODAL */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-rose-500/20 p-8 rounded-3xl max-w-xs w-full text-center shadow-2xl">
-            <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center border border-rose-500/20 mx-auto mb-6"><Trash2 className="text-rose-500" size={30} /></div>
-            <h2 className="text-lg font-black text-white uppercase mb-2">Delete Party?</h2>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-8 leading-relaxed">Are you sure you want to remove <span className="text-rose-400">"{deleteConfirm.theme}"</span>? This action cannot be undone.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-4 bg-[#1f2937] text-slate-400 rounded-xl font-black uppercase text-[10px]">Cancel</button>
-              <button onClick={confirmDelete} className="flex-1 py-4 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px]">Delete</button>
             </div>
           </div>
         </div>
