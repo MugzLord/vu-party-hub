@@ -37,7 +37,7 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// --- PATH RESTORATION (CRITICAL: Matches your original version) ---
+// --- PATH RESTORATION (CRITICAL: Matches your original version exactly) ---
 const getPath = (colName) => {
   if (typeof __app_id !== 'undefined') return `artifacts/${__app_id}/public/data/${colName}`;
   return colName; 
@@ -192,7 +192,8 @@ export default function App() {
       } catch (err) {}
     };
     initAuth();
-    return onAuthStateChanged(auth, setAuthUser);
+    const unsubscribe = onAuthStateChanged(auth, setAuthUser);
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -283,6 +284,14 @@ export default function App() {
   const handleSignalReady = (p) => { setDoc(doc(db, getPath('parties'), p.id), { ...p, publicPushMode: 'ready' }); logAction(`Host Signal Ready: ${p.theme}`); };
   const confirmDelete = async () => { if (deleteConfirm) { await deleteDoc(doc(db, getPath('parties'), deleteConfirm.id)); logAction(`Deleted ${deleteConfirm.theme}`); setDeleteConfirm(null); } };
 
+  const handleResetPassword = async (acc) => {
+    const newPass = prompt(`New code for ${acc.username}:`);
+    if (newPass) {
+      await setDoc(doc(db, getPath('accounts'), acc.id), { ...acc, passcode: newPass.trim() }, { merge: true });
+      alert("Reset successful.");
+    }
+  };
+
   if (showAuthGate || !currentUser) {
     return (
       <div className="min-h-screen bg-[#0a0f1d] flex items-center justify-center p-4 font-sans text-left text-slate-200">
@@ -328,26 +337,26 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f1d] text-slate-200 flex flex-col font-sans overflow-x-hidden text-left">
+    <div className="min-h-screen bg-[#0a0f1d] text-slate-200 flex flex-col font-sans overflow-x-hidden text-left text-left">
       <header className="bg-[#111827] border-b border-white/5 p-3 sticky top-0 z-[100] flex justify-between items-center shadow-xl">
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 text-left">
           <div className="w-8 h-8 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30"><CalendarDays size={18} className="text-indigo-500" /></div>
           <h1 className="font-black uppercase tracking-tighter text-base hidden sm:block">VU HUB</h1>
         </div>
-        <div className="flex gap-2 items-center">
-          <div className="bg-[#1f2937] px-4 py-1.5 rounded-full flex items-center gap-2 font-black uppercase text-[9px] text-indigo-400 border border-white/5 shadow-inner">
+        <div className="flex gap-2 items-center text-left">
+          <div className="bg-[#1f2937] px-4 py-1.5 rounded-full flex items-center gap-2 font-black uppercase text-[9px] text-indigo-400 border border-white/5 shadow-inner text-left">
             {currentUser.role === 'owner' ? <Crown size={12} className="text-yellow-500"/> : <Shield size={12}/>}{currentUser.username}
-            <button onClick={() => setShowPasscodeForm(true)} title="Change Passcode" className="ml-1 opacity-40 hover:opacity-100"><Key size={14}/></button>
+            <button onClick={() => setShowPasscodeForm(true)} title="Change Passcode" className="ml-1 opacity-40 hover:opacity-100 transition-opacity"><Key size={14}/></button>
           </div>
           {currentUser.role === 'owner' && (
-            <button onClick={()=>{setDashTab('logs'); setShowDash(true);}} className="p-1.5 bg-[#1f2937] rounded-lg text-slate-400 hover:text-white border border-white/5 shadow"><FileText size={16}/></button>
+            <button onClick={()=>{setDashTab('logs'); setShowDash(true);}} className="p-1.5 bg-[#1f2937] rounded-lg text-slate-400 hover:text-white border border-white/5 shadow text-left"><FileText size={16}/></button>
           )}
-          <button onClick={()=>{setEditingId(null); setFormError(''); setFormData({hostName: currentUser.role === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="bg-indigo-600 px-4 py-1.5 rounded-xl text-white font-black uppercase text-[9px] shadow-lg active:scale-90 transition-all">+ Schedule</button>
-          <button onClick={()=>{setCurrentUser(null); localStorage.removeItem(SESSION_KEY); setShowAuthGate(true);}} className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg"><LogOut size={16}/></button>
+          <button onClick={()=>{setEditingId(null); setFormError(''); setFormData({hostName: currentUser.role === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="bg-indigo-600 px-4 py-1.5 rounded-xl text-white font-black uppercase text-[9px] shadow-lg active:scale-90 transition-all text-left">+ Schedule</button>
+          <button onClick={()=>{setCurrentUser(null); localStorage.removeItem(SESSION_KEY); setShowAuthGate(true);}} className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all text-left"><LogOut size={16}/></button>
         </div>
       </header>
 
-      <div className="bg-[#111827]/50 border-b border-white/5 flex overflow-x-auto gap-1 p-2 scrollbar-hide">
+      <div className="bg-[#111827]/50 border-b border-white/5 flex overflow-x-auto gap-1 p-2 scrollbar-hide text-left">
          {['Guide', 'List', 'Pending', 'Archive', 'Monthly', 'Weekly', 'Daily'].map(t => {
             if (t === 'Pending' && !isStaff) return null;
             return (
@@ -359,28 +368,53 @@ export default function App() {
          })}
       </div>
 
-      <main className="flex-1 p-2 sm:p-4 max-w-6xl mx-auto w-full text-left">
+      <main className="flex-1 p-2 sm:p-4 max-w-6xl mx-auto w-full text-left text-left">
         {(view === 'List' || view === 'Pending') && (
-          <div className="bg-[#111827] border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
-            <div className="overflow-x-auto">
+          <div className="bg-[#111827] border border-white/5 rounded-2xl overflow-hidden shadow-2xl text-left">
+            <div className="overflow-x-auto text-left">
               <table className="w-full text-left border-collapse">
-                <thead className="bg-[#0f172a] border-b border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                  <tr><th className="p-3">Date</th><th className="p-3">Time</th><th className="p-3">Theme</th><th className="p-3 text-right">Status</th></tr>
+                <thead className="bg-[#0f172a] border-b border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500 text-left">
+                  <tr>
+                    <th className="p-3">Date</th>
+                    <th className="p-3">Time</th>
+                    <th className="p-3">Theme</th>
+                    <th className="p-3">Host</th>
+                    <th className="p-3 text-right">Status</th>
+                  </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 text-[11px]">
+                <tbody className="divide-y divide-white/5 text-[11px] text-left">
                   {(view === 'Pending' ? parties.filter(p => p.status === 'pending') : activeParties).map(p => (
-                    <tr key={p.id} className="hover:bg-white/5 transition-all">
-                      <td className="p-3 text-slate-400">{p.date.split('-').slice(1).reverse().join('/')}</td>
-                      <td className="p-3 text-slate-400 whitespace-nowrap">{format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))}</td>
+                    <tr key={p.id} className="hover:bg-white/5 transition-all text-left">
+                      <td className="p-3 text-slate-400 font-bold uppercase">{p.date.split('-').slice(1).reverse().join('/')}</td>
+                      <td className="p-3 text-slate-400 font-bold uppercase whitespace-nowrap">{format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))}</td>
                       <td className="p-3 text-white font-black uppercase">{p.theme}</td>
-                      <td className="p-3 text-right flex justify-end gap-2 items-center">
+                      <td className="p-3 text-indigo-400 font-bold uppercase">{p.coHosts ? `${p.hostName} + ${p.coHosts}` : p.hostName}</td>
+                      <td className="p-3 text-right flex justify-end gap-2 items-center text-left">
                           {p.status === 'pending' ? (
-                            isStaff ? <button onClick={()=>handleApprove(p)} className="p-1.5 text-emerald-400 bg-emerald-500/10 rounded-lg"><CheckCircle size={16}/></button> : <span className="text-[8px] uppercase text-amber-500 bg-amber-500/5 px-2 py-1 rounded border border-amber-500/20">Pending</span>
+                            isStaff ? (
+                               <button onClick={()=>handleApprove(p)} className="p-1.5 text-emerald-400 bg-emerald-500/10 rounded-lg border border-emerald-500/20 hover:scale-105 transition-all"><CheckCircle size={16}/></button>
+                            ) : (
+                               <div className="flex items-center gap-1 text-amber-500 bg-amber-500/5 px-2 py-1 rounded border border-amber-500/20"><Clock3 size={12}/> <span className="text-[8px] font-black uppercase">Pending</span></div>
+                            )
                           ) : (
-                            <div className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20"><CheckCircle size={12}/> <span className="text-[8px] font-black uppercase">Active</span></div>
+                            isStaff ? (
+                               p.pushedToPublic ? <button onClick={()=>handleUnpublish(p)} title="Unpublish" className="p-1.5 text-rose-400 bg-rose-500/10 rounded-lg hover:scale-105 transition-all"><EyeOff size={16}/></button> :
+                               (p.publicPushMode === 'ready' || p.publicPushMode === 'auto') ? <button onClick={()=>handleManualPush(p)} title="Publish" className="p-1.5 text-indigo-400 bg-indigo-500/10 rounded-lg hover:scale-105 transition-all"><Send size={16}/></button> :
+                               <div className="text-[8px] font-black text-slate-600 px-2 py-1 bg-white/5 rounded border border-white/5 whitespace-nowrap">On Hold</div>
+                            ) : (
+                               (!p.pushedToPublic && p.publicPushMode === 'manual' && p.hostId === currentUser.id) ? (
+                                 <button onClick={() => handleSignalReady(p)} className="flex items-center gap-1 text-amber-400 bg-amber-400/10 px-2 py-1 rounded border border-amber-400/20 hover:bg-amber-400/20 transition-all text-left">
+                                   <BellRing size={12}/> <span className="text-[8px] font-black uppercase">Signal Ready</span>
+                                 </button>
+                               ) : p.pushedToPublic ? (
+                                 <div className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20"><CheckCircle size={12}/> <span className="text-[8px] font-black uppercase">Published</span></div>
+                               ) : (
+                                 <div className="flex items-center gap-1 text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-lg border border-indigo-500/20"><CheckCircle size={12}/> <span className="text-[8px] font-black uppercase">Approved</span></div>
+                               )
+                            )
                           )}
-                          {isStaff && <button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-1.5 text-slate-400 hover:text-white"><Edit2 size={14}/></button>}
-                          {isStaff && <button onClick={()=>setDeleteConfirm(p)} className="p-1.5 text-rose-500"><Trash2 size={14}/></button>}
+                          {isStaff && <button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-1.5 text-slate-400 hover:text-white transition-all text-left"><Edit2 size={14}/></button>}
+                          {isStaff && <button onClick={()=>setDeleteConfirm(p)} className="p-1.5 text-rose-500/60 hover:text-rose-500 transition-all text-left"><Trash2 size={14}/></button>}
                       </td>
                     </tr>
                   ))}
@@ -391,21 +425,21 @@ export default function App() {
         )}
 
         {view === 'Archive' && (
-          <div className="space-y-6 animate-in fade-in duration-500">
+          <div className="space-y-6 animate-in fade-in duration-500 text-left">
             {Object.keys(archivedPartiesByMonth).length === 0 ? (
-               <div className="text-center py-20 bg-[#111827] rounded-3xl border border-white/5"><Clock3 size={40} className="mx-auto text-slate-800 mb-4" /><p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">No Archived Parties</p></div>
+               <div className="text-center py-20 bg-[#111827] rounded-3xl border border-white/5 text-left"><Clock3 size={40} className="mx-auto text-slate-800 mb-4" /><p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">No Archived Parties</p></div>
             ) : (
               Object.keys(archivedPartiesByMonth).sort((a,b) => new Date(b) - new Date(a)).map(month => (
-                <div key={month} className="space-y-2">
+                <div key={month} className="space-y-2 text-left">
                   <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-2 flex items-center gap-2"><span className="w-8 h-[1px] bg-indigo-500/30"></span> {month}</h3>
-                  <div className="bg-[#111827]/60 border border-white/5 rounded-2xl overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
-                    <table className="w-full text-left text-[10px]">
-                      <tbody className="divide-y divide-white/5">
+                  <div className="bg-[#111827]/60 border border-white/5 rounded-2xl overflow-hidden opacity-80 hover:opacity-100 transition-opacity text-left">
+                    <table className="w-full text-left text-[10px] text-left">
+                      <tbody className="divide-y divide-white/5 text-left">
                         {archivedPartiesByMonth[month].slice().reverse().map(p => (
-                          <tr key={p.id} className="hover:bg-white/5 transition-all">
-                            <td className="p-3 text-slate-500 w-20">{p.date.split('-').reverse().slice(0,2).join('/')}</td>
+                          <tr key={p.id} className="hover:bg-white/5 transition-all text-left">
+                            <td className="p-3 text-slate-500 w-20 font-bold uppercase">{p.date.split('-').reverse().slice(0,2).join('/')}</td>
                             <td className="p-3 text-white font-bold uppercase">{p.theme}</td>
-                            <td className="p-3 text-slate-500 truncate max-w-[120px]">{p.hostName}</td>
+                            <td className="p-3 text-slate-400 font-bold uppercase truncate max-w-[150px]">{p.hostName}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -418,20 +452,20 @@ export default function App() {
         )}
 
         {view === 'Guide' && (
-          <div className="space-y-4">
-            <a href={RAILWAY_GUIDE_URL} target="_blank" className="block bg-[#0f2e26]/30 border border-emerald-500/20 p-6 rounded-3xl flex items-center justify-between hover:bg-[#0f2e26]/50 transition-all cursor-pointer group shadow-xl">
-               <div className="flex gap-4 items-center">
+          <div className="space-y-4 text-left">
+            <a href={RAILWAY_GUIDE_URL} target="_blank" className="block bg-[#0f2e26]/30 border border-emerald-500/20 p-6 rounded-3xl flex items-center justify-between hover:bg-[#0f2e26]/50 transition-all cursor-pointer group shadow-xl text-left text-left">
+               <div className="flex gap-4 items-center text-left">
                  <Globe size={20} className="text-emerald-500 group-hover:scale-110 transition-transform"/>
-                 <div>
+                 <div className="text-left">
                    <h2 className="text-lg font-black text-emerald-400 uppercase tracking-tight leading-none flex items-center gap-2">Hub Guide Preview <ExternalLink size={14} className="opacity-40"/></h2>
                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1.5">What the public sees on the Community Calendar</p>
                  </div>
                </div>
-               <div className="bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-2xl text-[9px] font-black uppercase border border-emerald-500/20">{activeParties.filter(p => p.pushedToPublic).length} Live</div>
+               <div className="bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-2xl text-[9px] font-black uppercase border border-emerald-500/20 text-left">{activeParties.filter(p => p.pushedToPublic).length} Live</div>
             </a>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
               {activeParties.filter(p => p.pushedToPublic).map(p => (
-                <div key={p.id} className="bg-[#111827] border border-white/5 p-4 rounded-2xl relative overflow-hidden group">
+                <div key={p.id} className="bg-[#111827] border border-white/5 p-4 rounded-2xl relative overflow-hidden group text-left">
                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 shadow-[0_0_10px_emerald]"></div>
                    <h3 className="text-base font-black text-white uppercase mb-0.5">{p.theme}</h3>
                    <p className="text-[9px] font-bold text-indigo-400 uppercase mb-1">{p.hostName}</p>
@@ -443,21 +477,21 @@ export default function App() {
         )}
 
         {(view === 'Monthly' || view === 'Weekly' || view === 'Daily') && (
-          <div className="space-y-6">
-            <div className="bg-[#111827] border border-white/5 rounded-xl p-3 flex items-center justify-between shadow-xl">
-               <button onClick={()=>{const d=new Date(baseDate); d.setDate(d.getDate()-(view==='Weekly'?7:1)); setBaseDate(d);}} className="p-1.5 bg-[#1f2937] rounded-lg text-slate-500 hover:text-white transition-all"><ChevronLeft size={18}/></button>
-               <div className="flex items-center gap-2 font-black text-white uppercase tracking-widest text-xs"><Calendar size={14} className="text-indigo-500"/> {baseDate.toLocaleDateString('en-US', {month: 'long', year: 'numeric'})}</div>
-               <button onClick={()=>{const d=new Date(baseDate); d.setDate(d.getDate()+(view==='Weekly'?7:1)); setBaseDate(d);}} className="p-1.5 bg-[#1f2937] rounded-lg text-slate-500 hover:text-white transition-all"><ChevronRight size={18}/></button>
+          <div className="space-y-6 text-left">
+            <div className="bg-[#111827] border border-white/5 rounded-xl p-3 flex items-center justify-between shadow-xl text-left">
+               <button onClick={()=>{const d=new Date(baseDate); d.setDate(d.getDate()-(view==='Weekly'?7:1)); setBaseDate(d);}} className="p-1.5 bg-[#1f2937] rounded-lg text-slate-500 hover:text-white transition-all text-left"><ChevronLeft size={18}/></button>
+               <div className="flex items-center gap-2 font-black text-white uppercase tracking-widest text-xs text-left"><Calendar size={14} className="text-indigo-500"/> {baseDate.toLocaleDateString('en-US', {month: 'long', year: 'numeric'})}</div>
+               <button onClick={()=>{const d=new Date(baseDate); d.setDate(d.getDate()+(view==='Weekly'?7:1)); setBaseDate(d);}} className="p-1.5 bg-[#1f2937] rounded-lg text-slate-500 hover:text-white transition-all text-left"><ChevronRight size={18}/></button>
             </div>
             {view === 'Monthly' ? (
-              <div className="grid grid-cols-7 gap-2">
+              <div className="grid grid-cols-7 gap-2 text-left">
                 {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="text-center text-[9px] font-black text-slate-600 uppercase mb-2">{d}</div>)}
                 {Array.from({length: new Date(baseDate.getFullYear(), baseDate.getMonth(), 1).getDay()}).map((_,i)=><div key={i} className="aspect-square bg-black/10 rounded-xl"></div>)}
                 {Array.from({length: new Date(baseDate.getFullYear(), baseDate.getMonth()+1, 0).getDate()}).map((_,i)=>{
                    const ds = `${baseDate.getFullYear()}-${String(baseDate.getMonth()+1).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`;
                    const has = parties.some(p => p.date === ds);
                    return (
-                     <div key={i} onClick={() => { setBaseDate(new Date(ds + 'T12:00:00')); setView('Daily'); }} className="aspect-square border border-white/5 rounded-xl flex items-center justify-center hover:bg-white/5 cursor-pointer relative transition-all active:scale-95">
+                     <div key={i} onClick={() => { setBaseDate(new Date(ds + 'T12:00:00')); setView('Daily'); }} className="aspect-square border border-white/5 rounded-xl flex items-center justify-center hover:bg-white/5 cursor-pointer relative transition-all active:scale-95 text-left">
                        <span className="text-xs font-bold text-slate-500">{i+1}</span>
                        {has && <div className="absolute bottom-1 w-1 h-1 bg-indigo-500 rounded-full shadow-[0_0_3px_indigo]"></div>}
                      </div>
@@ -465,29 +499,29 @@ export default function App() {
                 })}
               </div>
             ) : (
-              <div className="space-y-8">
+              <div className="space-y-8 text-left">
                  {Array.from({length: view === 'Weekly' ? 7 : 1}).map((_,i) => {
                   const d = new Date(baseDate); d.setDate(d.getDate()+i);
                   const ds = d.toISOString().split('T')[0];
                   const daily = activeParties.filter(p => p.date === ds);
                   const style = DAY_STYLES[d.getDay()];
                   return (
-                    <div key={i} className="relative pl-6">
+                    <div key={i} className="relative pl-6 text-left">
                        <div className={`absolute left-1.5 top-1.5 bottom-0 w-0.5 ${style.border} bg-current opacity-20 rounded-full`}></div>
                        <h3 className={`text-base font-black uppercase tracking-tighter mb-3 ${style.text}`}>{d.getDate()} {d.toLocaleDateString('en-US', {weekday:'long'}).toUpperCase()}</h3>
-                       <div className="space-y-2">
+                       <div className="space-y-2 text-left">
                          {daily.map(p => (
-                           <div key={p.id} className="p-3 bg-[#111827] border border-white/5 rounded-xl flex justify-between items-center group">
-                              <div>
+                           <div key={p.id} className="p-3 bg-[#111827] border border-white/5 rounded-xl flex justify-between items-center group text-left">
+                              <div className="text-left">
                                 <h4 className="text-sm font-black text-white uppercase">{p.theme}</h4>
-                                <p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">{format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))} PT</p>
+                                <p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">{format12h(p.startTime)} - {format12h(getEndTime(p.startTime, p.duration || 2))} PT — {p.hostName}</p>
                               </div>
-                              <div className="flex gap-2">
-                                {isStaff && <button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-1.5 text-indigo-400 bg-white/5 rounded-lg"><Edit2 size={12}/></button>}
+                              <div className="flex gap-2 text-left">
+                                {isStaff && <button onClick={()=>{setEditingId(p.id); setFormData(p); setShowForm(true);}} className="p-1.5 text-indigo-400 bg-white/5 rounded-lg hover:scale-110 transition-all text-left"><Edit2 size={12}/></button>}
                               </div>
                            </div>
                          ))}
-                         <div onClick={()=>{setEditingId(null); setFormData({hostName: currentUser.role === 'host' ? `${currentUser.username} (${currentUser.program})` : '', theme: '', date: ds, startTime: '20:00', duration: 2, isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="p-3 bg-black/20 border border-white/5 border-dashed rounded-xl flex justify-between items-center group cursor-pointer hover:bg-white/5 transition-all"><span className="text-[9px] font-black text-slate-600 uppercase">ADD TO {d.toLocaleDateString('en-US', {weekday:'short'}).toUpperCase()}</span><Plus size={14} className="text-slate-800 group-hover:text-white"/></div>
+                         <div onClick={()=>{setEditingId(null); setFormData({hostName: currentUser.role === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: ds, startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="p-3 bg-black/20 border border-white/5 border-dashed rounded-xl flex justify-between items-center group cursor-pointer hover:bg-white/5 transition-all text-left"><span className="text-[9px] font-black text-slate-600 uppercase">ADD TO {d.toLocaleDateString('en-US', {weekday:'short'}).toUpperCase()}</span><Plus size={14} className="text-slate-800 group-hover:text-white transition-all"/></div>
                        </div>
                     </div>
                   );
@@ -500,112 +534,115 @@ export default function App() {
 
       {/* MODALS */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 overflow-y-auto scrollbar-hide">
-          <div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-w-sm p-6 relative my-auto shadow-2xl">
-            <button onClick={()=>setShowForm(false)} className="absolute top-5 right-5 text-slate-500"><X size={20}/></button>
-            <h2 className="text-xl font-black text-white uppercase tracking-tighter mb-6">{editingId ? 'EDIT' : 'NEW'} PARTY</h2>
-            {formError && <div className="bg-rose-500/10 text-rose-400 p-3 rounded-xl text-[10px] font-bold uppercase mb-4 border border-rose-500/20">{formError}</div>}
-            <form onSubmit={saveEvent} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">HOST</label><input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs outline-none focus:border-indigo-500"/></div>
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">THEME TITLE</label><input required value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs outline-none focus:border-indigo-500"/></div>
+        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 overflow-y-auto scrollbar-hide text-left">
+          <div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-w-sm p-6 relative my-auto shadow-2xl text-left">
+            <button onClick={()=>setShowForm(false)} className="absolute top-5 right-5 text-slate-500 hover:text-white transition-all text-left"><X size={20}/></button>
+            <h2 className="text-xl font-black text-white uppercase tracking-tighter mb-6 leading-none text-left">{editingId ? 'EDIT REGISTRY' : 'NEW REGISTRY'}</h2>
+            {formError && <div className="bg-rose-500/10 text-rose-400 p-3 rounded-xl text-[10px] font-bold uppercase mb-4 border border-rose-500/20 text-left">{formError}</div>}
+            <form onSubmit={saveEvent} className="space-y-4 text-left">
+              <div className="grid grid-cols-2 gap-3 text-left">
+                <div className="space-y-1 text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">HOST</label><input required value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs outline-none focus:border-indigo-500 shadow-inner text-left"/></div>
+                <div className="space-y-1 text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">CO-HOST</label><input value={formData.coHosts || ''} onChange={e=>setFormData({...formData, coHosts: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs outline-none focus:border-indigo-500 shadow-inner text-left"/></div>
               </div>
-              <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">ROOM LINK</label><input value={formData.roomLink || ''} onChange={e=>setFormData({...formData, roomLink: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs outline-none focus:border-indigo-500" placeholder="https://imvu.com/..."/></div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">DATE</label><input type="date" required value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px] outline-none"/></div>
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">TIME</label><input type="time" required value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px] outline-none"/></div>
-                <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">HRS</label><input type="number" step="0.5" required value={formData.duration} onChange={e=>setFormData({...formData, duration: Number(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px] outline-none"/></div>
+              <div className="space-y-1 text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">THEME TITLE</label><input required value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs outline-none focus:border-indigo-500 shadow-inner text-left"/></div>
+              <div className="space-y-1 text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">ROOM LINK</label><input value={formData.roomLink || ''} onChange={e=>setFormData({...formData, roomLink: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-bold text-xs outline-none focus:border-indigo-500 shadow-inner text-left" placeholder="https://imvu.com/..."/></div>
+              <div className="grid grid-cols-3 gap-2 text-left">
+                <div className="space-y-1 text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">DATE</label><input type="date" required value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px] outline-none shadow-inner text-left"/></div>
+                <div className="space-y-1 text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">TIME</label><input type="time" required value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px] outline-none shadow-inner text-left"/></div>
+                <div className="space-y-1 text-left"><label className="text-[9px] font-black text-slate-500 uppercase ml-1 block text-left">HRS</label><input type="number" step="0.5" required value={formData.duration} onChange={e=>setFormData({...formData, duration: Number(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-[10px] outline-none shadow-inner text-left"/></div>
               </div>
 
               {/* COMMUNITY SYNC SECTION */}
-              <div className="bg-[#13231f] border border-emerald-500/10 p-4 rounded-2xl space-y-4 shadow-inner">
-                <label className="flex items-start gap-4 cursor-pointer">
-                  <input type="checkbox" checked={formData.isPublic} onChange={e=>setFormData({...formData, isPublic: e.target.checked})} className="mt-1 w-5 h-5 rounded text-indigo-600 bg-black border-white/10 focus:ring-0 shadow-inner"/>
+              <div className="bg-[#13231f] border border-emerald-500/10 p-4 rounded-2xl space-y-4 shadow-inner text-left text-left">
+                <label className="flex items-start gap-4 cursor-pointer text-left">
+                  <input type="checkbox" checked={formData.isPublic} onChange={e=>setFormData({...formData, isPublic: e.target.checked})} className="mt-1 w-5 h-5 rounded text-indigo-600 bg-black border-white/10 focus:ring-0 shadow-inner text-left"/>
                   <div className="text-left">
-                    <span className="text-xs font-black uppercase text-emerald-400 tracking-tight leading-none block">COMMUNITY SYNC</span>
-                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1">Show in Community Calendar</p>
+                    <span className="text-xs font-black uppercase text-emerald-400 tracking-tight leading-none block text-left">COMMUNITY SYNC</span>
+                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1 text-left">Show in Community Calendar</p>
                   </div>
                 </label>
                 {formData.isPublic && (
-                  <div className="pl-9 pt-3 border-t border-white/5 flex flex-col gap-3 animate-in slide-in-from-top-2">
-                    <div className="flex flex-col gap-2.5">
-                      <label className="flex items-center gap-2.5 cursor-pointer text-[9px] font-black uppercase text-white">
-                        <input type="radio" checked={formData.publicPushMode==='auto'} onChange={()=>setFormData({...formData, publicPushMode:'auto'})} className="w-3.5 h-3.5 text-indigo-600 bg-black border-white/20 focus:ring-0 appearance-none rounded-full border checked:bg-indigo-600"/> AUTO-POST
+                  <div className="pl-9 pt-3 border-t border-white/5 flex flex-col gap-3 animate-in slide-in-from-top-2 text-left">
+                    <div className="flex flex-col gap-2.5 text-left">
+                      <label className="flex items-center gap-2.5 cursor-pointer text-[9px] font-black uppercase text-white text-left">
+                        <input type="radio" checked={formData.publicPushMode==='auto'} onChange={()=>setFormData({...formData, publicPushMode:'auto'})} className="w-3.5 h-3.5 text-indigo-600 bg-black border-white/20 focus:ring-0 appearance-none rounded-full border checked:bg-indigo-600 text-left"/> AUTO-POST (public upon approval)
                       </label>
-                      <label className="flex items-center gap-2.5 cursor-pointer text-[9px] font-black uppercase text-white">
-                        <input type="radio" checked={formData.publicPushMode==='manual'} onChange={()=>setFormData({...formData, publicPushMode:'manual'})} className="w-3.5 h-3.5 text-emerald-600 bg-black border-white/20 focus:ring-0 appearance-none rounded-full border checked:bg-emerald-600"/> HOLD (Wait for signal)
+                      <label className="flex items-center gap-2.5 cursor-pointer text-[9px] font-black uppercase text-white text-left">
+                        <input type="radio" checked={formData.publicPushMode==='manual'} onChange={()=>setFormData({...formData, publicPushMode:'manual'})} className="w-3.5 h-3.5 text-emerald-600 bg-black border-white/20 focus:ring-0 appearance-none rounded-full border checked:bg-emerald-600 text-left"/> HOLD (Wait for signal)
                       </label>
                     </div>
                   </div>
                 )}
               </div>
 
-              <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black uppercase text-[10px] shadow-xl active:scale-95 transition-all">SAVE PARTY</button>
+              <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-black uppercase text-[10px] shadow-xl active:scale-95 transition-all text-left text-center">
+                {isSaving ? "SAVING..." : (editingId ? "UPDATE PARTY" : "SUBMIT PARTY")}
+              </button>
             </form>
           </div>
         </div>
       )}
 
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-rose-500/20 p-8 rounded-3xl max-w-xs w-full text-center">
+        <div className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center p-4 text-left">
+          <div className="bg-[#111827] border border-rose-500/20 p-8 rounded-3xl max-w-xs w-full text-center shadow-2xl text-left">
             <Trash2 className="text-rose-500 mx-auto mb-6" size={30} /><h2 className="text-lg font-black text-white uppercase mb-2">Delete Party?</h2>
-            <div className="flex gap-3"><button onClick={() => setDeleteConfirm(null)} className="flex-1 py-4 bg-[#1f2937] text-slate-400 rounded-xl font-black uppercase text-[10px]">Cancel</button><button onClick={confirmDelete} className="flex-1 py-4 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px]">Delete</button></div>
+            <div className="flex gap-3 text-left"><button onClick={() => setDeleteConfirm(null)} className="flex-1 py-4 bg-[#1f2937] text-slate-400 rounded-xl font-black uppercase text-[10px] text-left text-center">Cancel</button><button onClick={confirmDelete} className="flex-1 py-4 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all text-left text-center">Delete</button></div>
           </div>
         </div>
       )}
 
       {showPasscodeForm && (
-        <div className="fixed inset-0 bg-black/95 z-[300] flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-w-sm p-8 relative">
-            <button onClick={() => setShowPasscodeForm(false)} className="absolute top-6 right-6 text-slate-500 hover:text-white"><X size={20}/></button>
-            <h2 className="text-xl font-black text-white uppercase mb-8">Security Settings</h2>
+        <div className="fixed inset-0 bg-black/95 z-[300] flex items-center justify-center p-4 text-left">
+          <div className="bg-[#111827] border border-white/5 rounded-3xl w-full max-w-sm p-8 relative shadow-2xl text-left">
+            <button onClick={() => setShowPasscodeForm(false)} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-all text-left"><X size={20}/></button>
+            <h2 className="text-xl font-black text-white uppercase mb-8 text-left text-left">Security Settings</h2>
             <form onSubmit={async (e) => {
               e.preventDefault();
               if (passcodeData.current !== currentUser.passcode) return alert("Current code incorrect.");
               if (passcodeData.new !== passcodeData.confirm) return alert("Codes mismatch.");
               await setDoc(doc(db, getPath('accounts'), currentUser.id), { ...currentUser, passcode: passcodeData.new }, { merge: true });
-              logAction("Changed Passcode"); setShowPasscodeForm(false); alert("Success.");
-            }} className="space-y-5">
-              <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Current Code</label>
-                <input required type={eyeCurrent ? "text" : "password"} value={passcodeData.current} onChange={e=>setPasscodeData({...passcodeData, current: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-bold"/>
-                <button type="button" onClick={()=>setEyeCurrent(!eyeCurrent)} className="absolute right-5 top-[42px] text-slate-600">{eyeCurrent?<EyeOff size={18}/>:<Eye size={18}/>}</button>
+              logAction("Changed Passcode"); setShowPasscodeForm(false);
+            }} className="space-y-5 text-left">
+              <div className="space-y-1.5 relative text-left"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block text-left text-left ml-1">Current Code</label>
+                <input required type={eyeCurrent ? "text" : "password"} value={passcodeData.current} onChange={e=>setPasscodeData({...passcodeData, current: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-bold shadow-inner text-left"/>
+                <button type="button" onClick={()=>setEyeCurrent(!eyeCurrent)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-all text-left">{eyeCurrent?<EyeOff size={18}/>:<Eye size={18}/>}</button>
               </div>
-              <div className="space-y-1.5 relative"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">New Code</label>
-                <input required type={eyeNew ? "text" : "password"} value={passcodeData.new} onChange={e=>setPasscodeData({...passcodeData, new: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-bold"/>
-                <button type="button" onClick={()=>setEyeNew(!eyeNew)} className="absolute right-5 top-[42px] text-slate-600">{eyeNew?<EyeOff size={18}/>:<Eye size={18}/>}</button>
+              <div className="space-y-1.5 relative text-left"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block text-left text-left ml-1">New Code</label>
+                <input required type={eyeNew ? "text" : "password"} value={passcodeData.new} onChange={e=>setPasscodeData({...passcodeData, new: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-5 text-sm text-white outline-none font-bold shadow-inner text-left"/>
+                <button type="button" onClick={()=>setEyeNew(!eyeNew)} className="absolute right-5 top-[42px] text-slate-600 hover:text-white transition-all text-left">{eyeNew?<EyeOff size={18}/>:<Eye size={18}/>}</button>
               </div>
-              <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black uppercase text-[11px]">Update Security</button>
+              <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black uppercase text-[11px] shadow-xl active:scale-95 transition-all mt-4 text-left text-center text-left">Update Security</button>
             </form>
           </div>
         </div>
       )}
 
       {showDash && (
-        <div className="fixed inset-0 bg-[#0a0f1d] z-[250] flex flex-col p-4 sm:p-8">
-          <header className="flex justify-between items-center mb-10 max-w-6xl mx-auto w-full"><h2 className="text-3xl font-black text-white uppercase tracking-tighter">Console</h2><button onClick={() => setShowDash(false)} className="p-3 bg-white/5 rounded-2xl text-slate-500"><X size={24}/></button></header>
-          <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col lg:flex-row gap-8 overflow-hidden">
-            <nav className="flex lg:flex-col gap-2">
-               <button onClick={()=>setDashTab('logs')} className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${dashTab==='logs'?'bg-indigo-600 text-white shadow-xl':'bg-white/5 text-slate-500 hover:text-slate-300'}`}><FileText size={18} className="mr-3 inline"/> Activity</button>
-               <button onClick={()=>setDashTab('accounts')} className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${dashTab==='accounts'?'bg-indigo-600 text-white shadow-xl':'bg-white/5 text-slate-500 hover:text-slate-300'}`}><Shield size={18} className="mr-3 inline"/> Access Control</button>
+        <div className="fixed inset-0 bg-[#0a0f1d] z-[250] flex flex-col p-4 sm:p-8 text-left">
+          <header className="flex justify-between items-center mb-10 max-w-6xl mx-auto w-full text-left"><h2 className="text-3xl font-black text-white uppercase tracking-tighter text-left">Console</h2><button onClick={() => setShowDash(false)} className="p-3 bg-white/5 rounded-2xl text-slate-500 hover:text-white transition-all text-left"><X size={24}/></button></header>
+          <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col lg:flex-row gap-8 overflow-hidden text-left">
+            <nav className="flex lg:flex-col gap-2 shrink-0 text-left">
+               <button onClick={()=>setDashTab('logs')} className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all text-left ${dashTab==='logs'?'bg-indigo-600 text-white shadow-xl':'bg-white/5 text-slate-500 hover:text-slate-300'}`}><FileText size={18} className="mr-3 inline"/> Activity</button>
+               <button onClick={()=>setDashTab('accounts')} className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all text-left ${dashTab==='accounts'?'bg-indigo-600 text-white shadow-xl':'bg-white/5 text-slate-500 hover:text-slate-300'}`}><Shield size={18} className="mr-3 inline"/> Access Control</button>
             </nav>
-            <div className="flex-1 bg-[#111827] border border-white/5 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+            <div className="flex-1 bg-[#111827] border border-white/5 rounded-3xl overflow-hidden shadow-2xl flex flex-col text-left">
                {dashTab === 'logs' ? (
-                 <div className="flex-1 overflow-y-auto p-2 scrollbar-hide"><table className="w-full border-collapse"><thead className="bg-[#0f172a] border-b border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500 sticky top-0"><tr className="text-left"><th className="p-4">Time</th><th className="p-4">User</th><th className="p-4">Event</th></tr></thead><tbody className="divide-y divide-white/5">{actionLogs.map(l => (<tr key={l.id} className="text-[10px] hover:bg-white/5"><td className="p-4 font-bold text-slate-500">{l.time}</td><td className="p-4 font-black uppercase text-indigo-400">{l.username}</td><td className="p-4 font-black uppercase text-white tracking-tight">{l.action}</td></tr>))}</tbody></table></div>
+                 <div className="flex-1 overflow-y-auto p-2 scrollbar-hide text-left"><table className="w-full border-collapse text-left"><thead className="bg-[#0f172a] border-b border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500 sticky top-0 z-10 text-left"><tr className="text-left text-left"><th className="p-4 text-left">Time</th><th className="p-4 text-left">User</th><th className="p-4 text-left">Event</th></tr></thead><tbody className="divide-y divide-white/5 text-left">{actionLogs.map(l => (<tr key={l.id} className="text-[10px] hover:bg-white/5 text-left text-left"><td className="p-4 font-bold text-slate-500 text-left">{l.time}</td><td className="p-4 font-black uppercase text-indigo-400 text-left">{l.username}</td><td className="p-4 font-black uppercase text-white tracking-tight text-left">{l.action}</td></tr>))}</tbody></table></div>
                ) : (
-                 <div className="flex-1 overflow-y-auto p-8 scrollbar-hide">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                       <div className="space-y-6"><h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><UserPlus size={18} className="text-indigo-500"/> Provision Account</h3>
-                         <form onSubmit={async (e) => { e.preventDefault(); const id = Date.now().toString(); const n = { id, username: staffForm.u.trim(), role: staffForm.r, passcode: staffForm.p }; await setDoc(doc(db, getPath('accounts'), id), n); setStaffForm({u:'', r:'staff', p:''}); setStaffSuccess(`Active!`); setTimeout(()=>setStaffSuccess(''), 3000); }} className="space-y-4">
-                           <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-500 uppercase">Username</label><input required value={staffForm.u} onChange={e=>setStaffForm({...staffForm, u: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white font-bold"/></div>
-                           <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-500 uppercase">Role</label><select value={staffForm.r} onChange={e=>setStaffForm({...staffForm, r: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white font-black uppercase"><option value="staff">Staff</option><option value="admin">Admin</option><option value="host">Host</option></select></div>
-                           <div className="space-y-1.5 relative"><label className="text-[9px] font-black text-slate-500 uppercase">Passcode</label><input required type={eyeStaff ? "text" : "password"} value={staffForm.p} onChange={e=>setStaffForm({...staffForm, p: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white font-bold"/><button type="button" onClick={()=>setEyeStaff(!eyeStaff)} className="absolute right-4 top-[38px] text-slate-600">{eyeStaff?<EyeOff size={18}/>:<Eye size={18}/>}</button></div>
-                           <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-black uppercase text-[10px]">Activate Access</button>
-                           {staffSuccess && <div className="text-emerald-400 font-black text-[9px] text-center mt-2">{staffSuccess}</div>}
+                 <div className="flex-1 overflow-y-auto p-8 scrollbar-hide text-left">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                       <div className="space-y-6 text-left text-left"><h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2 text-left"><UserPlus size={18} className="text-indigo-500"/> Provision Account</h3>
+                         <form onSubmit={async (e) => { e.preventDefault(); const id = Date.now().toString(); const n = { id, username: staffForm.u.trim(), role: staffForm.r, passcode: staffForm.p }; await setDoc(doc(db, getPath('accounts'), id), n); setStaffForm({u:'', r:'staff', p:''}); setStaffSuccess(`Active!`); setTimeout(()=>setStaffSuccess(''), 3000); }} className="space-y-4 text-left">
+                           <div className="space-y-1.5 text-left"><label className="text-[9px] font-black text-slate-500 uppercase text-left ml-1 block">Username</label><input required value={staffForm.u} onChange={e=>setStaffForm({...staffForm, u: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white font-bold outline-none shadow-inner text-left"/></div>
+                           <div className="space-y-1.5 text-left"><label className="text-[9px] font-black text-slate-500 uppercase text-left ml-1 block">Role</label><select value={staffForm.r} onChange={e=>setStaffForm({...staffForm, r: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white font-black uppercase outline-none shadow-inner text-left"><option value="staff">Staff</option><option value="admin">Admin</option><option value="host">Host</option></select></div>
+                           <div className="space-y-1.5 relative text-left"><label className="text-[9px] font-black text-slate-500 uppercase text-left ml-1 block">Passcode</label><input required type={eyeStaff ? "text" : "password"} value={staffForm.p} onChange={e=>setStaffForm({...staffForm, p: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white font-bold outline-none shadow-inner text-left"/><button type="button" onClick={()=>setEyeStaff(!eyeStaff)} className="absolute right-4 top-[38px] text-slate-600 hover:text-white transition-all text-left">{eyeStaff?<EyeOff size={18}/>:<Eye size={18}/>}</button></div>
+                           <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all text-left text-center">Activate Access</button>
+                           {staffSuccess && <div className="text-emerald-400 font-black text-[9px] text-center mt-2 animate-pulse text-left">{staffSuccess}</div>}
                          </form>
                        </div>
-                       <div className="space-y-6"><h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><Users size={18} className="text-indigo-500"/> Registered Hub Access</h3>
-                         <div className="space-y-3">{accounts.map(acc => (<div key={acc.id} className="p-4 bg-black/40 border border-white/5 rounded-2xl flex justify-between items-center group"><div><div className="text-[11px] font-black text-white uppercase">{acc.username}</div><div className="text-[8px] font-black text-indigo-400 uppercase">{acc.role}</div></div><div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all"><button onClick={async ()=>{ if(confirm(`Revoke access for ${acc.username}?`)) { await deleteDoc(doc(db, getPath('accounts'), acc.id)); logAction(`Revoked Access: ${acc.username}`); }}} className="p-2 bg-white/5 text-rose-500/60 hover:text-rose-500 rounded-lg"><Trash2 size={12}/></button></div></div>))}</div>
+                       <div className="space-y-6 text-left text-left"><h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2 text-left"><Users size={18} className="text-indigo-500"/> Registered Hub Access</h3>
+                         <div className="space-y-3 text-left">{accounts.map(acc => (<div key={acc.id} className="p-4 bg-black/40 border border-white/5 rounded-2xl flex justify-between items-center group text-left"><div className="text-left"><div className="text-[11px] font-black text-white uppercase text-left">{acc.username}</div><div className="text-[8px] font-black text-indigo-500 uppercase text-left">{acc.role}</div></div><div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all text-left"><button onClick={()=>handleResetPassword(acc)} title="Reset Passcode" className="p-2 bg-white/5 text-slate-400 hover:text-indigo-400 rounded-lg text-left"><RefreshCcw size={12}/></button><button onClick={async ()=>{ if(confirm(`Revoke access for ${acc.username}?`)) { await deleteDoc(doc(db, getPath('accounts'), acc.id)); logAction(`Revoked Access: ${acc.username}`); }}} className="p-2 bg-white/5 text-rose-500/60 hover:text-rose-500 rounded-lg text-left"><Trash2 size={12}/></button></div></div>))}</div>
                        </div>
                     </div>
                  </div>
