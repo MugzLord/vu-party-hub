@@ -292,6 +292,14 @@ export default function App() {
   const handleSignalReady = (p) => { setDoc(doc(db, getPath('parties'), p.id), { ...p, publicPushMode: 'ready' }); logAction(`Host Signal Ready: ${p.theme}`, currentUser, p.submittedBy, p.approvedBy); };
   const confirmDelete = async () => { if (deleteConfirm) { await deleteDoc(doc(db, getPath('parties'), deleteConfirm.id)); logAction(`Deleted ${deleteConfirm.theme}`, currentUser, deleteConfirm.submittedBy, deleteConfirm.approvedBy); setDeleteConfirm(null); } };
 
+  const handleResetPassword = async (acc) => {
+    const newPass = prompt(`New code for ${acc.username}:`);
+    if (newPass) {
+      await setDoc(doc(db, getPath('accounts'), acc.id), { ...acc, passcode: newPass.trim() }, { merge: true });
+      alert("Reset successful.");
+    }
+  };
+
   if (showAuthGate || !currentUser) {
     return (
       <div className="min-h-screen bg-[#0a0f1d] flex items-center justify-center p-4 font-sans text-left text-slate-200">
@@ -312,6 +320,11 @@ export default function App() {
                 )}
                 <button type="submit" disabled={!dbLoaded} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 mt-4 text-[11px]">ENTER HUB</button>
               </form>
+              <div className="mt-8 pt-6 border-t border-white/5 text-center">
+                <a href={GOOGLE_FORM_LINK} target="_blank" className="text-[10px] font-black text-slate-600 hover:text-indigo-400 uppercase tracking-widest transition-colors flex items-center justify-center gap-2">
+                  <ExternalLink size={14}/> Party Request Form
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -334,6 +347,9 @@ export default function App() {
           {currentUser.role === 'owner' && (
             <button onClick={()=>{setDashTab('logs'); setShowDash(true);}} className="p-1.5 bg-[#1f2937] rounded-lg text-slate-400 hover:text-white border border-white/5 shadow"><FileText size={16}/></button>
           )}
+          <a href={GOOGLE_FORM_LINK} target="_blank" className="p-1.5 bg-[#1f2937] rounded-lg text-slate-400 hover:text-white border border-white/5 shadow" title="Official VU Form">
+            <ExternalLink size={16}/>
+          </a>
           <button onClick={()=>{setEditingId(null); setFormError(''); setFormData({hostName: currentUser.role === 'host' ? `${currentUser.username} (${currentUser.program})` : '', coHosts: '', theme: '', date: '', startTime: '20:00', duration: 2, description: '', roomLink: '', isPublic: true, publicPushMode: 'auto'}); setShowForm(true);}} className="bg-indigo-600 px-4 py-1.5 rounded-xl text-white font-black uppercase text-[9px] shadow-lg active:scale-90 transition-all">+ Schedule</button>
           <button onClick={()=>{setCurrentUser(null); localStorage.removeItem(SESSION_KEY); setShowAuthGate(true);}} className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"><LogOut size={16}/></button>
         </div>
