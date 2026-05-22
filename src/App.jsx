@@ -248,7 +248,7 @@ export default function App() {
             </div>
             <div className="grid grid-cols-7 gap-1">
                 {['M','T','W','T','F','S','S'].map((d, index) => (
-                    <div key={`day-header-${index}`} className="text-[12px] md:text-sm font-black text-slate-500 pb-2 text-center">{d}</div>
+                    <div key={`day-header-${index}`} className="text-[14px] md:text-sm font-black text-slate-500 pb-2 text-center">{d}</div>
                 ))}
                 {calendarDays.map((d, i) => (
                     <button 
