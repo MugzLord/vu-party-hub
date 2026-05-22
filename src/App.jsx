@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CalendarDays, LogOut, ChevronLeft, ChevronRight, 
-  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Archive, Users, Eye, EyeOff
+  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Archive, Users, Eye, EyeOff, X
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
@@ -80,11 +80,6 @@ export default function App() {
 
   const hasEvent = (date) => parties.some(p => new Date(p.date).toDateString() === date.toDateString());
 
-  const filteredParties = useMemo(() => {
-    if (!selectedDay) return [];
-    return parties.filter(p => new Date(p.date).toDateString() === selectedDay.toDateString());
-  }, [parties, selectedDay]);
-
   const handleAdd = async (e) => {
     e.preventDefault();
     await addDoc(collection(db, getPath('parties')), { ...formData, status: 'approved' });
@@ -134,22 +129,43 @@ export default function App() {
                     </button>
                 ))}
             </div>
-            {selectedDay && (
-                <div className="space-y-4">
-                    <h3 className="font-black text-white uppercase text-sm border-l-4 border-indigo-500 pl-3">Events for {formatDate(selectedDay)}</h3>
-                    {filteredParties.length > 0 ? filteredParties.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-sm text-slate-500">No events found.</p>}
-                </div>
-            )}
            </div>
         )}
+        {view === 'Manage' && isStaff && (
+            <div className="space-y-8">
+                <form onSubmit={handleAdd} className="bg-[#111827] border border-white/10 p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input placeholder="Theme" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
+                    <input placeholder="Host" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
+                    <input placeholder="Co-Host" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
+                    <select className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
+                        <option value="VUI">VUI</option><option value="StoryTeller">StoryTeller</option>
+                    </select>
+                    <select className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
+                        {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
+                    <button className="bg-indigo-600 rounded-lg font-bold p-4 col-span-full">ADD EVENT</button>
+                </form>
+                {parties.map(p => <div key={p.id} className="bg-[#111827] border border-white/5 p-4 rounded-xl flex justify-between items-center"><span className="font-bold">{p.theme} ({formatDate(p.date)})</span><button onClick={()=>handleDelete(p.id)}><Trash2 size={16} className="text-rose-500"/></button></div>)}
+            </div>
+        )}
       </main>
+
+      {selectedDay && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[100]">
+           <div className="bg-[#111827] p-6 rounded-3xl w-full max-w-lg border border-white/10 space-y-4">
+              <div className="flex justify-between items-center"><h2 className="font-black text-lg">Events for {selectedDay.toDateString()}</h2><button onClick={()=>setSelectedDay(null)}><X size={20}/></button></div>
+              {parties.filter(p => new Date(p.date).toDateString() === selectedDay.toDateString()).map(p => <EventCard key={p.id} p={p}/>)}
+           </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function EventCard({ p }) {
     return (
-        <div className="bg-[#111827] border border-white/5 p-5 rounded-2xl">
+        <div className="bg-[#0a0f1d] border border-white/5 p-5 rounded-2xl">
             <div className="font-black text-white text-lg mb-2">{p.theme}</div>
             <div className="flex flex-wrap gap-4 text-xs text-slate-400 font-bold">
                 <div className="flex items-center gap-1.5"><Clock size={14}/> {p.startTime} <span className="opacity-60 text-[10px]">(PT)</span></div>
