@@ -93,7 +93,6 @@ export default function App() {
   
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
   
-  // Filter for upcoming events only
   const today = new Date();
   today.setHours(0,0,0,0);
   const upcomingParties = parties.filter(p => new Date(p.date) >= today).sort((a,b)=>new Date(a.date)-new Date(b.date));
@@ -149,16 +148,16 @@ export default function App() {
         {view === 'Manage' && isStaff && (
             <div className="space-y-8">
                 <form onSubmit={handleAdd} className="bg-[#111827] border border-white/10 p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input placeholder="Theme" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
-                    <input placeholder="Host" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
-                    <input placeholder="Co-Host" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
-                    <select className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
+                    <input placeholder="Event Theme" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
+                    <input placeholder="Host Name" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
+                    <input placeholder="Co-Host Name" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
+                    <select className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
                         <option value="VUI">VUI</option><option value="StoryTeller">StoryTeller</option>
                     </select>
-                    <select className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
+                    <select className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
                         {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
-                    <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
+                    <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
                     <button className="bg-indigo-600 rounded-lg font-bold p-4 col-span-full">ADD EVENT</button>
                 </form>
                 {parties.map(p => <div key={p.id} className="bg-[#111827] border border-white/5 p-4 rounded-xl flex justify-between items-center"><span className="font-bold">{p.theme} ({formatDate(p.date)})</span><div className="flex gap-2"><button onClick={()=>setEditModal(p)}><Edit size={16} className="text-blue-400"/></button><button onClick={()=>handleDelete(p.id)}><Trash2 size={16} className="text-rose-500"/></button></div></div>)}
@@ -179,16 +178,16 @@ export default function App() {
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[110]">
            <form onSubmit={handleUpdate} className="bg-[#111827] p-6 rounded-3xl w-full max-w-lg border border-white/10 space-y-4">
               <h2 className="font-black text-lg">Edit Event</h2>
-              <input className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.theme} onChange={e=>setEditModal({...editModal, theme: e.target.value})}/>
-              <input className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.hostName} onChange={e=>setEditModal({...editModal, hostName: e.target.value})}/>
-              <input className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.coHost} onChange={e=>setEditModal({...editModal, coHost: e.target.value})}/>
-              <select className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.performers} onChange={e=>setEditModal({...editModal, performers: e.target.value})}>
+              <input placeholder="Event Theme" className="w-full bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600" value={editModal.theme} onChange={e=>setEditModal({...editModal, theme: e.target.value})}/>
+              <input placeholder="Host Name" className="w-full bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600" value={editModal.hostName} onChange={e=>setEditModal({...editModal, hostName: e.target.value})}/>
+              <input placeholder="Co-Host Name" className="w-full bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600" value={editModal.coHost} onChange={e=>setEditModal({...editModal, coHost: e.target.value})}/>
+              <select className="w-full bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400" value={editModal.performers} onChange={e=>setEditModal({...editModal, performers: e.target.value})}>
                 <option value="VUI">VUI</option><option value="StoryTeller">StoryTeller</option>
               </select>
-              <select className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.startTime} onChange={e=>setEditModal({...editModal, startTime: e.target.value})}>
+              <select className="w-full bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400" value={editModal.startTime} onChange={e=>setEditModal({...editModal, startTime: e.target.value})}>
                 {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              <input type="date" className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.date} onChange={e=>setEditModal({...editModal, date: e.target.value})}/>
+              <input type="date" className="w-full bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400" value={editModal.date} onChange={e=>setEditModal({...editModal, date: e.target.value})}/>
               <button className="bg-indigo-600 w-full p-4 rounded-lg flex items-center justify-center gap-2"><Save size={16}/> SAVE CHANGES</button>
            </form>
         </div>
