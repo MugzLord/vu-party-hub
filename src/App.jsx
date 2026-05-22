@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CalendarDays, LogOut, ChevronLeft, ChevronRight, 
-  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Archive, Users, Eye, EyeOff, X, Save
+  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Users, X, Save
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
@@ -122,7 +122,7 @@ export default function App() {
                 <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl">
                     <h3 className="font-black text-lg mb-4">Upcoming Events</h3>
                     <div className="space-y-3">
-                        {upcomingParties.length > 0 ? upcomingParties.slice(0,5).map(p=><div key={p.id} className="p-3 bg-black/40 rounded-lg flex justify-between"><span>{p.theme}</span><span className="text-indigo-400 font-bold">{formatDate(p.date)}</span></div>) : <div className="text-slate-500 text-sm">No upcoming events scheduled.</div>}
+                        {upcomingParties.length > 0 ? upcomingParties.slice(0,5).map(p=><div key={p.id} className="p-3 bg-black/40 rounded-lg flex justify-between items-center"><span className="font-bold">{p.theme} <span className="text-slate-500 text-xs ml-2 italic">Host: {p.hostName}</span></span><span className="text-indigo-400 font-bold">{formatDate(p.date)}</span></div>) : <div className="text-slate-500 text-sm">No upcoming events scheduled.</div>}
                     </div>
                 </div>
             </div>
@@ -135,7 +135,7 @@ export default function App() {
                 <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}><ChevronRight size={20}/></button>
             </div>
             <div className="grid grid-cols-7 gap-1">
-                {['S','M','T','W','T','F','S'].map(d=><div key={d} className="text-center text-[10px] font-black text-slate-500">{d}</div>)}
+                {['S','M','T','W','T','F','S'].map((d, index)=><div key={`day-header-${index}`} className="text-center text-[10px] font-black text-slate-500">{d}</div>)}
                 {calendarDays.map((d, i) => (
                     <button key={i} onClick={() => d && setSelectedDay(d)} className={`aspect-square flex flex-col items-center justify-center text-xs font-bold rounded-lg relative ${!d ? 'bg-transparent' : selectedDay?.toDateString() === d.toDateString() ? 'bg-indigo-600' : 'bg-[#111827] hover:bg-white/5'}`}>
                         {d?.getDate()}
@@ -160,7 +160,7 @@ export default function App() {
                     <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
                     <button className="bg-indigo-600 rounded-lg font-bold p-4 col-span-full">ADD EVENT</button>
                 </form>
-                {parties.map(p => <div key={p.id} className="bg-[#111827] border border-white/5 p-4 rounded-xl flex justify-between items-center"><span className="font-bold">{p.theme} ({formatDate(p.date)})</span><div className="flex gap-2"><button onClick={()=>setEditModal(p)}><Edit size={16} className="text-blue-400"/></button><button onClick={()=>handleDelete(p.id)}><Trash2 size={16} className="text-rose-500"/></button></div></div>)}
+                {parties.map(p => <div key={p.id} className="bg-[#111827] border border-white/5 p-4 rounded-xl flex justify-between items-center"><span className="font-bold">{p.theme} <span className="text-slate-500 text-xs italic">({p.hostName}{p.coHost ? ` / ${p.coHost}` : ''})</span> <span className="text-slate-600">|</span> <span className="text-xs">{formatDate(p.date)}</span></span><div className="flex gap-2"><button onClick={()=>setEditModal(p)}><Edit size={16} className="text-blue-400"/></button><button onClick={()=>handleDelete(p.id)}><Trash2 size={16} className="text-rose-500"/></button></div></div>)}
             </div>
         )}
       </main>
@@ -202,7 +202,7 @@ function EventCard({ p }) {
             <div className="font-black text-white text-lg mb-2">{p.theme}</div>
             <div className="flex flex-wrap gap-4 text-xs text-slate-400 font-bold">
                 <div className="flex items-center gap-1.5"><Clock size={14}/> {p.startTime} <span className="opacity-60 text-[10px]">(PT)</span></div>
-                <div className="flex items-center gap-1.5"><User size={14}/> Host: {p.hostName}</div>
+                <div className="flex items-center gap-1.5"><User size={14}/> Host: {p.hostName} {p.coHost && <span className="opacity-60">/ {p.coHost}</span>}</div>
                 <div className="flex items-center gap-1.5 text-indigo-400"><Users size={14}/> {p.performers}</div>
             </div>
         </div>
