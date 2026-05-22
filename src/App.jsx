@@ -122,11 +122,20 @@ export default function App() {
                 <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl">
                     <h3 className="font-black text-lg mb-4">Upcoming Events</h3>
                     <div className="space-y-3">
-                        {upcomingParties.length > 0 ? upcomingParties.slice(0,5).map(p=><div key={p.id} className="p-3 bg-black/40 rounded-lg flex justify-between items-center"><span className="font-bold">{p.theme} <span className="text-slate-500 text-xs ml-2 italic">Host: {p.hostName}</span></span><span className="text-indigo-400 font-bold">{formatDate(p.date)}</span></div>) : <div className="text-slate-500 text-sm">No upcoming events scheduled.</div>}
+                        {upcomingParties.length > 0 ? upcomingParties.map(p => (
+                            <div key={p.id} className="p-4 bg-black/40 rounded-xl flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                                <span className="font-bold text-white">{p.theme} <span className="text-slate-500 text-xs ml-2 italic">Host: {p.hostName}</span></span>
+                                <div className="flex gap-3 text-indigo-400 font-bold text-sm">
+                                    <span>{formatDate(p.date)}</span>
+                                    <span>{p.startTime}</span>
+                                </div>
+                            </div>
+                        )) : <div className="text-slate-500 text-sm">No upcoming events scheduled.</div>}
                     </div>
                 </div>
             </div>
         )}
+        
         {view === 'Monthly' && (
            <div className="space-y-6">
             <div className="flex justify-between items-center bg-[#111827] p-4 rounded-xl border border-white/5">
@@ -135,9 +144,11 @@ export default function App() {
                 <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}><ChevronRight size={20}/></button>
             </div>
             <div className="grid grid-cols-7 gap-1">
-                {['S','M','T','W','T','F','S'].map((d, index)=><div key={`day-header-${index}`} className="text-center text-[10px] font-black text-slate-500">{d}</div>)}
+                {['S','M','T','W','T','F','S'].map((d, index) => (
+                    <div key={`day-header-${index}`} className="text-center text-[10px] font-black text-slate-500 pb-2">{d}</div>
+                ))}
                 {calendarDays.map((d, i) => (
-                    <button key={i} onClick={() => d && setSelectedDay(d)} className={`aspect-square flex flex-col items-center justify-center text-xs font-bold rounded-lg relative ${!d ? 'bg-transparent' : selectedDay?.toDateString() === d.toDateString() ? 'bg-indigo-600' : 'bg-[#111827] hover:bg-white/5'}`}>
+                    <button key={`day-cell-${i}`} onClick={() => d && setSelectedDay(d)} className={`aspect-square flex flex-col items-center justify-center text-xs font-bold rounded-lg relative ${!d ? 'bg-transparent' : selectedDay?.toDateString() === d.toDateString() ? 'bg-indigo-600' : 'bg-[#111827] hover:bg-white/5'}`}>
                         {d?.getDate()}
                         {d && hasEvent(d) && <div className="absolute bottom-1 w-1 h-1 bg-indigo-400 rounded-full"></div>}
                     </button>
@@ -145,31 +156,59 @@ export default function App() {
             </div>
            </div>
         )}
+        
         {view === 'Manage' && isStaff && (
             <div className="space-y-8">
                 <form onSubmit={handleAdd} className="bg-[#111827] border border-white/10 p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input placeholder="Event Theme" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
-                    <input placeholder="Host Name" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
-                    <input placeholder="Co-Host Name" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
-                    <select className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
-                        <option value="VUI">VUI</option><option value="StoryTeller">StoryTeller</option>
+                    <input required placeholder="Event Theme" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
+                    <input required placeholder="Host Name" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
+                    <input placeholder="Co-Host Name (Optional)" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
+                    <select required className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400 focus:outline-none focus:border-indigo-500" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
+                        <option value="VUI">VUI</option>
+                        <option value="StoryTeller">StoryTeller</option>
                     </select>
-                    <select className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
+                    <select required className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400 focus:outline-none focus:border-indigo-500" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
                         {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
-                    <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
-                    <button className="bg-indigo-600 rounded-lg font-bold p-4 col-span-full">ADD EVENT</button>
+                    <input required type="date" className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400 focus:outline-none focus:border-indigo-500" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
+                    <button type="submit" className="bg-indigo-600 rounded-lg font-bold p-4 col-span-full hover:bg-indigo-500 transition-colors">ADD EVENT</button>
                 </form>
-                {parties.map(p => <div key={p.id} className="bg-[#111827] border border-white/5 p-4 rounded-xl flex justify-between items-center"><span className="font-bold">{p.theme} <span className="text-slate-500 text-xs italic">({p.hostName}{p.coHost ? ` / ${p.coHost}` : ''})</span> <span className="text-slate-600">|</span> <span className="text-xs">{formatDate(p.date)}</span></span><div className="flex gap-2"><button onClick={()=>setEditModal(p)}><Edit size={16} className="text-blue-400"/></button><button onClick={()=>handleDelete(p.id)}><Trash2 size={16} className="text-rose-500"/></button></div></div>)}
+
+                <div className="space-y-3">
+                    <h3 className="font-black text-lg mb-4 text-white">Active Events</h3>
+                    {parties.map(p => (
+                        <div key={p.id} className="bg-[#111827] border border-white/5 p-5 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div className="flex flex-col gap-1">
+                                <span className="font-bold text-white text-lg">{p.theme}</span>
+                                <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 font-bold mt-1">
+                                    <span>{p.date}</span>
+                                    <span>{p.startTime}</span>
+                                    <span>Host: {p.hostName}{p.coHost ? ` / ${p.coHost}` : ''}</span>
+                                    <span className="text-indigo-400">{p.performers}</span>
+                                </div>
+                            </div>
+                            <div className="flex gap-2 w-full md:w-auto justify-end">
+                                <button onClick={() => setEditModal(p)} className="p-2 hover:bg-white/5 rounded-lg text-indigo-400 transition-colors"><Edit size={18}/></button>
+                                <button onClick={() => handleDelete(p.id)} className="p-2 hover:bg-white/5 rounded-lg text-rose-500 transition-colors"><Trash2 size={18}/></button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         )}
       </main>
 
       {selectedDay && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[100]">
-           <div className="bg-[#111827] p-6 rounded-3xl w-full max-w-lg border border-white/10 space-y-4">
-              <div className="flex justify-between items-center"><h2 className="font-black text-lg">Events for {selectedDay.toDateString()}</h2><button onClick={()=>setSelectedDay(null)}><X size={20}/></button></div>
+           <div className="bg-[#111827] p-6 rounded-3xl w-full max-w-lg border border-white/10 space-y-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-2">
+                  <h2 className="font-black text-lg">Events for {selectedDay.toDateString()}</h2>
+                  <button onClick={() => setSelectedDay(null)} className="text-slate-400 hover:text-white"><X size={20}/></button>
+              </div>
               {parties.filter(p => new Date(p.date).toDateString() === selectedDay.toDateString()).map(p => <EventCard key={p.id} p={p}/>)}
+              {parties.filter(p => new Date(p.date).toDateString() === selectedDay.toDateString()).length === 0 && (
+                  <p className="text-slate-500 text-sm">No events scheduled for this date.</p>
+              )}
            </div>
         </div>
       )}
@@ -177,18 +216,31 @@ export default function App() {
       {editModal && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[110]">
            <form onSubmit={handleUpdate} className="bg-[#111827] p-6 rounded-3xl w-full max-w-lg border border-white/10 space-y-4">
-              <h2 className="font-black text-lg">Edit Event</h2>
-              <input placeholder="Event Theme" className="w-full bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600" value={editModal.theme} onChange={e=>setEditModal({...editModal, theme: e.target.value})}/>
-              <input placeholder="Host Name" className="w-full bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600" value={editModal.hostName} onChange={e=>setEditModal({...editModal, hostName: e.target.value})}/>
-              <input placeholder="Co-Host Name" className="w-full bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600" value={editModal.coHost} onChange={e=>setEditModal({...editModal, coHost: e.target.value})}/>
-              <select className="w-full bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400" value={editModal.performers} onChange={e=>setEditModal({...editModal, performers: e.target.value})}>
-                <option value="VUI">VUI</option><option value="StoryTeller">StoryTeller</option>
+              <h2 className="font-black text-lg text-white">Edit Event</h2>
+              
+              <input required placeholder="Event Theme" className="w-full bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500" value={editModal.theme} onChange={e=>setEditModal({...editModal, theme: e.target.value})}/>
+              <input required placeholder="Host Name" className="w-full bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500" value={editModal.hostName} onChange={e=>setEditModal({...editModal, hostName: e.target.value})}/>
+              <input placeholder="Co-Host Name (Optional)" className="w-full bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500" value={editModal.coHost} onChange={e=>setEditModal({...editModal, coHost: e.target.value})}/>
+              
+              <select required className="w-full bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400 focus:outline-none focus:border-indigo-500" value={editModal.performers} onChange={e=>setEditModal({...editModal, performers: e.target.value})}>
+                <option value="VUI">VUI</option>
+                <option value="StoryTeller">StoryTeller</option>
               </select>
-              <select className="w-full bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400" value={editModal.startTime} onChange={e=>setEditModal({...editModal, startTime: e.target.value})}>
+              
+              <select required className="w-full bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400 focus:outline-none focus:border-indigo-500" value={editModal.startTime} onChange={e=>setEditModal({...editModal, startTime: e.target.value})}>
                 {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              <input type="date" className="w-full bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400" value={editModal.date} onChange={e=>setEditModal({...editModal, date: e.target.value})}/>
-              <button className="bg-indigo-600 w-full p-4 rounded-lg flex items-center justify-center gap-2"><Save size={16}/> SAVE CHANGES</button>
+              
+              <input required type="date" className="w-full bg-black/40 p-4 rounded-lg border border-white/10 text-slate-400 focus:outline-none focus:border-indigo-500" value={editModal.date} onChange={e=>setEditModal({...editModal, date: e.target.value})}/>
+              
+              <div className="flex gap-3 pt-2">
+                  <button type="submit" className="bg-indigo-600 flex-1 p-4 rounded-xl flex items-center justify-center gap-2 font-bold text-white hover:bg-indigo-500 transition-colors">
+                      <Save size={18}/> SAVE
+                  </button>
+                  <button type="button" onClick={() => setEditModal(null)} className="bg-white/5 border border-white/10 flex-1 p-4 rounded-xl flex items-center justify-center gap-2 font-bold text-slate-300 hover:bg-white/10 transition-colors">
+                      CANCEL
+                  </button>
+              </div>
            </form>
         </div>
       )}
@@ -198,7 +250,7 @@ export default function App() {
 
 function EventCard({ p }) {
     return (
-        <div className="bg-[#0a0f1d] border border-white/5 p-5 rounded-2xl">
+        <div className="bg-[#0a0f1d] border border-white/5 p-5 rounded-2xl mb-3">
             <div className="font-black text-white text-lg mb-2">{p.theme}</div>
             <div className="flex flex-wrap gap-4 text-xs text-slate-400 font-bold">
                 <div className="flex items-center gap-1.5"><Clock size={14}/> {p.startTime} <span className="opacity-60 text-[10px]">(PT)</span></div>
