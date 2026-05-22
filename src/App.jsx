@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CalendarDays, LogOut, ChevronLeft, ChevronRight, 
-  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Archive, Users, Eye, EyeOff, Save, X
+  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Archive, Users, Eye, EyeOff
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
@@ -36,7 +36,8 @@ export default function App() {
   const [parties, setParties] = useState([]);
   const [currentUser, setCurrentUser] = useState(() => { const s = localStorage.getItem(SESSION_KEY); return s ? JSON.parse(s) : null; });
   const [view, setView] = useState('Guide'); 
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState(null);
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [editModal, setEditModal] = useState(null);
   const [gateU, setGateU] = useState('');
@@ -58,17 +59,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handleKeyDown = (e) => { 
-        if (e.key === 'Escape') {
-            setShowAuthGate(false);
-            setEditModal(null);
-        }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  useEffect(() => {
     if (!isAuthReady) return;
     const unsubscribe = onSnapshot(collection(db, getPath('parties')), 
       (s) => setParties(s.docs.map(d => ({id: d.id, ...d.data()}))),
@@ -77,22 +67,21 @@ export default function App() {
     return () => unsubscribe();
   }, [isAuthReady]);
 
-  const { upcomingGuide, monthlyParties, active, archived } = useMemo(() => {
-    const now = new Date();
-    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const selMonth = selectedDate.getMonth();
-    const selYear = selectedDate.getFullYear();
-    
-    const uG = [], mP = [], act = [], arc = [];
-    parties.forEach(p => {
-        const d = new Date(p.date);
-        if (d >= todayMidnight) uG.push(p);
-        if (d.getMonth() === selMonth && d.getFullYear() === selYear) mP.push(p);
-        if (d >= todayMidnight) act.push(p);
-        else arc.push(p);
-    });
-    return { upcomingGuide: uG, monthlyParties: mP, active: act, archived: arc };
-  }, [parties, selectedDate]);
+  const calendarDays = useMemo(() => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+    return days;
+  }, [currentMonth]);
+
+  const filteredParties = useMemo(() => {
+    if (!selectedDay) return [];
+    return parties.filter(p => new Date(p.date).toDateString() === selectedDay.toDateString());
+  }, [parties, selectedDay]);
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -110,14 +99,11 @@ export default function App() {
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
 
   return (
-    <div className="min-h-screen bg-[#0a0f1d] text-slate-200 font-sans text-base md:text-lg">
+    <div className="min-h-screen bg-[#0a0f1d] text-slate-200 font-sans text-base">
       <header className="bg-[#111827] border-b border-white/5 p-4 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-2"><div className="w-10 h-10 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30"><CalendarDays size={22} className="text-indigo-500"/></div><h1 className="font-black text-white text-lg">VU HUB</h1></div>
+        <div className="flex items-center gap-2"><div className="w-10 h-10 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30"><CalendarDays size={22} className="text-indigo-500"/></div><h1 className="font-black text-white text-lg">VU Party Hub</h1></div>
         {currentUser ? (
-            <div className="flex items-center gap-4">
-                <span className="text-xs bg-white/5 px-4 py-1.5 rounded-full uppercase font-bold text-indigo-400">{currentUser.username}</span>
-                <button onClick={()=>{setCurrentUser(null); localStorage.removeItem(SESSION_KEY);}} className="text-xs font-black uppercase text-rose-500"><LogOut size={16}/></button>
-            </div>
+            <button onClick={()=>{setCurrentUser(null); localStorage.removeItem(SESSION_KEY);}} className="text-xs font-black uppercase text-rose-500"><LogOut size={16}/></button>
         ) : <button onClick={() => setShowAuthGate(true)} className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl text-xs font-black uppercase"><Shield size={16}/> Admin</button>}
       </header>
 
@@ -130,109 +116,42 @@ export default function App() {
       </div>
 
       <main className="p-4 md:p-6 max-w-4xl mx-auto">
-        {view === 'Guide' && <div className="space-y-8"><section><h2 className="font-black text-white mb-4 uppercase tracking-wider text-sm">Active & Upcoming</h2>{upcomingGuide.map(p => <EventCard key={p.id} p={p}/>)}</section></div>}
         {view === 'Monthly' && (
-           <div className="space-y-4">
-            <div className="flex justify-between items-center mb-6 bg-[#111827] p-5 rounded-xl border border-white/5">
-                <button onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1))}><ChevronLeft size={20}/></button>
-                <span className="font-black text-lg">{selectedDate.toLocaleDateString('en-US', {month: 'long', year: 'numeric'})}</span>
-                <button onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1))}><ChevronRight size={20}/></button>
+           <div className="space-y-6">
+            <div className="flex justify-between items-center bg-[#111827] p-4 rounded-xl border border-white/5">
+                <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}><ChevronLeft size={20}/></button>
+                <span className="font-black text-white uppercase tracking-widest">{currentMonth.toLocaleDateString('en-US', {month: 'long', year: 'numeric'})}</span>
+                <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}><ChevronRight size={20}/></button>
             </div>
-            {monthlyParties.map(p => <EventCard key={p.id} p={p}/>)}
+            <div className="grid grid-cols-7 gap-1">
+                {['S','M','T','W','T','F','S'].map(d=><div key={d} className="text-center text-[10px] font-black text-slate-500">{d}</div>)}
+                {calendarDays.map((d, i) => (
+                    <button key={i} onClick={() => d && setSelectedDay(d)} className={`aspect-square flex items-center justify-center text-xs font-bold rounded-lg ${!d ? 'bg-transparent' : selectedDay?.toDateString() === d.toDateString() ? 'bg-indigo-600' : 'bg-[#111827] hover:bg-white/5'}`}>
+                        {d?.getDate()}
+                    </button>
+                ))}
+            </div>
+            {selectedDay && (
+                <div className="space-y-4">
+                    <h3 className="font-black text-white uppercase text-sm border-l-4 border-indigo-500 pl-3">Events for {formatDate(selectedDay)}</h3>
+                    {filteredParties.length > 0 ? filteredParties.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-sm text-slate-500">No events found.</p>}
+                </div>
+            )}
            </div>
-        )}
-        {view === 'Manage' && isStaff && (
-            <div className="space-y-8">
-                <form onSubmit={handleAdd} className="bg-[#111827] border border-white/10 p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input placeholder="Theme" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
-                    <input placeholder="Host" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
-                    <input placeholder="Co-Host" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
-                    <select className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
-                        <option value="VUI">VUI</option>
-                        <option value="StoryTeller">StoryTeller</option>
-                    </select>
-                    <select className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
-                        {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
-                    <button className="bg-indigo-600 rounded-lg font-bold p-4 col-span-full">ADD EVENT</button>
-                </form>
-                <section><h3 className="text-white font-black mb-4 flex items-center gap-2 text-lg"><Edit size={18}/> Active Events</h3>{active.map(p => <ManageEventCard key={p.id} p={p} onDelete={handleDelete} onEdit={setEditModal} isArchived={false}/>)}</section>
-                <section><h3 className="text-slate-500 font-black mb-4 flex items-center gap-2 text-lg"><Archive size={18}/> Archive</h3>{archived.map(p => <ManageEventCard key={p.id} p={p} onDelete={handleDelete} onEdit={setEditModal} isArchived={true}/>)}</section>
-            </div>
         )}
       </main>
-
-      {editModal && (
-          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[110]">
-              <form onSubmit={handleUpdate} className="bg-[#111827] border border-white/10 p-6 rounded-2xl w-full max-w-md space-y-4">
-                  <h2 className="font-black text-white">Edit Event</h2>
-                  <input className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.theme} onChange={e=>setEditModal({...editModal, theme: e.target.value})}/>
-                  <input className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.hostName} onChange={e=>setEditModal({...editModal, hostName: e.target.value})}/>
-                  <input className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.coHost} onChange={e=>setEditModal({...editModal, coHost: e.target.value})}/>
-                  <select className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.performers} onChange={e=>setEditModal({...editModal, performers: e.target.value})}>
-                        <option value="VUI">VUI</option><option value="StoryTeller">StoryTeller</option>
-                  </select>
-                  <div className="grid grid-cols-2 gap-4">
-                    <select className="bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.startTime} onChange={e=>setEditModal({...editModal, startTime: e.target.value})}>
-                        {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.date} onChange={e=>setEditModal({...editModal, date: e.target.value})}/>
-                  </div>
-                  <div className="flex gap-2">
-                      <button type="submit" className="flex-1 bg-indigo-600 p-4 rounded-lg font-bold">SAVE</button>
-                      <button type="button" onClick={()=>setEditModal(null)} className="flex-1 bg-white/5 p-4 rounded-lg font-bold text-slate-400">CANCEL</button>
-                  </div>
-              </form>
-          </div>
-      )}
-
-      {showAuthGate && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[100]">
-           <div className="bg-[#111827] p-8 rounded-3xl w-full max-w-sm border border-white/10">
-              <form onSubmit={e => { e.preventDefault(); if (gateU.toLowerCase() === 'admin' && gateP === 'admin123') { setCurrentUser({username: 'Admin', role: 'admin'}); setShowAuthGate(false); } }} className="space-y-4">
-                <input placeholder="Username" onChange={e=>setGateU(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4"/>
-                <div className="relative"><input type={showPass ? "text" : "password"} placeholder="Passcode" onChange={e=>setGateP(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12"/><button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-4 text-slate-500">{showPass ? <EyeOff size={20}/> : <Eye size={20}/>}</button></div>
-                <button type="submit" className="w-full bg-indigo-600 py-4 rounded-xl font-black">ENTER</button>
-              </form>
-           </div>
-        </div>
-      )}
     </div>
   );
 }
 
-function ManageEventCard({ p, onDelete, onEdit, isArchived }) {
-    return (
-        <div className="bg-[#111827] border border-white/5 p-4 rounded-xl mb-3 flex flex-col gap-2">
-            <div className="flex justify-between items-center">
-                <span className="font-black text-white">{p.theme}</span>
-                {!isArchived && (
-                    <div className="flex gap-2">
-                        <button onClick={()=>onEdit(p)} className="text-indigo-500"><Edit size={18}/></button>
-                        <button onClick={()=>onDelete(p.id)} className="text-rose-500"><Trash2 size={18}/></button>
-                    </div>
-                )}
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 font-bold">
-                <span>{formatDate(p.date)}</span> <span>{p.startTime}</span> <span>Host: {p.hostName} {p.coHost && `& ${p.coHost}`}</span> <span className="text-indigo-400">{p.performers}</span>
-            </div>
-        </div>
-    );
-}
-
 function EventCard({ p }) {
-    const isLive = useMemo(() => new Date(p.date).toDateString() === new Date().toDateString(), [p.date]);
     return (
-        <div className={`bg-[#111827] border border-white/5 p-5 rounded-2xl mb-4 ${isLive ? 'ring-2 ring-indigo-500/50' : ''}`}>
-            <div className="flex justify-between items-start mb-3">
-                <div className="font-black text-white text-lg flex items-center gap-2">{p.theme}{isLive && <span className="text-[10px] bg-rose-600 animate-pulse text-white px-2 py-0.5 rounded-full font-black uppercase">Live Now</span>}</div>
-                <div className="text-sm text-slate-300 font-bold bg-black/30 px-3 py-1 rounded flex items-center gap-1.5"><Calendar size={14}/> {formatDate(p.date)}</div>
-            </div>
-            <div className="flex flex-wrap gap-4 text-sm text-slate-400">
-                <div className="flex items-center gap-1.5"><User size={14}/> Host: {p.hostName} {p.coHost && `& ${p.coHost}`}</div>
-                <div className="flex items-center gap-1.5 font-bold text-indigo-400"><Clock size={14}/> {p.startTime || 'TBD'}</div>
-                {p.performers && <div className="flex items-center gap-1.5 font-bold text-emerald-400"><Users size={14}/> {p.performers}</div>}
+        <div className="bg-[#111827] border border-white/5 p-5 rounded-2xl">
+            <div className="font-black text-white text-lg mb-2">{p.theme}</div>
+            <div className="flex flex-wrap gap-4 text-xs text-slate-400 font-bold">
+                <div className="flex items-center gap-1.5"><Clock size={14}/> {p.startTime} <span className="opacity-60 text-[10px]">(PT)</span></div>
+                <div className="flex items-center gap-1.5"><User size={14}/> Host: {p.hostName}</div>
+                <div className="flex items-center gap-1.5 text-indigo-400"><Users size={14}/> {p.performers}</div>
             </div>
         </div>
     )
