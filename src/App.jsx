@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CalendarDays, LogOut, ChevronLeft, ChevronRight, 
-  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Archive, Users, Eye, EyeOff, X
+  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Archive, Users, Eye, EyeOff, X, Save
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
@@ -39,6 +39,7 @@ export default function App() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
   const [showAuthGate, setShowAuthGate] = useState(false);
+  const [editModal, setEditModal] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [formData, setFormData] = useState({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', performers: 'VUI' });
 
@@ -84,6 +85,12 @@ export default function App() {
 
   const handleDelete = async (id) => await deleteDoc(doc(db, getPath('parties'), id));
   
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    await updateDoc(doc(db, getPath('parties'), editModal.id), editModal);
+    setEditModal(null);
+  };
+  
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
 
   return (
@@ -108,6 +115,10 @@ export default function App() {
             <div className="space-y-4">
                 <h2 className="font-black text-white text-2xl">Welcome to the VU Hub</h2>
                 <p className="text-slate-400">Use this hub to track party schedules, view the monthly calendar, and manage upcoming events.</p>
+                <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl">
+                    <h3 className="font-black text-lg mb-4">Upcoming Events</h3>
+                    <div className="space-y-3">{parties.sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,5).map(p=><div key={p.id} className="p-3 bg-black/40 rounded-lg flex justify-between"><span>{p.theme}</span><span className="text-indigo-400 font-bold">{formatDate(p.date)}</span></div>)}</div>
+                </div>
             </div>
         )}
         {view === 'Monthly' && (
@@ -143,7 +154,7 @@ export default function App() {
                     <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
                     <button className="bg-indigo-600 rounded-lg font-bold p-4 col-span-full">ADD EVENT</button>
                 </form>
-                {parties.map(p => <div key={p.id} className="bg-[#111827] border border-white/5 p-4 rounded-xl flex justify-between items-center"><span className="font-bold">{p.theme} ({formatDate(p.date)})</span><button onClick={()=>handleDelete(p.id)}><Trash2 size={16} className="text-rose-500"/></button></div>)}
+                {parties.map(p => <div key={p.id} className="bg-[#111827] border border-white/5 p-4 rounded-xl flex justify-between items-center"><span className="font-bold">{p.theme} ({formatDate(p.date)})</span><div className="flex gap-2"><button onClick={()=>setEditModal(p)}><Edit size={16} className="text-blue-400"/></button><button onClick={()=>handleDelete(p.id)}><Trash2 size={16} className="text-rose-500"/></button></div></div>)}
             </div>
         )}
       </main>
@@ -154,6 +165,25 @@ export default function App() {
               <div className="flex justify-between items-center"><h2 className="font-black text-lg">Events for {selectedDay.toDateString()}</h2><button onClick={()=>setSelectedDay(null)}><X size={20}/></button></div>
               {parties.filter(p => new Date(p.date).toDateString() === selectedDay.toDateString()).map(p => <EventCard key={p.id} p={p}/>)}
            </div>
+        </div>
+      )}
+
+      {editModal && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[110]">
+           <form onSubmit={handleUpdate} className="bg-[#111827] p-6 rounded-3xl w-full max-w-lg border border-white/10 space-y-4">
+              <h2 className="font-black text-lg">Edit Event</h2>
+              <input className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.theme} onChange={e=>setEditModal({...editModal, theme: e.target.value})}/>
+              <input className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.hostName} onChange={e=>setEditModal({...editModal, hostName: e.target.value})}/>
+              <input className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.coHost} onChange={e=>setEditModal({...editModal, coHost: e.target.value})}/>
+              <select className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.performers} onChange={e=>setEditModal({...editModal, performers: e.target.value})}>
+                <option value="VUI">VUI</option><option value="StoryTeller">StoryTeller</option>
+              </select>
+              <select className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.startTime} onChange={e=>setEditModal({...editModal, startTime: e.target.value})}>
+                {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <input type="date" className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.date} onChange={e=>setEditModal({...editModal, date: e.target.value})}/>
+              <button className="bg-indigo-600 w-full p-4 rounded-lg flex items-center justify-center gap-2"><Save size={16}/> SAVE CHANGES</button>
+           </form>
         </div>
       )}
     </div>
