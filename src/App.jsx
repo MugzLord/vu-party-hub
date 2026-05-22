@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CalendarDays, LogOut, ChevronLeft, ChevronRight, 
-  Shield, X, Calendar, BookOpen, Trash2, Edit
+  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Archive
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
@@ -28,7 +28,7 @@ export default function App() {
   const [gateU, setGateU] = useState('');
   const [gateP, setGateP] = useState('');
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [formData, setFormData] = useState({ theme: '', hostName: '', date: '', startTime: '' });
+  const [formData, setFormData] = useState({ theme: '', hostName: '', coHost: '', date: '', startTime: '' });
 
   useEffect(() => {
     const initAuth = async () => { 
@@ -51,27 +51,36 @@ export default function App() {
     return () => unsubscribe();
   }, [isAuthReady]);
 
-  const { thisMonth, upcoming } = useMemo(() => {
+  const { thisMonth, upcoming, monthlyParties, active, archived } = useMemo(() => {
     const now = new Date();
     const curMonth = now.getMonth();
     const curYear = now.getFullYear();
-    const tM = [], uP = [];
+    const selMonth = selectedDate.getMonth();
+    const selYear = selectedDate.getFullYear();
+    
+    const tM = [], uP = [], mP = [], act = [], arc = [];
     parties.forEach(p => {
         const d = new Date(p.date);
         if (d.getMonth() === curMonth && d.getFullYear() === curYear) tM.push(p);
         else if (d >= now) uP.push(p);
+        
+        if (d.getMonth() === selMonth && d.getFullYear() === selYear) mP.push(p);
+        
+        if (d >= now) act.push(p);
+        else arc.push(p);
     });
-    return { thisMonth: tM, upcoming: uP };
-  }, [parties]);
+    return { thisMonth: tM, upcoming: uP, monthlyParties: mP, active: act, archived: arc };
+  }, [parties, selectedDate]);
 
   const handleAdd = async (e) => {
     e.preventDefault();
     await addDoc(collection(db, getPath('parties')), { ...formData, status: 'approved' });
-    setFormData({ theme: '', hostName: '', date: '', startTime: '' });
+    setFormData({ theme: '', hostName: '', coHost: '', date: '', startTime: '' });
   };
 
   const handleDelete = async (id) => await deleteDoc(doc(db, getPath('parties'), id));
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
+  const currentMonthName = new Date().toLocaleDateString('en-US', { month: 'long' });
 
   return (
     <div className="min-h-screen bg-[#0a0f1d] text-slate-200 font-sans">
@@ -96,41 +105,46 @@ export default function App() {
       <main className="p-4 max-w-4xl mx-auto">
         {view === 'Guide' && (
           <div className="space-y-8">
-            <section><h2 className="font-black text-white mb-4 uppercase tracking-wider text-xs">This Month</h2>
-                {thisMonth.map(p => <div key={p.id} className="bg-[#111827] border border-white/5 p-4 rounded-2xl mb-2">{p.theme} <span className="text-slate-500 text-[10px] ml-2">{p.date}</span></div>)}
+            <section><h2 className="font-black text-white mb-4 uppercase tracking-wider text-xs">{currentMonthName}</h2>
+                {thisMonth.map(p => <EventCard key={p.id} p={p}/>)}
             </section>
             <section><h2 className="font-black text-white mb-4 uppercase tracking-wider text-xs">Upcoming</h2>
-                {upcoming.map(p => <div key={p.id} className="bg-[#111827] border border-white/5 p-4 rounded-2xl mb-2">{p.theme} <span className="text-slate-500 text-[10px] ml-2">{p.date}</span></div>)}
+                {upcoming.map(p => <EventCard key={p.id} p={p}/>)}
             </section>
           </div>
         )}
 
         {view === 'Monthly' && (
-           <div className="bg-[#111827] border border-white/5 p-6 rounded-3xl">
-            <div className="flex justify-between items-center mb-6">
-                <button onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1))}><ChevronLeft/></button>
+           <div className="space-y-4">
+            <div className="flex justify-between items-center mb-6 bg-[#111827] p-4 rounded-xl border border-white/5">
+                <button onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1))}><ChevronLeft size={16}/></button>
                 <span className="font-black text-sm">{selectedDate.toLocaleDateString('en-US', {month: 'long', year: 'numeric'})}</span>
-                <button onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1))}><ChevronRight/></button>
+                <button onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1))}><ChevronRight size={16}/></button>
             </div>
+            {monthlyParties.map(p => <EventCard key={p.id} p={p}/>)}
            </div>
         )}
 
         {view === 'Manage' && isStaff && (
-            <div className="space-y-6">
-                <form onSubmit={handleAdd} className="bg-[#111827] border border-white/10 p-6 rounded-2xl grid grid-cols-2 gap-4">
+            <div className="space-y-8">
+                <form onSubmit={handleAdd} className="bg-[#111827] border border-white/10 p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input placeholder="Theme" className="bg-black/40 p-3 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, theme: e.target.value})}/>
                     <input placeholder="Host" className="bg-black/40 p-3 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
-                    <input type="date" className="bg-black/40 p-3 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, date: e.target.value})}/>
-                    <button className="bg-indigo-600 rounded-lg font-bold">ADD EVENT</button>
+                    <input placeholder="Co-Host" className="bg-black/40 p-3 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
+                    <input type="time" className="bg-black/40 p-3 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, startTime: e.target.value})}/>
+                    <input type="date" className="bg-black/40 p-3 rounded-lg border border-white/10 col-span-full" onChange={e=>setFormData({...formData, date: e.target.value})}/>
+                    <button className="bg-indigo-600 rounded-lg font-bold col-span-full">ADD EVENT</button>
                 </form>
-                <div className="space-y-2">
-                {parties.map(p => (
-                    <div key={p.id} className="flex justify-between bg-[#111827] p-4 rounded-xl border border-white/5">
-                        <span className="font-bold">{p.theme}</span>
-                        <button onClick={()=>handleDelete(p.id)} className="text-rose-500"><Trash2 size={16}/></button>
-                    </div>
-                ))}
-                </div>
+                
+                <section>
+                    <h3 className="text-white font-black mb-4 flex items-center gap-2"><Edit size={16}/> Active Events</h3>
+                    {active.map(p => <div key={p.id} className="flex justify-between bg-[#111827] p-4 rounded-xl border border-white/5 mb-2"><span className="font-bold">{p.theme}</span><button onClick={()=>handleDelete(p.id)} className="text-rose-500"><Trash2 size={16}/></button></div>)}
+                </section>
+                
+                <section>
+                    <h3 className="text-slate-500 font-black mb-4 flex items-center gap-2"><Archive size={16}/> Archive</h3>
+                    {archived.map(p => <div key={p.id} className="flex justify-between bg-[#0a0f1d] p-4 rounded-xl border border-white/5 opacity-50 mb-2"><span className="font-bold">{p.theme}</span><button onClick={()=>handleDelete(p.id)} className="text-rose-500"><Trash2 size={16}/></button></div>)}
+                </section>
             </div>
         )}
       </main>
@@ -148,4 +162,28 @@ export default function App() {
       )}
     </div>
   );
+}
+
+function EventCard({ p }) {
+    const isLive = useMemo(() => {
+        const now = new Date();
+        const partyDate = new Date(p.date);
+        return partyDate.toDateString() === now.toDateString(); 
+    }, [p.date]);
+
+    return (
+        <div className={`bg-[#111827] border border-white/5 p-4 rounded-2xl mb-3 ${isLive ? 'ring-2 ring-indigo-500/50' : ''}`}>
+            <div className="flex justify-between items-start mb-2">
+                <div className="font-bold text-white text-sm flex items-center gap-2">
+                    {p.theme}
+                    {isLive && <span className="text-[8px] bg-rose-600 animate-pulse text-white px-2 py-0.5 rounded-full font-black uppercase">Live Now</span>}
+                </div>
+                <div className="text-[10px] text-slate-500 bg-black/30 px-2 py-1 rounded flex items-center gap-1"><Calendar size={10}/> {p.date}</div>
+            </div>
+            <div className="flex gap-4 text-[10px] text-slate-400">
+                <div className="flex items-center gap-1"><User size={12}/> Host: {p.hostName} {p.coHost && `& ${p.coHost}`}</div>
+                <div className="flex items-center gap-1"><Clock size={12}/> {p.startTime || 'TBD'}</div>
+            </div>
+        </div>
+    )
 }
