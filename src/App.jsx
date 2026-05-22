@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CalendarDays, LogOut, ChevronLeft, ChevronRight, 
-  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Archive
+  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Archive, Users, Eye, EyeOff
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
@@ -27,8 +27,9 @@ export default function App() {
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [gateU, setGateU] = useState('');
   const [gateP, setGateP] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [formData, setFormData] = useState({ theme: '', hostName: '', coHost: '', date: '', startTime: '' });
+  const [formData, setFormData] = useState({ theme: '', hostName: '', coHost: '', date: '', startTime: '', performers: '' });
 
   useEffect(() => {
     const initAuth = async () => { 
@@ -43,6 +44,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const handleKeyDown = (e) => { if (e.key === 'Escape') setShowAuthGate(false); };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
     if (!isAuthReady) return;
     const unsubscribe = onSnapshot(collection(db, getPath('parties')), 
       (s) => setParties(s.docs.map(d => ({id: d.id, ...d.data()}))),
@@ -51,31 +58,32 @@ export default function App() {
     return () => unsubscribe();
   }, [isAuthReady]);
 
-  const { thisMonth, upcoming, monthlyParties, active, archived } = useMemo(() => {
+  const { upcomingGuide, upcoming, monthlyParties, active, archived } = useMemo(() => {
     const now = new Date();
-    const curMonth = now.getMonth();
-    const curYear = now.getFullYear();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const selMonth = selectedDate.getMonth();
     const selYear = selectedDate.getFullYear();
     
-    const tM = [], uP = [], mP = [], act = [], arc = [];
+    const uG = [], uP = [], mP = [], act = [], arc = [];
     parties.forEach(p => {
         const d = new Date(p.date);
-        if (d.getMonth() === curMonth && d.getFullYear() === curYear) tM.push(p);
-        else if (d >= now) uP.push(p);
+        if (d >= todayMidnight) {
+            uG.push(p);
+            uP.push(p);
+        }
         
         if (d.getMonth() === selMonth && d.getFullYear() === selYear) mP.push(p);
         
-        if (d >= now) act.push(p);
+        if (d >= todayMidnight) act.push(p);
         else arc.push(p);
     });
-    return { thisMonth: tM, upcoming: uP, monthlyParties: mP, active: act, archived: arc };
+    return { upcomingGuide: uG, upcoming: uP, monthlyParties: mP, active: act, archived: arc };
   }, [parties, selectedDate]);
 
   const handleAdd = async (e) => {
     e.preventDefault();
     await addDoc(collection(db, getPath('parties')), { ...formData, status: 'approved' });
-    setFormData({ theme: '', hostName: '', coHost: '', date: '', startTime: '' });
+    setFormData({ theme: '', hostName: '', coHost: '', date: '', startTime: '', performers: '' });
   };
 
   const handleDelete = async (id) => await deleteDoc(doc(db, getPath('parties'), id));
@@ -105,11 +113,8 @@ export default function App() {
       <main className="p-4 md:p-6 max-w-4xl mx-auto">
         {view === 'Guide' && (
           <div className="space-y-8">
-            <section><h2 className="font-black text-white mb-4 uppercase tracking-wider text-sm">{currentMonthName}</h2>
-                {thisMonth.map(p => <EventCard key={p.id} p={p}/>)}
-            </section>
-            <section><h2 className="font-black text-white mb-4 uppercase tracking-wider text-sm">Upcoming</h2>
-                {upcoming.map(p => <EventCard key={p.id} p={p}/>)}
+            <section><h2 className="font-black text-white mb-4 uppercase tracking-wider text-sm">Active & Upcoming</h2>
+                {upcomingGuide.map(p => <EventCard key={p.id} p={p}/>)}
             </section>
           </div>
         )}
@@ -131,8 +136,9 @@ export default function App() {
                     <input placeholder="Theme" className="bg-black/40 p-4 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, theme: e.target.value})}/>
                     <input placeholder="Host" className="bg-black/40 p-4 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
                     <input placeholder="Co-Host" className="bg-black/40 p-4 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
+                    <input placeholder="VUI / StoryTellers" className="bg-black/40 p-4 rounded-lg border border-white/10 col-span-full" onChange={e=>setFormData({...formData, performers: e.target.value})}/>
                     <input type="time" className="bg-black/40 p-4 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, startTime: e.target.value})}/>
-                    <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10 col-span-full" onChange={e=>setFormData({...formData, date: e.target.value})}/>
+                    <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, date: e.target.value})}/>
                     <button className="bg-indigo-600 rounded-lg font-bold p-4 col-span-full">ADD EVENT</button>
                 </form>
                 
@@ -154,7 +160,12 @@ export default function App() {
            <div className="bg-[#111827] p-8 rounded-3xl w-full max-w-sm border border-white/10">
               <form onSubmit={e => { e.preventDefault(); if (gateU.toLowerCase() === 'admin' && gateP === 'admin123') { setCurrentUser({username: 'Admin', role: 'admin'}); setShowAuthGate(false); } }} className="space-y-4">
                 <input placeholder="Username" onChange={e=>setGateU(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4"/>
-                <input type="password" placeholder="Passcode" onChange={e=>setGateP(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4"/>
+                <div className="relative">
+                    <input type={showPass ? "text" : "password"} placeholder="Passcode" onChange={e=>setGateP(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12"/>
+                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-4 text-slate-500">
+                        {showPass ? <EyeOff size={20}/> : <Eye size={20}/>}
+                    </button>
+                </div>
                 <button type="submit" className="w-full bg-indigo-600 py-4 rounded-xl font-black">ENTER</button>
               </form>
            </div>
@@ -175,6 +186,7 @@ function ManageEventCard({ p, onDelete }) {
                 <span>{p.date}</span>
                 <span>{p.startTime}</span>
                 <span>Host: {p.hostName} {p.coHost && `& ${p.coHost}`}</span>
+                {p.performers && <span className="text-indigo-400">{p.performers}</span>}
             </div>
         </div>
     );
@@ -187,10 +199,8 @@ function EventCard({ p }) {
         return partyDate.toDateString() === now.toDateString(); 
     }, [p.date]);
     
-    const isPast = new Date(p.date) < new Date().setHours(0,0,0,0);
-
     return (
-        <div className={`bg-[#111827] border border-white/5 p-5 rounded-2xl mb-4 ${isLive ? 'ring-2 ring-indigo-500/50' : ''} ${isPast ? 'opacity-50 grayscale' : ''}`}>
+        <div className={`bg-[#111827] border border-white/5 p-5 rounded-2xl mb-4 ${isLive ? 'ring-2 ring-indigo-500/50' : ''}`}>
             <div className="flex justify-between items-start mb-3">
                 <div className="font-black text-white text-lg flex items-center gap-2">
                     {p.theme}
@@ -201,6 +211,7 @@ function EventCard({ p }) {
             <div className="flex flex-wrap gap-4 text-sm text-slate-400">
                 <div className="flex items-center gap-1.5"><User size={14}/> Host: {p.hostName} {p.coHost && `& ${p.coHost}`}</div>
                 <div className="flex items-center gap-1.5 font-bold text-indigo-400"><Clock size={14}/> {p.startTime || 'TBD'}</div>
+                {p.performers && <div className="flex items-center gap-1.5 font-bold text-emerald-400"><Users size={14}/> {p.performers}</div>}
             </div>
         </div>
     )
