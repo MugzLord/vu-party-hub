@@ -78,6 +78,8 @@ export default function App() {
     return days;
   }, [currentMonth]);
 
+  const hasEvent = (date) => parties.some(p => new Date(p.date).toDateString() === date.toDateString());
+
   const filteredParties = useMemo(() => {
     if (!selectedDay) return [];
     return parties.filter(p => new Date(p.date).toDateString() === selectedDay.toDateString());
@@ -101,7 +103,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0a0f1d] text-slate-200 font-sans text-base">
       <header className="bg-[#111827] border-b border-white/5 p-4 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-2"><div className="w-10 h-10 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30"><CalendarDays size={22} className="text-indigo-500"/></div><h1 className="font-black text-white text-lg">VU Party Hub</h1></div>
+        <div className="flex items-center gap-2"><div className="w-10 h-10 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30"><CalendarDays size={22} className="text-indigo-500"/></div><h1 className="font-black text-white text-lg">VU HUB</h1></div>
         {currentUser ? (
             <button onClick={()=>{setCurrentUser(null); localStorage.removeItem(SESSION_KEY);}} className="text-xs font-black uppercase text-rose-500"><LogOut size={16}/></button>
         ) : <button onClick={() => setShowAuthGate(true)} className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl text-xs font-black uppercase"><Shield size={16}/> Admin</button>}
@@ -126,8 +128,9 @@ export default function App() {
             <div className="grid grid-cols-7 gap-1">
                 {['S','M','T','W','T','F','S'].map(d=><div key={d} className="text-center text-[10px] font-black text-slate-500">{d}</div>)}
                 {calendarDays.map((d, i) => (
-                    <button key={i} onClick={() => d && setSelectedDay(d)} className={`aspect-square flex items-center justify-center text-xs font-bold rounded-lg ${!d ? 'bg-transparent' : selectedDay?.toDateString() === d.toDateString() ? 'bg-indigo-600' : 'bg-[#111827] hover:bg-white/5'}`}>
+                    <button key={i} onClick={() => d && setSelectedDay(d)} className={`aspect-square flex flex-col items-center justify-center text-xs font-bold rounded-lg relative ${!d ? 'bg-transparent' : selectedDay?.toDateString() === d.toDateString() ? 'bg-indigo-600' : 'bg-[#111827] hover:bg-white/5'}`}>
                         {d?.getDate()}
+                        {d && hasEvent(d) && <div className="absolute bottom-1 w-1 h-1 bg-indigo-400 rounded-full"></div>}
                     </button>
                 ))}
             </div>
