@@ -63,6 +63,27 @@ export default function App() {
   const [gateP, setGateP] = useState('');
   const [loginError, setLoginError] = useState('');
   const [showPass, setShowPass] = useState(false);
+
+  // --- ADD THIS BLOCK AFTER LINE 65 ---
+  const { thisMonthEvents, nextMonthEvents } = useMemo(() => {
+    const now = new Date();
+    const currentMonthIdx = currentMonth.getMonth();
+    const currentYear = currentMonth.getFullYear();
+
+    const nextMonthDate = new Date(currentYear, currentMonthIdx + 1, 1);
+    
+    return {
+      thisMonthEvents: parties.filter(p => {
+        const d = new Date(p.date);
+        return d.getMonth() === currentMonthIdx && d.getFullYear() === currentYear && d >= now;
+      }).sort((a, b) => new Date(a.date) - new Date(b.date)),
+      
+      nextMonthEvents: parties.filter(p => {
+        const d = new Date(p.date);
+        return d.getMonth() === nextMonthDate.getMonth() && d.getFullYear() === nextMonthDate.getFullYear();
+      }).sort((a, b) => new Date(a.date) - new Date(b.date))
+    };
+  }, [parties, currentMonth]);
   
   // Admin Management
   const [newAdminU, setNewAdminU] = useState('');
