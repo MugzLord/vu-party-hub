@@ -39,10 +39,6 @@ export default function App() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
   const [showAuthGate, setShowAuthGate] = useState(false);
-  const [editModal, setEditModal] = useState(null);
-  const [gateU, setGateU] = useState('');
-  const [gateP, setGateP] = useState('');
-  const [showPass, setShowPass] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [formData, setFormData] = useState({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', performers: 'VUI' });
 
@@ -87,11 +83,6 @@ export default function App() {
   };
 
   const handleDelete = async (id) => await deleteDoc(doc(db, getPath('parties'), id));
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    await updateDoc(doc(db, getPath('parties'), editModal.id), editModal);
-    setEditModal(null);
-  };
   
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
 
@@ -113,6 +104,12 @@ export default function App() {
       </div>
 
       <main className="p-4 md:p-6 max-w-4xl mx-auto">
+        {view === 'Guide' && (
+            <div className="space-y-4">
+                <h2 className="font-black text-white text-2xl">Welcome to the VU Hub</h2>
+                <p className="text-slate-400">Use this hub to track party schedules, view the monthly calendar, and manage upcoming events.</p>
+            </div>
+        )}
         {view === 'Monthly' && (
            <div className="space-y-6">
             <div className="flex justify-between items-center bg-[#111827] p-4 rounded-xl border border-white/5">
