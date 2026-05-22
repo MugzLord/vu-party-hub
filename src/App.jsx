@@ -92,6 +92,11 @@ export default function App() {
   };
   
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
+  
+  // Filter for upcoming events only
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const upcomingParties = parties.filter(p => new Date(p.date) >= today).sort((a,b)=>new Date(a.date)-new Date(b.date));
 
   return (
     <div className="min-h-screen bg-[#0a0f1d] text-slate-200 font-sans text-base">
@@ -117,7 +122,9 @@ export default function App() {
                 <p className="text-slate-400">Use this hub to track party schedules, view the monthly calendar, and manage upcoming events.</p>
                 <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl">
                     <h3 className="font-black text-lg mb-4">Upcoming Events</h3>
-                    <div className="space-y-3">{parties.sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,5).map(p=><div key={p.id} className="p-3 bg-black/40 rounded-lg flex justify-between"><span>{p.theme}</span><span className="text-indigo-400 font-bold">{formatDate(p.date)}</span></div>)}</div>
+                    <div className="space-y-3">
+                        {upcomingParties.length > 0 ? upcomingParties.slice(0,5).map(p=><div key={p.id} className="p-3 bg-black/40 rounded-lg flex justify-between"><span>{p.theme}</span><span className="text-indigo-400 font-bold">{formatDate(p.date)}</span></div>) : <div className="text-slate-500 text-sm">No upcoming events scheduled.</div>}
+                    </div>
                 </div>
             </div>
         )}
