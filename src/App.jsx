@@ -138,12 +138,12 @@ export default function App() {
                 
                 <section>
                     <h3 className="text-white font-black mb-4 flex items-center gap-2 text-lg"><Edit size={18}/> Active Events</h3>
-                    {active.map(p => <div key={p.id} className="flex justify-between bg-[#111827] p-4 rounded-xl border border-white/5 mb-3"><span className="font-bold">{p.theme}</span><button onClick={()=>handleDelete(p.id)} className="text-rose-500"><Trash2 size={18}/></button></div>)}
+                    {active.map(p => <ManageEventCard key={p.id} p={p} onDelete={handleDelete}/>)}
                 </section>
                 
                 <section>
                     <h3 className="text-slate-500 font-black mb-4 flex items-center gap-2 text-lg"><Archive size={18}/> Archive</h3>
-                    {archived.map(p => <div key={p.id} className="flex justify-between bg-[#0a0f1d] p-4 rounded-xl border border-white/5 opacity-40 mb-3"><span className="font-bold">{p.theme}</span><button onClick={()=>handleDelete(p.id)} className="text-rose-500"><Trash2 size={18}/></button></div>)}
+                    {archived.map(p => <ManageEventCard key={p.id} p={p} onDelete={handleDelete}/>)}
                 </section>
             </div>
         )}
@@ -162,6 +162,22 @@ export default function App() {
       )}
     </div>
   );
+}
+
+function ManageEventCard({ p, onDelete }) {
+    return (
+        <div className="bg-[#111827] border border-white/5 p-4 rounded-xl mb-3 flex flex-col gap-2">
+            <div className="flex justify-between items-center">
+                <span className="font-black text-white">{p.theme}</span>
+                <button onClick={()=>onDelete(p.id)} className="text-rose-500"><Trash2 size={18}/></button>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 font-bold">
+                <span>{p.date}</span>
+                <span>{p.startTime}</span>
+                <span>Host: {p.hostName} {p.coHost && `& ${p.coHost}`}</span>
+            </div>
+        </div>
+    );
 }
 
 function EventCard({ p }) {
