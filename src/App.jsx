@@ -20,6 +20,8 @@ const getPath = (colName) => typeof __app_id !== 'undefined' ? `artifacts/${__ap
 const SESSION_KEY = 'vu_party_hub_v350_pro_final';
 
 const TIME_OPTIONS = [
+  "12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM",
+  "6:00 AM", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM",
   "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM", 
   "6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM", "10:00 PM", "11:00 PM"
 ];
@@ -233,7 +235,12 @@ export default function App() {
                     <div key={`day-header-${index}`} className="text-center text-[10px] font-black text-slate-500 pb-2">{d}</div>
                 ))}
                 {calendarDays.map((d, i) => (
-                    <button key={`day-cell-${i}`} onClick={() => d && setSelectedDay(d)} disabled={!d} className={`aspect-square flex flex-col items-center justify-center text-xs font-bold rounded-lg relative transition-colors ${!d ? 'bg-transparent' : selectedDay?.toDateString() === d.toDateString() ? 'bg-indigo-600 shadow-lg shadow-indigo-600/30' : 'bg-[#111827] hover:bg-white/5 border border-white/5'}`}>
+                    <button 
+                        key={`day-cell-${i}`} 
+                        onClick={() => d && setSelectedDay(d)} 
+                        disabled={!d} 
+                        className={`aspect-square flex flex-col items-center justify-center text-lg font-bold rounded-lg relative transition-colors ${!d ? 'bg-transparent' : selectedDay?.toDateString() === d.toDateString() ? 'bg-indigo-600 shadow-lg shadow-indigo-600/30' : 'bg-[#111827] hover:bg-white/5 border border-white/5'}`}
+                    >
                         {d?.getDate()}
                         {d && hasEvent(d) && <div className="absolute bottom-2 w-1.5 h-1.5 bg-indigo-400 rounded-full"></div>}
                     </button>
