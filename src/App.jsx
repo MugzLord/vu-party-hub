@@ -97,14 +97,21 @@ export default function App() {
   }, [isAuthReady]);
 
   const calendarDays = useMemo(() => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const days = [];
-    for (let i = 0; i < firstDay; i++) days.push(null);
-    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
-    return days;
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const firstDay = new Date(year, month, 1).getDay();
+      
+      // Adjust: Monday is 1, Sunday is 0. 
+      // We want Monday to be the start, so if Sunday (0), use 6, else subtract 1.
+      const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
+      
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const days = [];
+      
+      for (let i = 0; i < adjustedFirstDay; i++) days.push(null);
+      for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+      
+      return days;
   }, [currentMonth]);
 
   const hasEvent = (date) => parties.some(p => new Date(p.date).toDateString() === date.toDateString());
@@ -240,8 +247,8 @@ export default function App() {
                 <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="p-2 hover:bg-white/5 rounded-lg transition-colors"><ChevronRight size={20}/></button>
             </div>
             <div className="grid grid-cols-7 gap-1">
-                {['S','M','T','W','T','F','S'].map((d, index) => (
-                    <div key={`day-header-${index}`} className="text-center text-[10px] font-black text-slate-500 pb-2">{d}</div>
+                {['M','T','W','T','F','S','S'].map((d, index) => (
+                    <div key={`day-header-${index}`} className="text-[12px] md:text-sm font-black text-slate-500 pb-2 text-center">{d}</div>
                 ))}
                 {calendarDays.map((d, i) => (
                     <button 
