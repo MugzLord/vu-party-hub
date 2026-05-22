@@ -365,17 +365,17 @@ export default function App() {
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
            <div className="bg-[#111827] p-8 rounded-3xl w-full max-w-sm border border-white/10">
               <div className="flex justify-between items-center mb-6">
-                  <h2 className="font-black text-xl text-white flex items-center gap-2"><Shield size={20} className="text-indigo-500"/> SYSTEM LOGIN</h2>
+                  <h2 className="font-black text-xl text-white flex items-center gap-2"><Shield size={20} className="text-indigo-500"/> Admin Login</h2>
                   <button onClick={() => {setShowAuthGate(false); setLoginError('');}} className="text-slate-400 hover:text-white transition-colors bg-white/5 p-2 rounded-full"><X size={16}/></button>
               </div>
               <form onSubmit={handleLogin} className="space-y-4">
                 <input placeholder="Username" value={gateU} onChange={e=>setGateU(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-indigo-500 transition-colors"/>
                 <div className="relative">
-                    <input type={showPass ? "text" : "password"} placeholder="Passcode" value={gateP} onChange={e=>setGateP(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-indigo-500 transition-colors"/>
+                    <input type={showPass ? "text" : "password"} placeholder="Password" value={gateP} onChange={e=>setGateP(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-indigo-500 transition-colors"/>
                     <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-4 text-slate-500 hover:text-slate-300 transition-colors">{showPass ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
                 </div>
                 {loginError && <p className="text-rose-500 text-sm font-bold pt-1">{loginError}</p>}
-                <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 transition-colors py-4 rounded-xl font-black text-white shadow-lg shadow-indigo-600/20 mt-2">AUTHENTICATE</button>
+                <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 transition-colors py-4 rounded-xl font-black text-white shadow-lg shadow-indigo-600/20 mt-2">Submit</button>
               </form>
            </div>
         </div>
