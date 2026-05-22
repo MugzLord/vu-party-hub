@@ -424,10 +424,16 @@ function EventCard({ p }) {
         <div className="bg-[#0a0f1d] border border-white/5 p-5 rounded-2xl mb-3">
             <div className="font-black text-white text-[15px] mb-2">{p.theme}</div>
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 font-bold">
-                {/* Use the new formatTime helper here */}
-                <div className="flex items-center gap-1.5"><Clock size={14}/> {p.startTime} <span className="opacity-60 text-[10px]">(PT)</span></div>
-                <div className="flex items-center gap-1.5"><User size={14}/> Host: {p.hostName} {p.coHost && <span className="opacity-60">/ {p.coHost}</span>}</div>
-                <div className="flex items-center gap-1.5 text-indigo-400"><Users size={14}/> {p.performers}</div>
+                {/* Fixed: Wrapped p.startTime in formatTime() */}
+                <div className="flex items-center gap-1.5">
+                    <Clock size={14}/> {formatTime(p.startTime)} 
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <User size={14}/> Host: {p.hostName} {p.coHost && <span className="opacity-60">/ {p.coHost}</span>}
+                </div>
+                <div className="flex items-center gap-1.5 text-indigo-400">
+                    <Users size={14}/> {p.performers}
+                </div>
             </div>
         </div>
     )
