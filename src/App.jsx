@@ -25,6 +25,7 @@ export default function App() {
   const [view, setView] = useState('Guide'); 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showAuthGate, setShowAuthGate] = useState(false);
+  const [editModal, setEditModal] = useState(null);
   const [gateU, setGateU] = useState('');
   const [gateP, setGateP] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -44,7 +45,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handleKeyDown = (e) => { if (e.key === 'Escape') setShowAuthGate(false); };
+    const handleKeyDown = (e) => { 
+        if (e.key === 'Escape') {
+            setShowAuthGate(false);
+            setEditModal(null);
+        }
+    };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
@@ -82,7 +88,11 @@ export default function App() {
   };
 
   const handleDelete = async (id) => await deleteDoc(doc(db, getPath('parties'), id));
-  const handleUpdate = async (id, data) => await updateDoc(doc(db, getPath('parties'), id), data);
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    await updateDoc(doc(db, getPath('parties'), editModal.id), editModal);
+    setEditModal(null);
+  };
   
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
 
@@ -121,22 +131,44 @@ export default function App() {
         {view === 'Manage' && isStaff && (
             <div className="space-y-8">
                 <form onSubmit={handleAdd} className="bg-[#111827] border border-white/10 p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input placeholder="Theme" className="bg-black/40 p-4 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, theme: e.target.value})}/>
-                    <input placeholder="Host" className="bg-black/40 p-4 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
-                    <input placeholder="Co-Host" className="bg-black/40 p-4 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
-                    <select className="bg-black/40 p-4 rounded-lg border border-white/10 col-span-full" onChange={e=>setFormData({...formData, performers: e.target.value})}>
+                    <input placeholder="Theme" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
+                    <input placeholder="Host" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
+                    <input placeholder="Co-Host" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
+                    <select className="bg-black/40 p-4 rounded-lg border border-white/10 col-span-full" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
                         <option value="VUI">VUI</option>
                         <option value="StoryTeller">StoryTeller</option>
                     </select>
-                    <input type="time" className="bg-black/40 p-4 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, startTime: e.target.value})}/>
-                    <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10" onChange={e=>setFormData({...formData, date: e.target.value})}/>
+                    <input type="time" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}/>
+                    <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
                     <button className="bg-indigo-600 rounded-lg font-bold p-4 col-span-full">ADD EVENT</button>
                 </form>
-                <section><h3 className="text-white font-black mb-4 flex items-center gap-2 text-lg"><Edit size={18}/> Active Events</h3>{active.map(p => <ManageEventCard key={p.id} p={p} onDelete={handleDelete} onUpdate={handleUpdate}/>)}</section>
-                <section><h3 className="text-slate-500 font-black mb-4 flex items-center gap-2 text-lg"><Archive size={18}/> Archive</h3>{archived.map(p => <ManageEventCard key={p.id} p={p} onDelete={handleDelete} onUpdate={handleUpdate}/>)}</section>
+                <section><h3 className="text-white font-black mb-4 flex items-center gap-2 text-lg"><Edit size={18}/> Active Events</h3>{active.map(p => <ManageEventCard key={p.id} p={p} onDelete={handleDelete} onEdit={setEditModal} isArchived={false}/>)}</section>
+                <section><h3 className="text-slate-500 font-black mb-4 flex items-center gap-2 text-lg"><Archive size={18}/> Archive</h3>{archived.map(p => <ManageEventCard key={p.id} p={p} onDelete={handleDelete} onEdit={setEditModal} isArchived={true}/>)}</section>
             </div>
         )}
       </main>
+
+      {editModal && (
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[110]">
+              <form onSubmit={handleUpdate} className="bg-[#111827] border border-white/10 p-6 rounded-2xl w-full max-w-md space-y-4">
+                  <h2 className="font-black text-white">Edit Event</h2>
+                  <input className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.theme} onChange={e=>setEditModal({...editModal, theme: e.target.value})}/>
+                  <input className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.hostName} onChange={e=>setEditModal({...editModal, hostName: e.target.value})}/>
+                  <input className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.coHost} onChange={e=>setEditModal({...editModal, coHost: e.target.value})}/>
+                  <select className="w-full bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.performers} onChange={e=>setEditModal({...editModal, performers: e.target.value})}>
+                        <option value="VUI">VUI</option><option value="StoryTeller">StoryTeller</option>
+                  </select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <input type="time" className="bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.startTime} onChange={e=>setEditModal({...editModal, startTime: e.target.value})}/>
+                    <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.date} onChange={e=>setEditModal({...editModal, date: e.target.value})}/>
+                  </div>
+                  <div className="flex gap-2">
+                      <button type="submit" className="flex-1 bg-indigo-600 p-4 rounded-lg font-bold">SAVE</button>
+                      <button type="button" onClick={()=>setEditModal(null)} className="flex-1 bg-white/5 p-4 rounded-lg font-bold text-slate-400">CANCEL</button>
+                  </div>
+              </form>
+          </div>
+      )}
 
       {showAuthGate && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[100]">
@@ -153,20 +185,20 @@ export default function App() {
   );
 }
 
-function ManageEventCard({ p, onDelete, onUpdate }) {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editVal, setEditVal] = useState(p.performers || 'VUI');
+function ManageEventCard({ p, onDelete, onEdit, isArchived }) {
     return (
         <div className="bg-[#111827] border border-white/5 p-4 rounded-xl mb-3 flex flex-col gap-2">
             <div className="flex justify-between items-center">
-                {isEditing ? <select className="bg-black p-2 rounded" value={editVal} onChange={e=>setEditVal(e.target.value)}><option value="VUI">VUI</option><option value="StoryTeller">StoryTeller</option></select> : <span className="font-black text-white">{p.theme}</span>}
-                <div className="flex gap-2">
-                    {isEditing ? <button onClick={()=>{onUpdate(p.id, {performers: editVal}); setIsEditing(false);}} className="text-emerald-500"><Save size={18}/></button> : <button onClick={()=>setIsEditing(true)} className="text-indigo-500"><Edit size={18}/></button>}
-                    <button onClick={()=>onDelete(p.id)} className="text-rose-500"><Trash2 size={18}/></button>
-                </div>
+                <span className="font-black text-white">{p.theme}</span>
+                {!isArchived && (
+                    <div className="flex gap-2">
+                        <button onClick={()=>onEdit(p)} className="text-indigo-500"><Edit size={18}/></button>
+                        <button onClick={()=>onDelete(p.id)} className="text-rose-500"><Trash2 size={18}/></button>
+                    </div>
+                )}
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 font-bold">
-                <span>{p.date}</span> <span>{p.startTime}</span> <span>Host: {p.hostName} {p.coHost && `& ${p.coHost}`}</span> <span className="text-indigo-400">{isEditing ? editVal : p.performers}</span>
+                <span>{p.date}</span> <span>{p.startTime}</span> <span>Host: {p.hostName} {p.coHost && `& ${p.coHost}`}</span> <span className="text-indigo-400">{p.performers}</span>
             </div>
         </div>
     );
