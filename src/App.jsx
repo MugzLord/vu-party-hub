@@ -240,21 +240,34 @@ export default function App() {
 
       <main className="p-4 md:p-6 max-w-4xl mx-auto relative z-10">
         {view === 'Guide' && (
-            <div className="space-y-4">
+            <div className="space-y-8">
                 <h2 className="font-black text-white text-2xl">Welcome to the VU Party Hub</h2>
-                <p className="text-slate-400">Use this hub to track party schedules, view the monthly calendar, and manage upcoming events.</p>
+                
+                {/* This Month's Events */}
                 <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl">
-                    <h3 className="font-black text-lg mb-4 text-white">Upcoming Events</h3>
+                    <h3 className="font-black text-lg mb-4 text-white uppercase tracking-wider">
+                        {currentMonth.toLocaleDateString('en-US', {month: 'long'})} Events
+                    </h3>
                     <div className="space-y-3">
-                        {upcomingParties.length > 0 ? upcomingParties.map(p => (
-                            <div key={p.id} className="p-4 bg-black/40 rounded-xl flex flex-col md:flex-row md:justify-between md:items-center gap-2 border border-white/5">
-                                <span className="font-bold text-white text-[15px]">{p.theme} <span className="text-slate-500 text-xs ml-2 italic font-medium">Host: {p.hostName}</span></span>
-                                <div className="flex gap-3 text-indigo-400 font-bold text-sm">
-                                    <span>{formatDate(p.date)}</span>
-                                    <span>{formatTime(p.startTime)}</span>
-                                </div>
-                            </div>
-                        )) : <div className="text-slate-500 text-sm">No upcoming events scheduled.</div>}
+                        {thisMonthEvents.length > 0 ? (
+                            thisMonthEvents.map(p => <EventCard key={p.id} p={p}/>)
+                        ) : (
+                            <p className="text-slate-500 text-sm">No events this month.</p>
+                        )}
+                    </div>
+                </div>
+        
+                {/* Next Month's Events */}
+                <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl">
+                    <h3 className="font-black text-lg mb-4 text-indigo-400 uppercase tracking-wider">
+                        {new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1).toLocaleDateString('en-US', {month: 'long'})} Events
+                    </h3>
+                    <div className="space-y-3">
+                        {nextMonthEvents.length > 0 ? (
+                            nextMonthEvents.map(p => <EventCard key={p.id} p={p}/>)
+                        ) : (
+                            <p className="text-slate-500 text-sm">No events scheduled yet.</p>
+                        )}
                     </div>
                 </div>
             </div>
