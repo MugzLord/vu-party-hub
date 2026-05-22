@@ -249,18 +249,24 @@ export default function App() {
                         onClick={() => setGuideTab('current')}
                         className={`pb-2 px-4 font-black text-sm uppercase transition-colors ${guideTab === 'current' ? 'text-white border-b-2 border-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}
                     >
-                        {currentMonth.toLocaleDateString('en-US', {month: 'long'})}
+                        Current Events
                     </button>
                     <button 
                         onClick={() => setGuideTab('next')}
                         className={`pb-2 px-4 font-black text-sm uppercase transition-colors ${guideTab === 'next' ? 'text-white border-b-2 border-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}
                     >
-                        {new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1).toLocaleDateString('en-US', {month: 'long'})}
+                        Upcoming Events
                     </button>
                 </div>
         
                 {/* Tab Content */}
                 <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl min-h-[300px]">
+                    <div className="mb-4 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                        {guideTab === 'current' 
+                            ? currentMonth.toLocaleDateString('en-US', {month: 'long', year: 'numeric'}) 
+                            : new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1).toLocaleDateString('en-US', {month: 'long', year: 'numeric'})
+                        }
+                    </div>
                     {guideTab === 'current' ? (
                         <div className="space-y-3">
                             {thisMonthEvents.length > 0 ? thisMonthEvents.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-slate-500 text-sm">No events this month.</p>}
@@ -273,8 +279,7 @@ export default function App() {
                 </div>
             </div>
         )}
-        
-        {view === 'Monthly' && (
+                {view === 'Monthly' && (
            <div className="space-y-6">
             <div className="flex justify-between items-center bg-[#111827] p-4 rounded-xl border border-white/5">
                 <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="p-2 hover:bg-white/5 rounded-lg transition-colors"><ChevronLeft size={20}/></button>
