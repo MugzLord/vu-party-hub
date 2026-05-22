@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CalendarDays, LogOut, ChevronLeft, ChevronRight, 
-  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Users, X, Save, Settings
+  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Users, X, Save, Settings, Eye, EyeOff, Archive
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
@@ -179,8 +179,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0a0f1d] text-slate-200 font-sans text-base pb-10">
-      <header className="bg-[#111827] border-b border-white/5 p-4 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-2"><div className="w-10 h-10 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30"><CalendarDays size={22} className="text-indigo-500"/></div><h1 className="font-black text-white text-lg">VU HUB</h1></div>
+      <header className="relative z-40 bg-[#111827] border-b border-white/5 p-4 flex justify-between items-center sticky top-0">
+        <div className="flex items-center gap-2"><div className="w-10 h-10 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30"><CalendarDays size={22} className="text-indigo-500"/></div><h1 className="font-black text-white text-lg">VU Party HUB</h1></div>
         {currentUser ? (
             <div className="flex items-center gap-3">
                 <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-1.5 text-xs bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-1.5 rounded-full uppercase font-bold text-indigo-400 transition-colors border border-indigo-500/20">
@@ -191,7 +191,7 @@ export default function App() {
         ) : <button onClick={() => setShowAuthGate(true)} className="flex items-center gap-2 bg-white/5 hover:bg-white/10 transition-colors px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-slate-300"><Shield size={16}/> Admin</button>}
       </header>
 
-      <div className="flex p-4 gap-2 bg-[#111827]/50 border-b border-white/5 overflow-x-auto">
+      <div className="flex p-4 gap-2 bg-[#111827]/50 border-b border-white/5 overflow-x-auto relative z-30">
         {['Guide', 'Monthly', isStaff ? 'Manage' : '', currentUser?.role === 'owner' ? 'Staff' : ''].filter(Boolean).map(t => (
             <button key={t} onClick={()=>setView(t)} className={`px-6 py-3 rounded-xl text-xs font-black uppercase flex items-center gap-2 whitespace-nowrap transition-colors ${view===t ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-[#1f2937] text-slate-400 hover:bg-slate-700'}`}>
                 {t === 'Guide' && <BookOpen size={14}/>}{t === 'Monthly' && <Calendar size={14}/>}{t === 'Manage' && <Edit size={14}/>}{t === 'Staff' && <Users size={14}/>}{t}
@@ -199,10 +199,10 @@ export default function App() {
         ))}
       </div>
 
-      <main className="p-4 md:p-6 max-w-4xl mx-auto">
+      <main className="p-4 md:p-6 max-w-4xl mx-auto relative z-10">
         {view === 'Guide' && (
             <div className="space-y-4">
-                <h2 className="font-black text-white text-2xl">Welcome to the VU Hub</h2>
+                <h2 className="font-black text-white text-2xl">Welcome to the VU Party Hub</h2>
                 <p className="text-slate-400">Use this hub to track party schedules, view the monthly calendar, and manage upcoming events.</p>
                 <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl">
                     <h3 className="font-black text-lg mb-4 text-white">Upcoming Events</h3>
@@ -311,7 +311,7 @@ export default function App() {
 
       {/* Monthly Day Modal */}
       {selectedDay && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
            <div className="bg-[#111827] p-6 rounded-3xl w-full max-w-lg border border-white/10 space-y-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-2 pb-4 border-b border-white/5">
                   <h2 className="font-black text-lg text-white">Events for {selectedDay.toDateString()}</h2>
@@ -327,7 +327,7 @@ export default function App() {
 
       {/* Edit Event Modal */}
       {editModal && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[110] backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
            <form onSubmit={handleUpdate} className="bg-[#111827] p-6 rounded-3xl w-full max-w-lg border border-white/10 space-y-4">
               <div className="flex justify-between items-center mb-2 pb-4 border-b border-white/5">
                   <h2 className="font-black text-lg text-white flex items-center gap-2"><Edit size={18} className="text-indigo-400"/> Edit Event</h2>
@@ -362,7 +362,7 @@ export default function App() {
 
       {/* Auth Gate Modal */}
       {showAuthGate && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[120] backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
            <div className="bg-[#111827] p-8 rounded-3xl w-full max-w-sm border border-white/10">
               <div className="flex justify-between items-center mb-6">
                   <h2 className="font-black text-xl text-white flex items-center gap-2"><Shield size={20} className="text-indigo-500"/> SYSTEM LOGIN</h2>
@@ -383,7 +383,7 @@ export default function App() {
 
       {/* Profile Modal (Change Password) */}
       {showProfileModal && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[130] backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
            <form onSubmit={handleChangePassword} className="bg-[#111827] p-8 rounded-3xl w-full max-w-sm border border-white/10 space-y-4">
               <div className="flex justify-between items-center mb-4">
                   <h2 className="font-black text-lg text-white">Change Password</h2>
