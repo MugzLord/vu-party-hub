@@ -224,7 +224,7 @@ export default function App() {
                                 <span className="font-bold text-white text-[15px]">{p.theme} <span className="text-slate-500 text-xs ml-2 italic font-medium">Host: {p.hostName}</span></span>
                                 <div className="flex gap-3 text-indigo-400 font-bold text-sm">
                                     <span>{formatDate(p.date)}</span>
-                                    <span>{p.startTime}</span>
+                                    <span>{formatTime(p.startTime)}</span>
                                 </div>
                             </div>
                         )) : <div className="text-slate-500 text-sm">No upcoming events scheduled.</div>}
@@ -284,7 +284,7 @@ export default function App() {
                                 <span className="font-bold text-white text-[15px]">{p.theme}</span>
                                 <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 font-bold mt-1">
                                     <span>{p.date}</span>
-                                    <span>{p.startTime}</span>
+                                    <span>{formatTime(p.startTime)}</span>
                                     <span>Host: {p.hostName}{p.coHost ? ` / ${p.coHost}` : ''}</span>
                                     <span className="text-indigo-400">{p.performers}</span>
                                 </div>
