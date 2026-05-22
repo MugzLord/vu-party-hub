@@ -284,23 +284,29 @@ export default function App() {
 
                 <div className="space-y-3">
                     <h3 className="font-black text-lg mb-4 text-white flex items-center gap-2"><Archive size={18}/> Active Events</h3>
-                    {parties.map(p => (
+                    {parties
+                      .filter(p => new Date(p.date) >= today)
+                      .sort((a, b) => new Date(a.date) - new Date(b.date))
+                      .map(p => (
                         <div key={p.id} className="bg-[#111827] border border-white/5 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                            <div className="flex flex-col gap-1">
-                                <span className="font-bold text-white text-[15px]">{p.theme}</span>
-                                <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 font-bold mt-1">
-                                    <span>{p.date}</span>
-                                    <span>{formatTime(p.startTime)}</span>
-                                    <span>Host: {p.hostName}{p.coHost ? ` / ${p.coHost}` : ''}</span>
-                                    <span className="text-indigo-400">{p.performers}</span>
-                                </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="font-bold text-white text-[15px]">{p.theme}</span>
+                            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 font-bold mt-1">
+                              <span>{p.date}</span>
+                              <span>{formatTime(p.startTime)}</span>
+                              <span>Host: {p.hostName}{p.coHost ? ` / ${p.coHost}` : ''}</span>
+                              <span className="text-indigo-400">{p.performers}</span>
                             </div>
-                            <div className="flex gap-2 w-full md:w-auto justify-end">
-                                <button onClick={() => setEditModal(p)} className="p-2.5 bg-black/40 border border-white/5 hover:bg-white/10 rounded-xl text-indigo-400 transition-colors"><Edit size={16}/></button>
-                                <button onClick={() => handleDelete(p.id)} className="p-2.5 bg-black/40 border border-white/5 hover:bg-rose-500/20 hover:border-rose-500/30 rounded-xl text-rose-500 transition-colors"><Trash2 size={16}/></button>
-                            </div>
+                          </div>
+                          <div className="flex gap-2 w-full md:w-auto justify-end">
+                            <button onClick={() => setEditModal(p)} className="p-2.5 bg-black/40 border border-white/5 hover:bg-white/10 rounded-xl text-indigo-400 transition-colors"><Edit size={16}/></button>
+                            <button onClick={() => handleDelete(p.id)} className="p-2.5 bg-black/40 border border-white/5 hover:bg-rose-500/20 hover:border-rose-500/30 rounded-xl text-rose-500 transition-colors"><Trash2 size={16}/></button>
+                          </div>
                         </div>
                     ))}
+                    {parties.filter(p => new Date(p.date) >= today).length === 0 && (
+                      <p className="text-slate-500 text-sm">No active events to manage.</p>
+                    )}
                     {parties.length === 0 && <p className="text-slate-500 text-sm">No events to manage.</p>}
                 </div>
             </div>
