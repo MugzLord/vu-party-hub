@@ -50,7 +50,7 @@ export default function App() {
   const [view, setView] = useState('Guide'); 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
-  
+  const [guideTab, setGuideTab] = useState('current');
   // Auth & Modals
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [editModal, setEditModal] = useState(null);
@@ -240,35 +240,36 @@ export default function App() {
 
       <main className="p-4 md:p-6 max-w-4xl mx-auto relative z-10">
         {view === 'Guide' && (
-            <div className="space-y-8">
+            <div className="space-y-6">
                 <h2 className="font-black text-white text-2xl">Welcome to the VU Party Hub</h2>
                 
-                {/* This Month's Events */}
-                <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl">
-                    <h3 className="font-black text-lg mb-4 text-white uppercase tracking-wider">
-                        {currentMonth.toLocaleDateString('en-US', {month: 'long'})} Events
-                    </h3>
-                    <div className="space-y-3">
-                        {thisMonthEvents.length > 0 ? (
-                            thisMonthEvents.map(p => <EventCard key={p.id} p={p}/>)
-                        ) : (
-                            <p className="text-slate-500 text-sm">No events this month.</p>
-                        )}
-                    </div>
+                {/* Tab Buttons */}
+                <div className="flex gap-2 border-b border-white/10 pb-1">
+                    <button 
+                        onClick={() => setGuideTab('current')}
+                        className={`pb-2 px-4 font-black text-sm uppercase transition-colors ${guideTab === 'current' ? 'text-white border-b-2 border-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        {currentMonth.toLocaleDateString('en-US', {month: 'long'})}
+                    </button>
+                    <button 
+                        onClick={() => setGuideTab('next')}
+                        className={`pb-2 px-4 font-black text-sm uppercase transition-colors ${guideTab === 'next' ? 'text-white border-b-2 border-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        {new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1).toLocaleDateString('en-US', {month: 'long'})}
+                    </button>
                 </div>
         
-                {/* Next Month's Events */}
-                <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl">
-                    <h3 className="font-black text-lg mb-4 text-indigo-400 uppercase tracking-wider">
-                        {new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1).toLocaleDateString('en-US', {month: 'long'})} Events
-                    </h3>
-                    <div className="space-y-3">
-                        {nextMonthEvents.length > 0 ? (
-                            nextMonthEvents.map(p => <EventCard key={p.id} p={p}/>)
-                        ) : (
-                            <p className="text-slate-500 text-sm">No events scheduled yet.</p>
-                        )}
-                    </div>
+                {/* Tab Content */}
+                <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl min-h-[300px]">
+                    {guideTab === 'current' ? (
+                        <div className="space-y-3">
+                            {thisMonthEvents.length > 0 ? thisMonthEvents.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-slate-500 text-sm">No events this month.</p>}
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {nextMonthEvents.length > 0 ? nextMonthEvents.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-slate-500 text-sm">No events scheduled yet.</p>}
+                        </div>
+                    )}
                 </div>
             </div>
         )}
@@ -471,9 +472,13 @@ function EventCard({ p }) {
         <div className="bg-[#0a0f1d] border border-white/5 p-5 rounded-2xl mb-3">
             <div className="font-black text-white text-[15px] mb-2">{p.theme}</div>
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 font-bold">
-                {/* Fixed: Wrapped p.startTime in formatTime() */}
+                {/* Date Display */}
+                <div className="flex items-center gap-1.5 text-indigo-400">
+                    <Calendar size={14}/> {formatDate(p.date)}
+                </div>
+                {/* Time Display */}
                 <div className="flex items-center gap-1.5">
-                    <Clock size={14}/> {formatTime(p.startTime)} 
+                    <Clock size={14}/> {formatTime(p.startTime)} <span className="opacity-60 text-[10px]">(PT)</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                     <User size={14}/> Host: {p.hostName} {p.coHost && <span className="opacity-60">/ {p.coHost}</span>}
