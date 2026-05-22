@@ -28,9 +28,8 @@ const TIME_OPTIONS = [
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
+  // Splits "2026-05-21" into [2026, 05, 21]
+  const [year, month, day] = dateStr.split('-');
   return `${day}-${month}`;
 };
 
@@ -426,7 +425,7 @@ function EventCard({ p }) {
             <div className="font-black text-white text-[15px] mb-2">{p.theme}</div>
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 font-bold">
                 {/* Use the new formatTime helper here */}
-                <div className="flex items-center gap-1.5"><Clock size={14}/> {formatTime(p.startTime)}</div>
+                <div className="flex items-center gap-1.5"><Clock size={14}/> {p.startTime} <span className="opacity-60 text-[10px]">(PT)</span></div>
                 <div className="flex items-center gap-1.5"><User size={14}/> Host: {p.hostName} {p.coHost && <span className="opacity-60">/ {p.coHost}</span>}</div>
                 <div className="flex items-center gap-1.5 text-indigo-400"><Users size={14}/> {p.performers}</div>
             </div>
