@@ -19,6 +19,19 @@ const db = getFirestore(app);
 const getPath = (colName) => typeof __app_id !== 'undefined' ? `artifacts/${__app_id}/public/data/${colName}` : colName;
 const SESSION_KEY = 'vu_party_hub_v350_pro_final';
 
+const TIME_OPTIONS = [
+  "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM", 
+  "6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM", "10:00 PM", "11:00 PM"
+];
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${day}-${month}`;
+};
+
 export default function App() {
   const [parties, setParties] = useState([]);
   const [currentUser, setCurrentUser] = useState(() => { const s = localStorage.getItem(SESSION_KEY); return s ? JSON.parse(s) : null; });
@@ -30,7 +43,7 @@ export default function App() {
   const [gateP, setGateP] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [formData, setFormData] = useState({ theme: '', hostName: '', coHost: '', date: '', startTime: '', performers: 'VUI' });
+  const [formData, setFormData] = useState({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', performers: 'VUI' });
 
   useEffect(() => {
     const initAuth = async () => { 
@@ -84,7 +97,7 @@ export default function App() {
   const handleAdd = async (e) => {
     e.preventDefault();
     await addDoc(collection(db, getPath('parties')), { ...formData, status: 'approved' });
-    setFormData({ theme: '', hostName: '', coHost: '', date: '', startTime: '', performers: 'VUI' });
+    setFormData({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', performers: 'VUI' });
   };
 
   const handleDelete = async (id) => await deleteDoc(doc(db, getPath('parties'), id));
@@ -134,11 +147,13 @@ export default function App() {
                     <input placeholder="Theme" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
                     <input placeholder="Host" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
                     <input placeholder="Co-Host" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
-                    <select className="bg-black/40 p-4 rounded-lg border border-white/10 col-span-full" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
+                    <select className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
                         <option value="VUI">VUI</option>
                         <option value="StoryTeller">StoryTeller</option>
                     </select>
-                    <input type="time" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}/>
+                    <select className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
+                        {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
                     <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
                     <button className="bg-indigo-600 rounded-lg font-bold p-4 col-span-full">ADD EVENT</button>
                 </form>
@@ -159,7 +174,9 @@ export default function App() {
                         <option value="VUI">VUI</option><option value="StoryTeller">StoryTeller</option>
                   </select>
                   <div className="grid grid-cols-2 gap-4">
-                    <input type="time" className="bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.startTime} onChange={e=>setEditModal({...editModal, startTime: e.target.value})}/>
+                    <select className="bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.startTime} onChange={e=>setEditModal({...editModal, startTime: e.target.value})}>
+                        {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
                     <input type="date" className="bg-black/40 p-4 rounded-lg border border-white/10" value={editModal.date} onChange={e=>setEditModal({...editModal, date: e.target.value})}/>
                   </div>
                   <div className="flex gap-2">
@@ -198,7 +215,7 @@ function ManageEventCard({ p, onDelete, onEdit, isArchived }) {
                 )}
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 font-bold">
-                <span>{p.date}</span> <span>{p.startTime}</span> <span>Host: {p.hostName} {p.coHost && `& ${p.coHost}`}</span> <span className="text-indigo-400">{p.performers}</span>
+                <span>{formatDate(p.date)}</span> <span>{p.startTime}</span> <span>Host: {p.hostName} {p.coHost && `& ${p.coHost}`}</span> <span className="text-indigo-400">{p.performers}</span>
             </div>
         </div>
     );
@@ -210,7 +227,7 @@ function EventCard({ p }) {
         <div className={`bg-[#111827] border border-white/5 p-5 rounded-2xl mb-4 ${isLive ? 'ring-2 ring-indigo-500/50' : ''}`}>
             <div className="flex justify-between items-start mb-3">
                 <div className="font-black text-white text-lg flex items-center gap-2">{p.theme}{isLive && <span className="text-[10px] bg-rose-600 animate-pulse text-white px-2 py-0.5 rounded-full font-black uppercase">Live Now</span>}</div>
-                <div className="text-sm text-slate-300 font-bold bg-black/30 px-3 py-1 rounded flex items-center gap-1.5"><Calendar size={14}/> {p.date}</div>
+                <div className="text-sm text-slate-300 font-bold bg-black/30 px-3 py-1 rounded flex items-center gap-1.5"><Calendar size={14}/> {formatDate(p.date)}</div>
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-slate-400">
                 <div className="flex items-center gap-1.5"><User size={14}/> Host: {p.hostName} {p.coHost && `& ${p.coHost}`}</div>
