@@ -35,12 +35,22 @@ const formatDate = (dateStr) => {
 
 const formatTime = (timeStr) => {
   if (!timeStr) return '';
-  // If your data is already in "HH:MM" 24hr format
-  const [hours, minutes] = timeStr.split(':');
-  const h = parseInt(hours, 10);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const formattedHours = h % 12 || 12;
-  return timeStr || '';
+  if (/(am|pm)/i.test(timeStr)) {
+    return timeStr.toUpperCase();
+  }
+
+  const parts = timeStr.split(':');
+  if (parts.length === 2) {
+    const hours = parseInt(parts[0], 10);
+    const minutes = parts[1];
+ 
+    if (isNaN(hours)) return timeStr;
+
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+    return `${formattedHours}:${minutes} ${ampm}`;
+  }
+  return timeStr;
 };
 
 export default function App() {
