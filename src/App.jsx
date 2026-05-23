@@ -234,7 +234,7 @@ export default function App() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     
-    // Create the updated object with the audit field
+    // Create the updated object with audit data
     const updatedEvent = { 
         ...editModal, 
         lastEditedBy: currentUser?.username || 'Admin', 
@@ -244,13 +244,6 @@ export default function App() {
     await updateDoc(doc(db, getPath('parties'), editModal.id), updatedEvent);
     setEditModal(null);
 };
-  const handleDelete = async (id) => await deleteDoc(doc(db, getPath('parties'), id));
-  
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    await updateDoc(doc(db, getPath('parties'), editModal.id), editModal);
-    setEditModal(null);
-  };
   
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
   
