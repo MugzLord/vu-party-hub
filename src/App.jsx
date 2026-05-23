@@ -64,9 +64,11 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [showPass, setShowPass] = useState(false);
 
-  // --- ADD THIS BLOCK AFTER LINE 65 ---
   const { thisMonthEvents, nextMonthEvents } = useMemo(() => {
     const now = new Date();
+    // Normalize 'now' to midnight to represent the start of the current day
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
     const currentMonthIdx = currentMonth.getMonth();
     const currentYear = currentMonth.getFullYear();
 
@@ -75,12 +77,20 @@ export default function App() {
     return {
       thisMonthEvents: parties.filter(p => {
         const d = new Date(p.date);
-        return d.getMonth() === currentMonthIdx && d.getFullYear() === currentYear && d >= now;
+        // Ensure date is valid
+        if (isNaN(d.getTime())) return false;
+        
+        // Compare date strings or normalized dates to ensure today is included
+        // We check if it's in the correct month/year AND it's today or in the future
+        return d.getMonth() === currentMonthIdx && 
+               d.getFullYear() === currentYear && 
+               d >= startOfToday;
       }).sort((a, b) => new Date(a.date) - new Date(b.date)),
       
       nextMonthEvents: parties.filter(p => {
         const d = new Date(p.date);
-        return d.getMonth() === nextMonthDate.getMonth() && d.getFullYear() === nextMonthDate.getFullYear();
+        return d.getMonth() === nextMonthDate.getMonth() && 
+               d.getFullYear() === nextMonthDate.getFullYear();
       }).sort((a, b) => new Date(a.date) - new Date(b.date))
     };
   }, [parties, currentMonth]);
