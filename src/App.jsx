@@ -334,7 +334,11 @@ const handleAdd = async (e) => {
     {/* Navigation Tabs */}
     <div className="flex p-4 gap-2 bg-[#111827]/50 border-b border-white/5 overflow-x-auto relative z-30">
         {['Guide', 'Monthly', isStaff ? 'Manage' : '', currentUser?.role === 'owner' ? 'Staff' : ''].filter(Boolean).map(t => (
-            <button key={t} onClick={()=>setView(t)} className={`px-6 py-3 rounded-xl text-xs font-black uppercase flex items-center gap-2 whitespace-nowrap transition-colors ${view===t ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-[#1f2937] text-slate-400 hover:bg-slate-700'}`}>
+            <button 
+                key={t} 
+                onClick={() => setView(t)} 
+                className={`px-6 py-3 rounded-xl text-xs font-black uppercase flex items-center gap-2 whitespace-nowrap transition-colors ${view === t ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-[#1f2937] text-slate-400 hover:bg-slate-700'}`}
+            >
                 {t === 'Guide' && <BookOpen size={14}/>}
                 {t === 'Monthly' && <Calendar size={14}/>}
                 {t === 'Manage' && <Edit size={14}/>}
