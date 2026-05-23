@@ -330,8 +330,7 @@ const handleAdd = async (e) => {
             </button>
         )}
     </header>
-    
-    {/* Navigation Tabs */}
+      
     <div className="flex p-4 gap-2 bg-[#111827]/50 border-b border-white/5 overflow-x-auto relative z-30">
         {['Guide', 'Monthly', isStaff ? 'Manage' : '', currentUser?.role === 'owner' ? 'Staff' : ''].filter(Boolean).map(t => (
             <button 
