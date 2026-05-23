@@ -138,6 +138,24 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  const [ptTime, setPtTime] = useState('');
+
+  useEffect(() => {
+      const updateTime = () => {
+          const formatter = new Intl.DateTimeFormat('en-US', {
+              timeZone: 'America/Los_Angeles',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true,
+          });
+          setPtTime(formatter.format(new Date()));
+      };
+
+      updateTime();
+      const interval = setInterval(updateTime, 1000);
+      return () => clearInterval(interval);
+  }, []);
   useEffect(() => {
     if (!isAuthReady) return;
     const unsubscribeParties = onSnapshot(collection(db, getPath('parties')), 
@@ -279,9 +297,21 @@ const handleAdd = async (e) => {
   const upcomingParties = parties.filter(p => new Date(p.date) >= today).sort((a,b)=>new Date(a.date)-new Date(b.date));
 
   return (
-    <div className="min-h-screen bg-[#0a0f1d] text-slate-200 font-sans text-base pb-10">
-      <header className="relative z-40 bg-[#111827] border-b border-white/5 p-4 flex justify-between items-center sticky top-0">
-        <div className="flex items-center gap-2"><div className="w-10 h-10 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30"><CalendarDays size={22} className="text-indigo-500"/></div><h1 className="font-black text-white text-lg">VU Party HUB</h1></div>
+    <header className="relative z-40 bg-[#111827] border-b border-white/5 p-4 flex justify-between items-center sticky top-0">
+        <div className="flex items-center gap-4"> 
+            <div className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30">
+                    <CalendarDays size={22} className="text-indigo-500"/>
+                </div>
+                <h1 className="font-black text-white text-lg">VU Party HUB</h1>
+            </div>
+    
+            
+            <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-slate-500 bg-white/5 px-3 py-1 rounded-md border border-white/5">
+                <Clock size={12} className="text-indigo-500"/>
+                {ptTime} <span className="opacity-60">PT</span>
+            </div>
+        </div>
         {currentUser ? (
             <div className="flex items-center gap-3">
                 <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-1.5 text-xs bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-1.5 rounded-full uppercase font-bold text-indigo-400 transition-colors border border-indigo-500/20">
