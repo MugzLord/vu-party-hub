@@ -231,12 +231,19 @@ export default function App() {
       }
   };
 
-  const handleAdd = async (e) => {
+  const handleUpdate = async (e) => {
     e.preventDefault();
-    await addDoc(collection(db, getPath('parties')), { ...formData, status: 'approved' });
-    setFormData({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', performers: 'VUI' });
-  };
+    
+    // Create the updated object with the audit field
+    const updatedEvent = { 
+        ...editModal, 
+        lastEditedBy: currentUser?.username || 'Admin', 
+        lastEditedAt: new Date().toISOString() 
+    };
 
+    await updateDoc(doc(db, getPath('parties'), editModal.id), updatedEvent);
+    setEditModal(null);
+};
   const handleDelete = async (id) => await deleteDoc(doc(db, getPath('parties'), id));
   
   const handleUpdate = async (e) => {
@@ -428,6 +435,24 @@ export default function App() {
                         </div>
                     ))}
                     {admins.length === 0 && <p className="text-slate-500 text-sm">No administrators found.</p>}
+                </div>
+
+                {/* --- NEW: EVENT LOGS SECTION --- */}
+                <div className="space-y-3 pt-8 border-t border-white/10">
+                    <h3 className="font-black text-lg text-white mb-4">Event Audit Logs</h3>
+                    {parties.slice().sort((a,b) => new Date(b.lastEditedAt || 0) - new Date(a.lastEditedAt || 0)).map(p => (
+                        <div key={p.id} className="bg-[#111827] border border-white/5 p-5 rounded-2xl flex justify-between items-center">
+                            <div>
+                                <div className="font-bold text-white text-sm">{p.theme}</div>
+                                <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                                    Last edited by: <span className="text-indigo-400">{p.lastEditedBy || 'N/A'}</span>
+                                </div>
+                            </div>
+                            <div className="text-[10px] text-slate-600 font-mono">
+                                {p.lastEditedAt ? new Date(p.lastEditedAt).toLocaleString() : 'No edits'}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         )}
