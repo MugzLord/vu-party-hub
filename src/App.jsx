@@ -75,27 +75,34 @@ export default function App() {
   const [showPass, setShowPass] = useState(false);
 
   const { thisMonthEvents, nextMonthEvents } = useMemo(() => {
-    const now = new Date(); 
+    const now = new Date();
+    // Normalize 'now' to the start of today so we don't accidentally hide events happening later today
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
     const currentMonthIdx = now.getMonth();
     const currentYear = now.getFullYear();
 
-    // Calculate next month boundaries
-    const nextMonthDate = new Date(currentYear, currentMonthIdx + 1, 1);
+    // Logic for next month
+    const nextMonthIdx = (currentMonthIdx + 1) % 12;
+    const nextYear = currentMonthIdx === 11 ? currentYear + 1 : currentYear;
     
     return {
       thisMonthEvents: parties.filter(p => {
         const d = new Date(p.date);
-        // Compare against real-time month
-        return d.getMonth() === currentMonthIdx && d.getFullYear() === currentYear;
+        // Only include events in this month that are today or in the future
+        return d.getMonth() === currentMonthIdx && 
+               d.getFullYear() === currentYear && 
+               d >= startOfToday;
       }).sort((a, b) => new Date(a.date) - new Date(b.date)),
       
       nextMonthEvents: parties.filter(p => {
         const d = new Date(p.date);
-        // Compare against next month
-        return d.getMonth() === nextMonthDate.getMonth() && d.getFullYear() === nextMonthDate.getFullYear();
+        // Only include events for the next month
+        return d.getMonth() === nextMonthIdx && 
+               d.getFullYear() === nextYear;
       }).sort((a, b) => new Date(a.date) - new Date(b.date))
     };
-  }, [parties]); 
+  }, [parties]);
   
   // Admin Management
   const [newAdminU, setNewAdminU] = useState('');
