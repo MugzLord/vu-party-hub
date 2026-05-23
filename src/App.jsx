@@ -55,17 +55,20 @@ const formatTime = (timeStr) => {
 };
 
 const isEventLive = (dateStr, startTimeStr) => {
-    const now = new Date();
+    const now = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
     const eventDate = new Date(dateStr);
-    const isToday = eventDate.toDateString() === now.toDateString();
     const [time, modifier] = startTimeStr.split(' ');
     let [hours, minutes] = time.split(':').map(Number);
     if (modifier === 'PM' && hours !== 12) hours += 12;
     if (modifier === 'AM' && hours === 12) hours = 0;
+    
     const eventStartTime = new Date(eventDate);
     eventStartTime.setHours(hours, minutes, 0, 0);
-    const endTime = new Date(eventStartTime.getTime() + 60 * 60 * 1000);
-    return isToday && now >= eventStartTime && now <= endTime;
+    
+    
+    const endTime = new Date(eventStartTime.getTime() + 120 * 60 * 1000); // Changed to 120 mins
+    
+    return eventDate.toDateString() === now.toDateString() && now >= eventStartTime && now <= endTime;
 };
 
 export default function App() {
