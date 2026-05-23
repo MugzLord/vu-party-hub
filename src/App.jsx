@@ -456,21 +456,26 @@ const handleAdd = async (e) => {
                     {admins.length === 0 && <p className="text-slate-500 text-sm">No administrators found.</p>}
                 </div>
 
-                {/* --- NEW: EVENT LOGS SECTION --- */}
-                <div className="space-y-3 pt-8 border-t border-white/10">
+                {/* --- COMPACT AUDIT LOGS --- */}
+                <div className="space-y-1 pt-8 border-t border-white/10">
                     <h3 className="font-black text-lg text-white mb-4">Event Audit Logs</h3>
-                    {parties.slice().sort((a,b) => new Date(b.lastEditedAt || 0) - new Date(a.lastEditedAt || 0)).map(p => (
-                        <div key={p.id} className="bg-[#111827] border border-white/5 p-5 rounded-2xl flex justify-between items-center">
-                            <div>
-                                <div className="font-bold text-white text-sm">{p.theme}</div>
-                                <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
-                                    Last edited by: <span className="text-indigo-400">{p.lastEditedBy || 'N/A'}</span>
+                    {parties
+                        .filter(p => p.lastEditedAt) // Only show items that have been edited
+                        .sort((a,b) => new Date(b.lastEditedAt) - new Date(a.lastEditedAt))
+                        .map(p => (
+                            <div key={p.id} className="text-xs bg-[#0a0f1d] p-3 rounded-lg border border-white/5 flex justify-between items-center text-slate-400">
+                                <div className="truncate flex-1 font-bold text-white mr-4">
+                                    {p.theme}
+                                </div>
+                                <div className="flex gap-4 text-[10px] font-mono">
+                                    <span className="text-slate-500">
+                                        Edited by: <span className="text-indigo-400">{p.lastEditedBy || 'N/A'}</span>
+                                    </span>
+                                    <span className="text-slate-600">
+                                        {new Date(p.lastEditedAt).toLocaleDateString()} {new Date(p.lastEditedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    </span>
                                 </div>
                             </div>
-                            <div className="text-[10px] text-slate-600 font-mono">
-                                {p.lastEditedAt ? new Date(p.lastEditedAt).toLocaleString() : 'No edits'}
-                            </div>
-                        </div>
                     ))}
                 </div>
             </div>
