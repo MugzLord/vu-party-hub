@@ -297,52 +297,52 @@ const handleAdd = async (e) => {
   const upcomingParties = parties.filter(p => new Date(p.date) >= today).sort((a,b)=>new Date(a.date)-new Date(b.date));
 
   return (
-    <header className="relative z-40 bg-[#111827] border-b border-white/5 p-4 flex justify-between items-center sticky top-0">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30">
-            <CalendarDays size={22} className="text-indigo-500" />
+    <div className="min-h-screen bg-[#0a0f1d]">
+      <header className="relative z-40 bg-[#111827] border-b border-white/5 p-4 flex justify-between items-center sticky top-0">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-indigo-600/10 rounded-lg flex items-center justify-center border border-indigo-500/30">
+              <CalendarDays size={22} className="text-indigo-500" />
+            </div>
+            <h1 className="font-black text-white text-lg">VU Party HUB</h1>
           </div>
-          <h1 className="font-black text-white text-lg">VU Party HUB</h1>
+          <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-slate-500 bg-white/5 px-3 py-1 rounded-md border border-white/5">
+            <Clock size={12} className="text-indigo-500" />
+            {ptTime} <span className="opacity-60">PT</span>
+          </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-slate-500 bg-white/5 px-3 py-1 rounded-md border border-white/5">
-          <Clock size={12} className="text-indigo-500" />
-          {ptTime} <span className="opacity-60">PT</span>
-        </div>
+        {currentUser ? (
+          <div className="flex items-center gap-3">
+            <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-1.5 text-xs bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-1.5 rounded-full uppercase font-bold text-indigo-400 transition-colors border border-indigo-500/20">
+              <Settings size={14} /> {currentUser.username}
+            </button>
+            <button onClick={() => { setCurrentUser(null); setView('Guide'); localStorage.removeItem(SESSION_KEY); }} className="text-xs font-black uppercase text-rose-500 hover:text-rose-400 p-2">
+              <LogOut size={18} />
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setShowAuthGate(true)} className="flex items-center gap-2 bg-white/5 hover:bg-white/10 transition-colors px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-slate-300">
+            <Shield size={16} /> Admin
+          </button>
+        )}
+      </header>
+
+      <div className="flex p-4 gap-2 bg-[#111827]/50 border-b border-white/5 overflow-x-auto relative z-30">
+        {['Guide', 'Monthly', isStaff ? 'Manage' : '', currentUser?.role === 'owner' ? 'Staff' : ''].filter(Boolean).map((t) => (
+          <button
+            key={t}
+            onClick={() => setView(t)}
+            className={`px-6 py-3 rounded-xl text-xs font-black uppercase flex items-center gap-2 whitespace-nowrap transition-colors ${view === t ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-[#1f2937] text-slate-400 hover:bg-slate-700'}`}
+          >
+            {t === 'Guide' && <BookOpen size={14} />}
+            {t === 'Monthly' && <Calendar size={14} />}
+            {t === 'Manage' && <Edit size={14} />}
+            {t === 'Staff' && <Users size={14} />}
+            {t}
+          </button>
+        ))}
       </div>
-
-      {currentUser ? (
-        <div className="flex items-center gap-3">
-          <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-1.5 text-xs bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-1.5 rounded-full uppercase font-bold text-indigo-400 transition-colors border border-indigo-500/20">
-            <Settings size={14} /> {currentUser.username}
-          </button>
-          <button onClick={() => { setCurrentUser(null); setView('Guide'); localStorage.removeItem(SESSION_KEY); }} className="text-xs font-black uppercase text-rose-500 hover:text-rose-400 p-2">
-            <LogOut size={18} />
-          </button>
-        </div>
-      ) : (
-        <button onClick={() => setShowAuthGate(true)} className="flex items-center gap-2 bg-white/5 hover:bg-white/10 transition-colors px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-slate-300">
-          <Shield size={16} /> Admin
-        </button>
-      )}
-    </header>
-
-    <div className="flex p-4 gap-2 bg-[#111827]/50 border-b border-white/5 overflow-x-auto relative z-30">
-      {['Guide', 'Monthly', isStaff ? 'Manage' : '', currentUser?.role === 'owner' ? 'Staff' : ''].filter(Boolean).map((t) => (
-        <button
-          key={t}
-          onClick={() => setView(t)}
-          className={`px-6 py-3 rounded-xl text-xs font-black uppercase flex items-center gap-2 whitespace-nowrap transition-colors ${view === t ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-[#1f2937] text-slate-400 hover:bg-slate-700'}`}
-        >
-          {t === 'Guide' && <BookOpen size={14} />}
-          {t === 'Monthly' && <Calendar size={14} />}
-          {t === 'Manage' && <Edit size={14} />}
-          {t === 'Staff' && <Users size={14} />}
-          {t}
-        </button>
-      ))}
-    </div>
       
     <div className="flex p-4 gap-2 bg-[#111827]/50 border-b border-white/5 overflow-x-auto relative z-30">
         {['Guide', 'Monthly', isStaff ? 'Manage' : '', currentUser?.role === 'owner' ? 'Staff' : ''].filter(Boolean).map(t => (
