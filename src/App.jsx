@@ -150,18 +150,21 @@ export default function App() {
     // 1. Fill previous month's trailing days
     const prevMonthLastDay = new Date(year, month, 0).getDate();
     for (let i = adjustedFirstDay - 1; i >= 0; i--) {
-      days.push({ date: new Date(year, month - 1, prevMonthLastDay - i), currentMonth: false });
+      // Changed currentMonth: false to monthType: 'prev'
+      days.push({ date: new Date(year, month, -i), monthType: 'prev' });
     }
 
     // 2. Fill current month's days
     for (let i = 1; i <= daysInMonth; i++) {
-      days.push({ date: new Date(year, month, i), currentMonth: true });
+      // Changed currentMonth: true to monthType: 'current'
+      days.push({ date: new Date(year, month, i), monthType: 'current' });
     }
 
     // 3. Fill next month's leading days to complete a 6-row grid (42 days)
     const remainingDays = 42 - days.length;
     for (let i = 1; i <= remainingDays; i++) {
-      days.push({ date: new Date(year, month + 1, i), currentMonth: false });
+      // Changed currentMonth: false to monthType: 'next'
+      days.push({ date: new Date(year, month + 1, i), monthType: 'next' });
     }
     
     return days;
