@@ -333,17 +333,20 @@ export default function App() {
                 ))}
                 {calendarDays.map((d, i) => {
                   const hasEventToday = hasEvent(d.date);
+                  // Only apply event color if it's in the current month
+                  const isEventDay = d.monthType === 'current' && hasEventToday;
+                
                   return (
                     <button 
                       key={`day-cell-${i}`} 
                       onClick={() => setSelectedDay(d.date)} 
                       className={`aspect-square flex flex-col items-center justify-center text-lg font-bold rounded-lg relative transition-colors 
-                        ${d.currentMonth ? 'text-white' : 'text-slate-600'}
+                        ${d.monthType === 'current' ? 'text-white' : 'text-slate-600'}
                         ${selectedDay?.toDateString() === d.date.toDateString() 
                             ? 'bg-indigo-600 !text-white' 
-                            : hasEventToday 
+                            : isEventDay 
                                 ? 'bg-indigo-900/40 border border-indigo-500/30' 
-                                : d.currentMonth ? 'bg-[#111827]' : 'bg-[#0a0f1d]'}
+                                : d.monthType === 'current' ? 'bg-[#111827]' : 'bg-[#0a0f1d]'}
                         hover:bg-white/5 border border-white/5`}
                     >
                       {d.date.getDate()}
