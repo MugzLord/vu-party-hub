@@ -339,10 +339,10 @@ const handleAdd = async (e) => {
                 onClick={() => setView(t)} 
                 className={`px-6 py-3 rounded-xl text-xs font-black uppercase flex items-center gap-2 whitespace-nowrap transition-colors ${view === t ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-[#1f2937] text-slate-400 hover:bg-slate-700'}`}
             >
-                {t === 'Guide' && <BookOpen size={14}/>}
-                {t === 'Monthly' && <Calendar size={14}/>}
-                {t === 'Manage' && <Edit size={14}/>}
-                {t === 'Staff' && <Users size={14}/>}
+                {t === 'Guide' && <BookOpen size={14} />}
+                {t === 'Monthly' && <Calendar size={14} />}
+                {t === 'Manage' && <Edit size={14} />}
+                {t === 'Staff' && <Users size={14} />}
                 {t}
             </button>
         ))}
