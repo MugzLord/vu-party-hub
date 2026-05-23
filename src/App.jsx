@@ -460,8 +460,8 @@ const handleAdd = async (e) => {
                 <div className="space-y-1 pt-8 border-t border-white/10">
                     <h3 className="font-black text-lg text-white mb-4">Event Audit Logs</h3>
                     {parties
-                        .filter(p => p.lastEditedAt) // Only show items that have been edited
-                        .sort((a,b) => new Date(b.lastEditedAt) - new Date(a.lastEditedAt))
+                        .slice()
+                        .sort((a,b) => new Date(b.lastEditedAt || 0) - new Date(a.lastEditedAt || 0))
                         .map(p => (
                             <div key={p.id} className="text-xs bg-[#0a0f1d] p-3 rounded-lg border border-white/5 flex justify-between items-center text-slate-400">
                                 <div className="truncate flex-1 font-bold text-white mr-4">
