@@ -76,24 +76,18 @@ export default function App() {
 
   const { thisMonthEvents, nextMonthEvents } = useMemo(() => {
     const now = new Date();
-    // Normalize 'now' to midnight to represent the start of the current day
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    const currentMonthIdx = currentMonth.getMonth();
-    const currentYear = currentMonth.getFullYear();
+    // This strictly locks the Guide to the real-time current month
+    const realTimeMonthIdx = now.getMonth();
+    const realTimeYear = now.getFullYear();
 
-    const nextMonthDate = new Date(currentYear, currentMonthIdx + 1, 1);
+    const nextMonthDate = new Date(realTimeYear, realTimeMonthIdx + 1, 1);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     return {
       thisMonthEvents: parties.filter(p => {
         const d = new Date(p.date);
-        // Ensure date is valid
-        if (isNaN(d.getTime())) return false;
-        
-        // Compare date strings or normalized dates to ensure today is included
-        // We check if it's in the correct month/year AND it's today or in the future
-        return d.getMonth() === currentMonthIdx && 
-               d.getFullYear() === currentYear && 
+        return d.getMonth() === realTimeMonthIdx && 
+               d.getFullYear() === realTimeYear && 
                d >= startOfToday;
       }).sort((a, b) => new Date(a.date) - new Date(b.date)),
       
@@ -103,7 +97,7 @@ export default function App() {
                d.getFullYear() === nextMonthDate.getFullYear();
       }).sort((a, b) => new Date(a.date) - new Date(b.date))
     };
-  }, [parties, currentMonth]);
+  }, [parties]); 
   
   // Admin Management
   const [newAdminU, setNewAdminU] = useState('');
