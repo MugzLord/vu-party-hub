@@ -495,21 +495,22 @@ export default function App() {
 function EventCard({ p }) {
     return (
         <div className="bg-[#0a0f1d] border border-white/5 p-5 rounded-2xl mb-3">
-            <div className="font-black text-white text-[15px] mb-2">{p.theme}</div>
-            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 font-bold">
-                {/* Date Display */}
-                <div className="flex items-center gap-1.5 text-indigo-400">
-                    <Calendar size={14}/> {formatDate(p.date)}
+            {/* Larger Title */}
+            <div className="font-black text-white text-[17px] mb-3">{p.theme}</div>
+            
+            {/* Vertical Stack */}
+            <div className="flex flex-col gap-y-2 text-sm text-slate-400 font-bold">
+                <div className="flex items-center gap-2 text-indigo-400">
+                    <Calendar size={16}/> {formatDate(p.date)}
                 </div>
-                {/* Time Display */}
-                <div className="flex items-center gap-1.5">
-                    <Clock size={14}/> {formatTime(p.startTime)} <span className="opacity-60 text-[10px]">(PT)</span>
+                <div className="flex items-center gap-2">
+                    <Clock size={16}/> {formatTime(p.startTime)} <span className="opacity-60 text-[11px]">(PT)</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                    <User size={14}/> Host: {p.hostName} {p.coHost && <span className="opacity-60">/ {p.coHost}</span>}
+                <div className="flex items-center gap-2">
+                    <User size={16}/> Host: {p.hostName} {p.coHost && <span className="opacity-60">/ {p.coHost}</span>}
                 </div>
-                <div className="flex items-center gap-1.5 text-indigo-400">
-                    <Users size={14}/> {p.performers}
+                <div className="flex items-center gap-2 text-indigo-400">
+                    <Users size={16}/> {p.performers}
                 </div>
             </div>
         </div>
