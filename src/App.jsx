@@ -321,18 +321,28 @@ export default function App() {
                 {['M','T','W','T','F','S','S'].map((d, index) => (
                     <div key={`day-header-${index}`} className="text-[14px] md:text-sm font-black text-slate-500 pb-2 text-center">{d}</div>
                 ))}
-                {calendarDays.map((d, i) => (
+                {calendarDays.map((d, i) => {
+                  const hasEventToday = hasEvent(d.date);
+                  return (
                     <button 
-                        key={`day-cell-${i}`} 
-                        onClick={() => setSelectedDay(d.date)} 
-                        className={`aspect-square flex flex-col items-center justify-center text-lg font-bold rounded-lg relative transition-colors 
-                            ${d.currentMonth ? 'bg-[#111827] text-white' : 'bg-[#0a0f1d] text-slate-600'} 
-                            ${selectedDay?.toDateString() === d.date.toDateString() ? 'bg-indigo-600 !text-white' : 'hover:bg-white/5 border border-white/5'}`}
+                      key={`day-cell-${i}`} 
+                      onClick={() => setSelectedDay(d.date)} 
+                      className={`aspect-square flex flex-col items-center justify-center text-lg font-bold rounded-lg relative transition-colors 
+                        ${d.currentMonth ? 'text-white' : 'text-slate-600'}
+                        ${selectedDay?.toDateString() === d.date.toDateString() 
+                            ? 'bg-indigo-600 !text-white' 
+                            : hasEventToday 
+                                ? 'bg-indigo-900/40 border border-indigo-500/30' 
+                                : d.currentMonth ? 'bg-[#111827]' : 'bg-[#0a0f1d]'}
+                        hover:bg-white/5 border border-white/5`}
                     >
-                        {d.date.getDate()}
-                        {hasEvent(d.date) && <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${d.currentMonth ? 'bg-indigo-400' : 'bg-slate-600'}`}></div>}
+                      {d.date.getDate()}
+                      {hasEventToday && (
+                        <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${selectedDay?.toDateString() === d.date.toDateString() ? 'bg-white' : 'bg-indigo-400'}`}></div>
+                      )}
                     </button>
-                ))}
+                  );
+                })}
             </div>
            </div>
         )}
