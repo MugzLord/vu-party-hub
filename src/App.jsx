@@ -75,26 +75,24 @@ export default function App() {
   const [showPass, setShowPass] = useState(false);
 
   const { thisMonthEvents, nextMonthEvents } = useMemo(() => {
-    const now = new Date();
-    // This strictly locks the Guide to the real-time current month
-    const realTimeMonthIdx = now.getMonth();
-    const realTimeYear = now.getFullYear();
+    const now = new Date(); 
+    const currentMonthIdx = now.getMonth();
+    const currentYear = now.getFullYear();
 
-    const nextMonthDate = new Date(realTimeYear, realTimeMonthIdx + 1, 1);
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Calculate next month boundaries
+    const nextMonthDate = new Date(currentYear, currentMonthIdx + 1, 1);
     
     return {
       thisMonthEvents: parties.filter(p => {
         const d = new Date(p.date);
-        return d.getMonth() === realTimeMonthIdx && 
-               d.getFullYear() === realTimeYear && 
-               d >= startOfToday;
+        // Compare against real-time month
+        return d.getMonth() === currentMonthIdx && d.getFullYear() === currentYear;
       }).sort((a, b) => new Date(a.date) - new Date(b.date)),
       
       nextMonthEvents: parties.filter(p => {
         const d = new Date(p.date);
-        return d.getMonth() === nextMonthDate.getMonth() && 
-               d.getFullYear() === nextMonthDate.getFullYear();
+        // Compare against next month
+        return d.getMonth() === nextMonthDate.getMonth() && d.getFullYear() === nextMonthDate.getFullYear();
       }).sort((a, b) => new Date(a.date) - new Date(b.date))
     };
   }, [parties]); 
@@ -289,10 +287,16 @@ export default function App() {
                 {/* Tab Content */}
                 <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl min-h-[300px]">
                     <div className="mb-4 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                        {guideTab === 'current' 
-                            ? currentMonth.toLocaleDateString('en-US', {month: 'long', year: 'numeric'}) 
-                            : new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1).toLocaleDateString('en-US', {month: 'long', year: 'numeric'})
-                        }
+                        {(() => {
+                            const now = new Date();
+                            if (guideTab === 'current') {
+                                return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                            } else {
+                                // Calculate next month even if current is December
+                                const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                                return nextMonthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                            }
+                        })()}
                     </div>
                     {guideTab === 'current' ? (
                         <div className="space-y-3">
