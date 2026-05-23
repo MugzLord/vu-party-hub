@@ -249,17 +249,29 @@ export default function App() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     
-    // Create the updated object with audit data
+    // Create the updated object
     const updatedEvent = { 
         ...editModal, 
         lastEditedBy: currentUser?.username || 'Admin', 
         lastEditedAt: new Date().toISOString() 
     };
 
+    // Perform the update
     await updateDoc(doc(db, getPath('parties'), editModal.id), updatedEvent);
     setEditModal(null);
 };
-  
+
+const handleAdd = async (e) => {
+    e.preventDefault();
+    const newEvent = { 
+        ...formData, 
+        status: 'approved',
+        addedBy: currentUser?.username || 'Unknown',
+        createdAt: new Date().toISOString()
+    };
+    await addDoc(collection(db, getPath('parties')), newEvent);
+    setFormData({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', performers: 'VUI' });
+};
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
   
   const today = new Date();
