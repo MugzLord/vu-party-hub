@@ -138,21 +138,34 @@ export default function App() {
   }, [isAuthReady]);
 
   const calendarDays = useMemo(() => {
-      const year = currentMonth.getFullYear();
-      const month = currentMonth.getMonth();
-      const firstDay = new Date(year, month, 1).getDay();
-      
-      // Adjust: Monday is 1, Sunday is 0. 
-      // We want Monday to be the start, so if Sunday (0), use 6, else subtract 1.
-      const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
-      
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const days = [];
-      
-      for (let i = 0; i < adjustedFirstDay; i++) days.push(null);
-      for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
-      
-      return days;
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    
+    // Days in current month
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; // Mon=0..Sun=6
+    
+    const days = [];
+
+    // 1. Fill previous month's trailing days
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = adjustedFirstDay - 1; i >= 0; i--) {
+      days.push({ date: new Date(year, month - 1, prevMonthLastDay - i), currentMonth: false });
+    }
+
+    // 2. Fill current month's days
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({ date: new Date(year, month, i), currentMonth: true });
+    }
+
+    // 3. Fill next month's leading days to complete a 6-row grid (42 days)
+    const remainingDays = 42 - days.length;
+    for (let i = 1; i <= remainingDays; i++) {
+      days.push({ date: new Date(year, month + 1, i), currentMonth: false });
+    }
+    
+    return days;
   }, [currentMonth]);
 
   const hasEvent = (date) => parties.some(p => new Date(p.date).toDateString() === date.toDateString());
@@ -313,12 +326,13 @@ export default function App() {
                 {calendarDays.map((d, i) => (
                     <button 
                         key={`day-cell-${i}`} 
-                        onClick={() => d && setSelectedDay(d)} 
-                        disabled={!d} 
-                        className={`aspect-square flex flex-col items-center justify-center text-lg font-bold rounded-lg relative transition-colors ${!d ? 'bg-transparent' : selectedDay?.toDateString() === d.toDateString() ? 'bg-indigo-600 shadow-lg shadow-indigo-600/30' : 'bg-[#111827] hover:bg-white/5 border border-white/5'}`}
+                        onClick={() => setSelectedDay(d.date)} 
+                        className={`aspect-square flex flex-col items-center justify-center text-lg font-bold rounded-lg relative transition-colors 
+                            ${d.currentMonth ? 'bg-[#111827] text-white' : 'bg-[#0a0f1d] text-slate-600'} 
+                            ${selectedDay?.toDateString() === d.date.toDateString() ? 'bg-indigo-600 !text-white' : 'hover:bg-white/5 border border-white/5'}`}
                     >
-                        {d?.getDate()}
-                        {d && hasEvent(d) && <div className="absolute bottom-2 w-1.5 h-1.5 bg-indigo-400 rounded-full"></div>}
+                        {d.date.getDate()}
+                        {hasEvent(d.date) && <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${d.currentMonth ? 'bg-indigo-400' : 'bg-slate-600'}`}></div>}
                     </button>
                 ))}
             </div>
