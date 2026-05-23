@@ -375,7 +375,7 @@ export default function App() {
            </div>
         )}
         
-        {view === 'Manage' && isStaff && (
+        {view === 'Manage' && (
             <div className="space-y-8">
                 <form onSubmit={handleAdd} className="bg-[#111827] border border-white/5 p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input required placeholder="Event Theme" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors text-white" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
