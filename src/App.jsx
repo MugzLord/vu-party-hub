@@ -309,9 +309,10 @@ const handleAdd = async (e) => {
             </div>
             <h1 className="font-black text-white text-lg">VU Party HUB</h1>
           </div>
-          <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-slate-500 bg-white/5 px-3 py-1 rounded-md border border-white/5">
-            <Clock size={12} className="text-indigo-500" />
-            {ptTime} <span className="opacity-60">PT</span>
+          <div className="flex items-center gap-1.5 md:gap-2 text-[9px] md:text-[11px] font-mono text-slate-400 bg-white/5 px-2 py-1 md:px-3 md:py-1 rounded-md border border-white/5">
+              <Clock size={10} className="text-indigo-500 shrink-0" />
+              <span className="font-bold">{ptTime}</span>
+              <span className="opacity-60">PT</span>
           </div>
         </div>
 
