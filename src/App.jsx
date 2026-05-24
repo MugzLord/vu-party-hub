@@ -248,6 +248,14 @@ export default function App() {
   };
 
   const handleDeleteAdmin = async (id) => await deleteDoc(doc(db, getPath('admins'), id));
+  const handleDelete = async (id) => {
+    try {
+        await deleteDoc(doc(db, getPath('parties'), id));
+        // No need for alert, UI will update automatically via onSnapshot
+    } catch (err) {
+        console.error("Error deleting event:", err);
+    }
+  };
 
   const handleChangePassword = async (e) => {
       e.preventDefault();
