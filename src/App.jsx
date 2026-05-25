@@ -676,7 +676,12 @@ function EventCard({ p }) {
     const live = isEventLive(p.date, p.startTime);
 
     return (
-        <div className={`bg-[#111827] border ${live ? 'border-indigo-500' : 'border-white/5'} p-5 rounded-2xl mb-3 relative`}>
+        <div className={`bg-[#111827] border p-5 rounded-2xl mb-3 relative transition-all duration-300 
+            ${live 
+                ? 'border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.3)]' 
+                : 'border-white/5 hover:border-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)]'
+            }`}>
+            
             {/* Header: Theme and Live Badge */}
             <div className="flex justify-between items-start mb-3">
                 <div className="font-black text-white text-[17px] leading-tight">{p.theme}</div>
@@ -692,7 +697,6 @@ function EventCard({ p }) {
                 {/* Host and Role Row */}
                 <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500 uppercase tracking-widest">Host: {p.hostName}</span>
-                    {/* Displaying the Performer/Role clearly */}
                     <span className="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-md text-[10px] border border-indigo-500/20 uppercase tracking-wider">
                         {p.performers || 'General'}
                     </span>
