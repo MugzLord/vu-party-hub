@@ -648,40 +648,29 @@ const handleAdd = async (e) => {
                   <button type="button" onClick={()=>{setShowProfileModal(false); setPwdMsg(null); setNewPass('');}} className="text-slate-400 hover:text-white transition-colors bg-white/5 p-2 rounded-full"><X size={16}/></button>
               </div>
               <p className="text-sm text-slate-400 font-medium mb-4">Update the password for <strong className="text-indigo-400">{currentUser?.username}</strong>.</p>
-              
               <input type="text" placeholder="Enter new password" value={newPass} onChange={e=>setNewPass(e.target.value)} className="w-full bg-black/40 p-4 rounded-xl border border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-              
               {pwdMsg && <p className={`text-sm font-bold ${pwdMsg.type === 'error' ? 'text-rose-500' : 'text-emerald-500'}`}>{pwdMsg.text}</p>}
-              
               <button type="submit" className="bg-indigo-600 w-full p-4 rounded-xl font-black text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20 mt-2">UPDATE PASSWORD</button>
            </form>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteQueue && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
+            <div className="bg-[#111827] p-6 rounded-3xl w-full max-w-sm border border-rose-500/20 space-y-4">
+                <h2 className="font-black text-white text-lg">Confirm Deletion</h2>
+                <p className="text-sm text-slate-400">Are you sure you want to delete <span className="text-white font-bold">{deleteQueue.theme}</span>?</p>
+                <div className="flex gap-3 mt-6">
+                    <button onClick={() => setDeleteQueue(null)} className="flex-1 p-3 bg-black/40 rounded-xl font-bold text-white hover:bg-white/5 transition-colors">Cancel</button>
+                    <button onClick={handleExecuteDelete} className="flex-1 p-3 bg-rose-600 rounded-xl font-bold text-white hover:bg-rose-500 transition-colors shadow-lg shadow-rose-600/20">Yes, Delete</button>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
-      {/* ... other modals ... */}
-        {showProfileModal && (
-          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-             {/* ... your existing Profile Modal code ... */}
-          </div>
-        )}
-  
-        {/* INSERT THE DELETE MODAL HERE AT LINE 661 */}
-        {deleteQueue && (
-          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
-              <div className="bg-[#111827] p-6 rounded-3xl w-full max-w-sm border border-rose-500/20 space-y-4">
-                  <h2 className="font-black text-white text-lg">Confirm Deletion</h2>
-                  <p className="text-sm text-slate-400">Are you sure you want to delete <span className="text-white font-bold">{deleteQueue.theme}</span>?</p>
-                  <div className="flex gap-3 mt-6">
-                      <button onClick={() => setDeleteQueue(null)} className="flex-1 p-3 bg-black/40 rounded-xl font-bold text-white hover:bg-white/5 transition-colors">Cancel</button>
-                      <button onClick={handleExecuteDelete} className="flex-1 p-3 bg-rose-600 rounded-xl font-bold text-white hover:bg-rose-500 transition-colors shadow-lg shadow-rose-600/20">Yes, Delete</button>
-                  </div>
-              </div>
-          </div>
-        )}
-  
-      </div>
-    );
-  }
+  );
+}
 
 function EventCard({ p }) {
     const live = isEventLive(p.date, p.startTime);
