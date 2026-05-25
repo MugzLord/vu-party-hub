@@ -678,8 +678,10 @@ function EventCard({ p }) {
     return (
         <div className={`bg-[#111827] border p-5 rounded-2xl mb-3 relative transition-all duration-300 
             ${live 
-                ? 'border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.3)]' 
-                : 'border-white/5 hover:border-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)]'
+                // Increased glow: added multiple shadow layers and a faint ring
+                ? 'border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.4),0_0_40px_rgba(99,102,241,0.2)] ring-1 ring-indigo-500/30' 
+                // Subtle glow on hover for upcoming events
+                : 'border-white/5 hover:border-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.08)]'
             }`}>
             
             {/* Header: Theme and Live Badge */}
