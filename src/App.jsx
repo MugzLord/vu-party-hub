@@ -261,7 +261,6 @@ export default function App() {
   };
 
   const handleDeleteAdmin = async (id) => await deleteDoc(doc(db, getPath('admins'), id));
-  const [deleteQueue, setDeleteQueue] = useState(null);
 
   const handleExecuteDelete = async () => {
       if (!deleteQueue) return;
