@@ -676,29 +676,40 @@ function EventCard({ p }) {
     const live = isEventLive(p.date, p.startTime);
 
     return (
-        <div className={`bg-[#0a0f1d] border ${live ? 'border-indigo-500' : 'border-white/5'} p-5 rounded-2xl mb-3 relative`}>
-            {live && (
-                <div className="absolute top-3 right-3 bg-indigo-600 text-[10px] font-black px-2 py-1 rounded-md animate-pulse text-white uppercase tracking-wider">
-                    Live - Happening Now
+        <div className={`bg-[#111827] border ${live ? 'border-indigo-500' : 'border-white/5'} p-5 rounded-2xl mb-3 relative`}>
+            {/* Header: Theme and Live Badge */}
+            <div className="flex justify-between items-start mb-3">
+                <div className="font-black text-white text-[17px] leading-tight">{p.theme}</div>
+                {live && (
+                    <div className="bg-indigo-600 text-[10px] font-black px-2 py-1 rounded-md animate-pulse text-white uppercase tracking-wider shrink-0 ml-2">
+                        live
+                    </div>
+                )}
+            </div>
+
+            {/* Content: Host, Role, Date, Time */}
+            <div className="flex flex-col gap-2 text-sm text-slate-400 font-bold">
+                {/* Host and Role Row */}
+                <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 uppercase tracking-widest">Host: {p.hostName}</span>
+                    {/* Displaying the Performer/Role clearly */}
+                    <span className="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-md text-[10px] border border-indigo-500/20 uppercase tracking-wider">
+                        {p.performers || 'General'}
+                    </span>
                 </div>
-            )}
-            
-            <div className="font-black text-white text-[17px] mb-3">{p.theme}</div>
-            
-            <div className="flex flex-col gap-y-2 text-sm text-slate-400 font-bold">
-                <div className="flex items-center gap-2 text-indigo-400">
-                    <Calendar size={16}/> {formatDate(p.date)}
-                </div>
-                <div className="flex items-center gap-2">
-                    <Clock size={16}/> {formatTime(p.startTime)} <span className="opacity-60 text-[11px]">(PT)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <User size={16}/> Host: {p.hostName} {p.coHost && <span className="opacity-60">/ {p.coHost}</span>}
-                </div>
-                <div className="flex items-center gap-2 text-indigo-400">
-                    <Users size={16}/> {p.performers}
+                
+                {/* Date and Time Row */}
+                <div className="flex justify-between mt-1 pt-2 border-t border-white/5">
+                    <div className="flex flex-col">
+                        <span className="text-[9px] text-slate-600 uppercase">Date</span>
+                        <span className="text-white text-sm">{formatDate(p.date)}</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                        <span className="text-[9px] text-slate-600 uppercase">Time</span>
+                        <span className="text-white text-sm">{formatTime(p.startTime)}</span>
+                    </div>
                 </div>
             </div>
         </div>
-    )
+    );
 }
