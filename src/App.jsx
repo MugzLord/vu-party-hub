@@ -678,9 +678,7 @@ function EventCard({ p }) {
     return (
         <div className={`bg-[#111827] border p-5 rounded-2xl mb-3 relative transition-all duration-300 
             ${live 
-                // Increased glow: added multiple shadow layers and a faint ring
                 ? 'border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.4),0_0_40px_rgba(99,102,241,0.2)] ring-1 ring-indigo-500/30' 
-                // Subtle glow on hover for upcoming events
                 : 'border-white/5 hover:border-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.08)]'
             }`}>
             
@@ -695,10 +693,16 @@ function EventCard({ p }) {
             </div>
 
             {/* Content: Host, Role, Date, Time */}
-            <div className="flex flex-col gap-2 text-sm text-slate-400 font-bold">
+            <div className="flex flex-col gap-2 text-sm font-bold">
+                
                 {/* Host and Role Row */}
                 <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500 uppercase tracking-widest">Host: {p.hostName}</span>
+                    {/* Host Label is dim (slate-500), Name is bright (white) and Case Sensitive */}
+                    <span className="tracking-widest">
+                        <span className="text-slate-500 uppercase">Host: </span>
+                        <span className="text-white font-semibold">{p.hostName}</span>
+                    </span>
+                    
                     <span className="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-md text-[10px] border border-indigo-500/20 uppercase tracking-wider">
                         {p.performers || 'General'}
                     </span>
