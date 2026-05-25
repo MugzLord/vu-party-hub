@@ -83,6 +83,8 @@ export default function App() {
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [editModal, setEditModal] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteQueue, setDeleteQueue] = useState(null); // Tracks event pending deletion
   
   // Forms & Inputs
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -91,6 +93,17 @@ export default function App() {
   const [gateP, setGateP] = useState('');
   const [loginError, setLoginError] = useState('');
   const [showPass, setShowPass] = useState(false);
+
+  const isClashing = (proposedEvent) => {
+      const newStart = new Date(`${proposedEvent.date}T${proposedEvent.startTime.replace(' ', '')}`).getTime();
+      const newEnd = newStart + (2 * 60 * 60 * 1000); // Assuming 2hr duration
+  
+      return parties.some(p => {
+          const pStart = new Date(`${p.date}T${p.startTime.replace(' ', '')}`).getTime();
+          const pEnd = pStart + (2 * 60 * 60 * 1000);
+          return newStart < pEnd && newEnd > pStart;
+      });
+  };
 
   const { thisMonthEvents, nextMonthEvents } = useMemo(() => {
     const now = new Date();
@@ -248,13 +261,16 @@ export default function App() {
   };
 
   const handleDeleteAdmin = async (id) => await deleteDoc(doc(db, getPath('admins'), id));
-  const handleDelete = async (id) => {
-    try {
-        await deleteDoc(doc(db, getPath('parties'), id));
-        // No need for alert, UI will update automatically via onSnapshot
-    } catch (err) {
-        console.error("Error deleting event:", err);
-    }
+  const [deleteQueue, setDeleteQueue] = useState(null);
+
+  const handleExecuteDelete = async () => {
+      if (!deleteQueue) return;
+      try {
+          await deleteDoc(doc(db, getPath('parties'), deleteQueue.id));
+          setDeleteQueue(null); // Closing modal automatically
+      } catch (err) {
+          console.error("Error deleting event:", err);
+      }
   };
 
   const handleChangePassword = async (e) => {
@@ -291,15 +307,29 @@ export default function App() {
 };
 
 const handleAdd = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  if (isSubmitting) return; // Stop if already submitting
+
+  // 1. Clash Detection
+  const isClashing = parties.some(p => p.date === formData.date && p.startTime === formData.startTime);
+  if (isClashing) {
+    alert("Clash Detected: An event is already scheduled at this time!");
+    return;
+  }
+
+  setIsSubmitting(true);
+  try {
     const newEvent = { 
         ...formData, 
         status: 'approved',
         addedBy: currentUser?.username || 'Unknown',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString() 
     };
     await addDoc(collection(db, getPath('parties')), newEvent);
     setFormData({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', performers: 'VUI' });
+  } finally {
+    setIsSubmitting(false); // Re-enable button
+  }
 };
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
   
@@ -479,7 +509,7 @@ const handleAdd = async (e) => {
                                 </div>
                                 <div className="flex gap-2 w-full md:w-auto justify-end">
                                     <button onClick={() => setEditModal(p)} className="p-2.5 bg-black/40 border border-white/5 hover:bg-white/10 rounded-xl text-indigo-400 transition-colors"><Edit size={16}/></button>
-                                    <button onClick={() => handleDelete(p.id)} className="p-2.5 bg-black/40 border border-white/5 hover:bg-rose-500/20 rounded-xl text-rose-500 transition-colors"><Trash2 size={16}/></button>
+                                    <button onClick={() => setDeleteQueue(p)} className="p-2.5 bg-black/40 border border-white/5 hover:bg-rose-500/20 rounded-xl text-rose-500 transition-colors"><Trash2 size={16}/></button>
                                 </div>
                             </div>
                         ))
