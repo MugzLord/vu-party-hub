@@ -79,12 +79,11 @@ export default function App() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
   const [guideTab, setGuideTab] = useState('current');
-  // Auth & Modals
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [editModal, setEditModal] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deleteQueue, setDeleteQueue] = useState(null); // Tracks event pending deletion
+  const [deleteQueue, setDeleteQueue] = useState(null); 
   
   // Forms & Inputs
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -659,8 +658,30 @@ const handleAdd = async (e) => {
         </div>
       )}
     </div>
-  );
-}
+      {/* ... other modals ... */}
+        {showProfileModal && (
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+             {/* ... your existing Profile Modal code ... */}
+          </div>
+        )}
+  
+        {/* INSERT THE DELETE MODAL HERE AT LINE 661 */}
+        {deleteQueue && (
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
+              <div className="bg-[#111827] p-6 rounded-3xl w-full max-w-sm border border-rose-500/20 space-y-4">
+                  <h2 className="font-black text-white text-lg">Confirm Deletion</h2>
+                  <p className="text-sm text-slate-400">Are you sure you want to delete <span className="text-white font-bold">{deleteQueue.theme}</span>?</p>
+                  <div className="flex gap-3 mt-6">
+                      <button onClick={() => setDeleteQueue(null)} className="flex-1 p-3 bg-black/40 rounded-xl font-bold text-white hover:bg-white/5 transition-colors">Cancel</button>
+                      <button onClick={handleExecuteDelete} className="flex-1 p-3 bg-rose-600 rounded-xl font-bold text-white hover:bg-rose-500 transition-colors shadow-lg shadow-rose-600/20">Yes, Delete</button>
+                  </div>
+              </div>
+          </div>
+        )}
+  
+      </div>
+    );
+  }
 
 function EventCard({ p }) {
     const live = isEventLive(p.date, p.startTime);
