@@ -7,6 +7,22 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
 
+const getPTDateInt = (dateStr) => {
+  if (!dateStr) return 0;
+  const d = new Date(dateStr);
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const parts = formatter.formatToParts(d);
+  const year = parts.find(p => p.type === 'year').value;
+  const month = parts.find(p => p.type === 'month').value;
+  const day = parts.find(p => p.type === 'day').value;
+  return parseInt(`${year}${month}${day}`);
+};
+
 const getViteEnv = (key) => { try { const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {}; return env[key] || null; } catch (e) { return null; } };
 const getSafeConfig = () => {
   if (typeof __firebase_config !== 'undefined' && __firebase_config && __firebase_config !== "undefined") return JSON.parse(__firebase_config);
@@ -105,9 +121,8 @@ export default function App() {
   };
 
   const { thisMonthEvents, nextMonthEvents } = useMemo(() => {
+    const todayPT = getPTDateInt(new Date().toISOString());
     const now = new Date();
-    // Force date string format for "today" to avoid local-time shifts
-    const todayInt = parseInt(now.toISOString().slice(0, 10).replace(/-/g, ""));
     const currentMonthIdx = now.getMonth();
     const currentYear = now.getFullYear();
     const nextMonthIdx = (currentMonthIdx + 1) % 12;
@@ -115,16 +130,12 @@ export default function App() {
     
     return {
       thisMonthEvents: parties.filter(p => {
-        if (!p.date) return false;
-        const [y, m, d] = p.date.split('-').map(Number);
-        const eventInt = parseInt(p.date.replace(/-/g, ""));
-        return (m - 1) === currentMonthIdx && y === currentYear && eventInt >= todayInt;
+        const [y, m] = p.date ? p.date.split('-').map(Number) : [0, 0];
+        return (m - 1) === currentMonthIdx && y === currentYear && getPTDateInt(p.date) >= todayPT;
       }).sort((a, b) => a.date.localeCompare(b.date)),
       
       nextMonthEvents: parties.filter(p => {
-        if (!p.date) return false;
-        const [y, m] = p.date.split('-').map(Number);
-        const eventInt = parseInt(p.date.replace(/-/g, ""));
+        const [y, m] = p.date ? p.date.split('-').map(Number) : [0, 0];
         return (m - 1) === nextMonthIdx && y === nextYear;
       }).sort((a, b) => a.date.localeCompare(b.date))
     };
@@ -347,11 +358,11 @@ const handleAdd = async (e) => {
 };
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
   
-  const todayInt = parseInt(new Date().toISOString().slice(0, 10).replace(/-/g, ""));
+  // Replace the 'today' and 'upcomingParties' lines with this:
+  const todayPT = getPTDateInt(new Date().toISOString());
   const upcomingParties = parties
-    .filter(p => p.date && parseInt(p.date.replace(/-/g, "")) >= todayInt)
+    .filter(p => p.date && getPTDateInt(p.date) >= todayPT)
     .sort((a, b) => a.date.localeCompare(b.date));
-
   return (
     <div className="min-h-screen bg-[#0a0f1d]">
       <header className="relative z-40 bg-[#111827] border-b border-white/5 p-4 flex justify-between items-center sticky top-0">
