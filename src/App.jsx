@@ -354,7 +354,7 @@ const handleAdd = async (e) => {
 
         {currentUser ? (
           <div className="flex items-center gap-3">
-            <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-1.5 text-xs bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-1.5 rounded-full uppercase font-bold text-indigo-400 transition-colors border border-indigo-500/20">
+            <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-1.5 text-xs bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-1.5 rounded-full font-bold text-indigo-400 transition-colors border border-indigo-500/20">
               <Settings size={14} /> {currentUser.username}
             </button>
             <button onClick={() => { setCurrentUser(null); setView('Guide'); localStorage.removeItem(SESSION_KEY); }} className="text-xs font-black uppercase text-rose-500 hover:text-rose-400 p-2">
