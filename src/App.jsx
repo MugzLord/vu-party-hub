@@ -106,30 +106,27 @@ export default function App() {
 
   const { thisMonthEvents, nextMonthEvents } = useMemo(() => {
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
+    // Force date string format for "today" to avoid local-time shifts
+    const todayInt = parseInt(now.toISOString().slice(0, 10).replace(/-/g, ""));
     const currentMonthIdx = now.getMonth();
     const currentYear = now.getFullYear();
-
-    // Logic for next month
     const nextMonthIdx = (currentMonthIdx + 1) % 12;
     const nextYear = currentMonthIdx === 11 ? currentYear + 1 : currentYear;
     
     return {
       thisMonthEvents: parties.filter(p => {
         if (!p.date) return false;
-        const d = new Date(p.date);
-        return d.getMonth() === currentMonthIdx && 
-               d.getFullYear() === currentYear && 
-               d >= startOfToday;
-      }).sort((a, b) => new Date(a.date) - new Date(b.date)),
+        const [y, m, d] = p.date.split('-').map(Number);
+        const eventInt = parseInt(p.date.replace(/-/g, ""));
+        return (m - 1) === currentMonthIdx && y === currentYear && eventInt >= todayInt;
+      }).sort((a, b) => a.date.localeCompare(b.date)),
       
       nextMonthEvents: parties.filter(p => {
         if (!p.date) return false;
-        const d = new Date(p.date);
-        return d.getMonth() === nextMonthIdx && 
-               d.getFullYear() === nextYear;
-      }).sort((a, b) => new Date(a.date) - new Date(b.date))
+        const [y, m] = p.date.split('-').map(Number);
+        const eventInt = parseInt(p.date.replace(/-/g, ""));
+        return (m - 1) === nextMonthIdx && y === nextYear;
+      }).sort((a, b) => a.date.localeCompare(b.date))
     };
   }, [parties]);
   
@@ -348,9 +345,10 @@ const handleAdd = async (e) => {
 };
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
   
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const upcomingParties = parties.filter(p => new Date(p.date) >= today).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const todayInt = parseInt(new Date().toISOString().slice(0, 10).replace(/-/g, ""));
+  const upcomingParties = parties
+    .filter(p => p.date && parseInt(p.date.replace(/-/g, "")) >= todayInt)
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div className="min-h-screen bg-[#0a0f1d]">
