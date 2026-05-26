@@ -175,13 +175,15 @@ export default function App() {
 
     const unsubscribeParties = onSnapshot(collection(db, getPath('parties')), 
       (s) => {
+        const rawData = s.docs.map(d => ({id: d.id, ...d.data()}));
+        console.log("DEBUG: Total events found in DB:", rawData.length);
+        console.log("DEBUG: Raw events data:", rawData); // THIS IS THE KEY
         if (isMounted) {
-          setParties(s.docs.map(d => ({id: d.id, ...d.data()})));
+          setParties(rawData);
         }
       },
-      (e) => console.error("Firestore permission error:", e)
+      (e) => console.error("Firestore error:", e)
     );
-
     const unsubscribeAdmins = onSnapshot(collection(db, getPath('admins')), 
       (s) => {
         if (isMounted) {
