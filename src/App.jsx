@@ -9,17 +9,22 @@ import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken }
 
 const getPTDateInt = (dateStr) => {
   if (!dateStr) return 0;
+ 
   const d = new Date(dateStr);
+  d.setHours(0, 0, 0, 0); 
+  
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Los_Angeles',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
   });
+  
   const parts = formatter.formatToParts(d);
   const year = parts.find(p => p.type === 'year').value;
   const month = parts.find(p => p.type === 'month').value;
   const day = parts.find(p => p.type === 'day').value;
+  
   return parseInt(`${year}${month}${day}`);
 };
 
