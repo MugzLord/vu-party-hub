@@ -49,9 +49,8 @@ const TIME_OPTIONS = [
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
-  // Splits "2026-05-21" into [2026, 05, 21]
   const [year, month, day] = dateStr.split('-');
-  return `${day}-${month}`;
+  return `${month}-${day}`;
 };
 
 const formatTime = (timeStr) => {
@@ -478,7 +477,6 @@ const handleAdd = async (e) => {
                 ))}
                 {calendarDays.map((d, i) => {
                   const hasEventToday = hasEvent(d.date);
-                  // Only apply event color if it's in the current month
                   const isEventDay = d.monthType === 'current' && hasEventToday;
                 
                   return (
@@ -590,7 +588,7 @@ const handleAdd = async (e) => {
                                         Edited by: <span className="text-indigo-400">{p.lastEditedBy || 'N/A'}</span>
                                     </span>
                                     <span className="text-slate-600">
-                                        {new Date(p.lastEditedAt).toLocaleDateString()} {new Date(p.lastEditedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                        {new Date(p.lastEditedAt).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'})} {new Date(p.lastEditedAt).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}
                                     </span>
                                 </div>
                             </div>
