@@ -106,7 +106,6 @@ export default function App() {
 
   const { thisMonthEvents, nextMonthEvents } = useMemo(() => {
     const now = new Date();
-    // Normalize 'now' to the start of today so we don't accidentally hide events happening later today
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     const currentMonthIdx = now.getMonth();
@@ -118,16 +117,16 @@ export default function App() {
     
     return {
       thisMonthEvents: parties.filter(p => {
+        if (!p.date) return false;
         const d = new Date(p.date);
-        // Only include events in this month that are today or in the future
         return d.getMonth() === currentMonthIdx && 
                d.getFullYear() === currentYear && 
                d >= startOfToday;
       }).sort((a, b) => new Date(a.date) - new Date(b.date)),
       
       nextMonthEvents: parties.filter(p => {
+        if (!p.date) return false;
         const d = new Date(p.date);
-        // Only include events for the next month
         return d.getMonth() === nextMonthIdx && 
                d.getFullYear() === nextYear;
       }).sort((a, b) => new Date(a.date) - new Date(b.date))
@@ -173,15 +172,33 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (!isAuthReady) return;
+
+    // Use a variable to track if the component is mounted to prevent state updates on unmounted component
+    let isMounted = true;
+
     const unsubscribeParties = onSnapshot(collection(db, getPath('parties')), 
-      (s) => setParties(s.docs.map(d => ({id: d.id, ...d.data()}))),
-      (e) => console.error("Firestore permission error", e)
+      (s) => {
+        if (isMounted) {
+          setParties(s.docs.map(d => ({id: d.id, ...d.data()})));
+        }
+      },
+      (e) => console.error("Firestore permission error:", e)
     );
+
     const unsubscribeAdmins = onSnapshot(collection(db, getPath('admins')), 
-      (s) => setAdmins(s.docs.map(d => ({id: d.id, ...d.data()}))),
-      (e) => console.error("Firestore permission error", e)
+      (s) => {
+        if (isMounted) {
+          setAdmins(s.docs.map(d => ({id: d.id, ...d.data()})));
+        }
+      },
+      (e) => console.error("Firestore permission error:", e)
     );
-    return () => { unsubscribeParties(); unsubscribeAdmins(); };
+
+    return () => { 
+      isMounted = false;
+      unsubscribeParties(); 
+      unsubscribeAdmins(); 
+    };
   }, [isAuthReady]);
 
   const calendarDays = useMemo(() => {
