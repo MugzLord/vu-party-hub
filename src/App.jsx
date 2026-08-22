@@ -127,7 +127,7 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteQueue, setDeleteQueue] = useState(null); 
   const [customAlert, setCustomAlert] = useState(null); 
-  const [showNotice, setShowNotice] = useState(true);
+  const [notice, setNotice] = useState(null);
 
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [formData, setFormData] = useState({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', duration: 1, performers: 'VU Storytellers' });
@@ -246,6 +246,15 @@ export default function App() {
       unsubscribeAdmins(); 
     };
   }, [isAuthReady]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const unread = parties.find(p => p.addedBy === currentUser.username && p.status === 'approved' && !p.notified);
+    if (unread) {
+      setNotice(`Party "${unread.theme}" on ${unread.date} has been approved by admin!`);
+      updateDoc(doc(db, getPath('parties'), unread.id), { notified: true }).catch(() => {});
+    }
+  }, [parties, currentUser]);
 
   const calendarDays = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -481,13 +490,23 @@ export default function App() {
         </div>
       </header>
 
+      {notice && (
+        <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-900 border-b border-purple-500/30 px-4 py-3 flex justify-between items-center text-xs font-bold text-purple-200 shadow-xl relative z-30">
+          <div className="flex items-center gap-2">
+            <span className="bg-purple-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider">Notice</span>
+            <span>{notice}</span>
+          </div>
+          <button onClick={() => setNotice(null)} className="text-purple-300 hover:text-white p-1"><X size={14}/></button>
+        </div>
+      )}
+
       {currentUser && (
         <div className="flex p-4 gap-3 max-w-4xl mx-auto overflow-x-auto relative z-30">
           {[
             'Home', 
             'Monthly', 
             currentUser?.role === 'host' ? 'Submit Party' : 'Manage', 
-            currentUser?.role === 'owner' ? 'Staff' : '',
+            currentUser?.role === 'owner' ? 'Admin' : '',
             currentUser?.role === 'owner' ? 'Logs' : ''
           ].filter(Boolean).map((t) => (
             <button
@@ -499,7 +518,7 @@ export default function App() {
               {t === 'Monthly' && <Calendar size={15} />}
               {t === 'Submit Party' && <Edit size={15} />}
               {t === 'Manage' && <Edit size={15} />}
-              {t === 'Staff' && <Users size={15} />}
+              {t === 'Admin' && <Users size={15} />}
               {t === 'Logs' && <Archive size={15} />}
               {t}
             </button>
@@ -732,7 +751,7 @@ export default function App() {
               </div>
             )}
 
-            {view === 'Staff' && currentUser?.role === 'owner' && (
+            {view === 'Admin' && currentUser?.role === 'owner' && (
               <div className="space-y-8">
                 <div className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-2xl">
                   <h3 className="font-black text-lg text-white mb-4">Create New Administrator / Host Account</h3>
