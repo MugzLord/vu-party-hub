@@ -62,7 +62,15 @@ const DURATION_OPTIONS = [
   { label: '1 Hour', hours: 1 },
   { label: '2 Hours', hours: 2 },
   { label: '3 Hours', hours: 3 },
-  { label: '4 Hours', hours: 4 }
+  { label: '4 Hours', hours: 4 },
+  { label: '5 Hours', hours: 5 },
+  { label: '6 Hours', hours: 6 },
+  { label: '7 Hours', hours: 7 },
+  { label: '8 Hours', hours: 8 },
+  { label: '9 Hours', hours: 9 },
+  { label: '10 Hours', hours: 10 },
+  { label: '11 Hours', hours: 11 },
+  { label: '12 Hours', hours: 12 }
 ];
 
 const formatDate = (dateStr) => {
@@ -93,10 +101,10 @@ const parseEventTimestamp = (dateStr, timeStr) => {
   return d.getTime();
 };
 
-const isEventLive = (dateStr, startTimeStr, durationHours = 2) => {
+const isEventLive = (dateStr, startTimeStr, durationHours = 1) => {
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
   const eventStartTime = parseEventTimestamp(dateStr, startTimeStr);
-  const durMs = (durationHours || 2) * 60 * 60 * 1000;
+  const durMs = (durationHours || 1) * 60 * 60 * 1000;
   const endTime = eventStartTime + durMs;
 
   return new Date(dateStr).toDateString() === now.toDateString() && now.getTime() >= eventStartTime && now.getTime() <= endTime;
@@ -122,12 +130,13 @@ export default function App() {
   const [showNotice, setShowNotice] = useState(true);
 
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [formData, setFormData] = useState({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', duration: 2, performers: 'VU Storytellers' });
+  const [formData, setFormData] = useState({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', duration: 1, performers: 'VU Storytellers' });
   const [gateU, setGateU] = useState('');
   const [gateP, setGateP] = useState('');
   const [gateCP, setGateCP] = useState('');
   const [loginError, setLoginError] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
 
   const showAlert = (title, message) => {
@@ -135,19 +144,21 @@ export default function App() {
   };
 
   const checkEventClash = (proposedEvent, excludeId = null) => {
-    const newStart = parseEventTimestamp(proposedEvent.date, proposedEvent.startTime);
-    const rawDur = proposedEvent.duration || 2;
+    const rawDur = proposedEvent.duration || 1;
     const durHours = rawDur > 24 ? rawDur / 3600000 : rawDur;
+    const newStart = parseEventTimestamp(proposedEvent.date, proposedEvent.startTime);
     const newEnd = newStart + (durHours * 60 * 60 * 1000);
 
     return parties.some(p => {
       if (excludeId && p.id === excludeId) return false;
       if (p.status !== 'approved') return false; 
       const pStart = parseEventTimestamp(p.date, p.startTime);
-      const rawPDur = p.duration || 2;
+      const rawPDur = p.duration || 1;
       const pDurHours = rawPDur > 24 ? rawPDur / 3600000 : rawPDur;
       const pEnd = pStart + (pDurHours * 60 * 60 * 1000);
-      return newStart < pEnd && newEnd > pStart;
+      
+      const twoHoursMs = 2 * 60 * 60 * 1000;
+      return newStart < (pEnd + twoHoursMs) && (newEnd + twoHoursMs) > pStart;
     });
   };
 
@@ -274,6 +285,7 @@ export default function App() {
       localStorage.setItem(SESSION_KEY, JSON.stringify(user));
       setShowAuthGate(false);
       setGateU(''); setGateP(''); setGateCP('');
+      setView('Home');
       return;
     }
 
@@ -299,6 +311,7 @@ export default function App() {
         setShowAuthGate(false);
         setGateU(''); setGateP(''); setGateCP('');
         setIsRegistering(false);
+        setView('Home');
         return;
       } catch (err) {
         setLoginError('Registration failed. Try again.');
@@ -313,6 +326,7 @@ export default function App() {
       localStorage.setItem(SESSION_KEY, JSON.stringify(user));
       setShowAuthGate(false);
       setGateU(''); setGateP(''); setGateCP('');
+      setView('Home');
     } else {
       setLoginError('Incorrect username or password.');
     }
@@ -369,7 +383,7 @@ export default function App() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     if (editModal.status === 'approved' && checkEventClash(editModal, editModal.id)) {
-      showAlert("Clash Detected", "Another approved event is already scheduled during this time window!");
+      showAlert("Clash Detected", "Another approved event is already scheduled during this time window (2-hour minimum gap required)!");
       return;
     }
     
@@ -385,7 +399,7 @@ export default function App() {
 
   const handleApprove = async (party) => {
     if (checkEventClash(party, party.id)) {
-      showAlert("Clash Detected", "Cannot approve: another event is already scheduled in this time slot!");
+      showAlert("Clash Detected", "Cannot approve: another event is already scheduled in this time slot (2-hour minimum gap required)!");
       return;
     }
     await updateDoc(doc(db, getPath('parties'), party.id), { 
@@ -400,6 +414,11 @@ export default function App() {
     e.preventDefault();
     if (isSubmitting) return;
 
+    if (checkEventClash(formData)) {
+      showAlert("Clash Detected", "Another event is scheduled within the 2-hour buffer window. Please choose a different time.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const newEvent = { 
@@ -409,7 +428,7 @@ export default function App() {
         createdAt: new Date().toISOString() 
       };
       await addDoc(collection(db, getPath('parties')), newEvent);
-      setFormData({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', duration: 2, performers: 'VU Storytellers' });
+      setFormData({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', duration: 1, performers: 'VU Storytellers' });
       showAlert("Submitted", "Party submitted successfully! Waiting for admin approval.");
     } finally {
       setIsSubmitting(false);
@@ -417,6 +436,7 @@ export default function App() {
   };
 
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
+  const isOwner = currentUser?.role === 'owner';
   const todayPT = getPTDateInt(new Date().toISOString());
 
   return (
@@ -463,7 +483,13 @@ export default function App() {
 
       {currentUser && (
         <div className="flex p-4 gap-3 max-w-4xl mx-auto overflow-x-auto relative z-30">
-          {['Home', 'Monthly', currentUser?.role === 'host' ? 'Submit Party' : 'Manage', currentUser?.role === 'owner' ? 'Staff' : ''].filter(Boolean).map((t) => (
+          {[
+            'Home', 
+            'Monthly', 
+            currentUser?.role === 'host' ? 'Submit Party' : 'Manage', 
+            currentUser?.role === 'owner' ? 'Staff' : '',
+            currentUser?.role === 'owner' ? 'Logs' : ''
+          ].filter(Boolean).map((t) => (
             <button
               key={t}
               onClick={() => setView(t)}
@@ -474,6 +500,7 @@ export default function App() {
               {t === 'Submit Party' && <Edit size={15} />}
               {t === 'Manage' && <Edit size={15} />}
               {t === 'Staff' && <Users size={15} />}
+              {t === 'Logs' && <Archive size={15} />}
               {t}
             </button>
           ))}
@@ -505,26 +532,6 @@ export default function App() {
           <>
             {view === 'Home' && (
               <div className="space-y-6">
-                {showNotice && parties.some(p => p.addedBy === currentUser.username && p.status === 'approved') && (
-                  <div className="bg-gradient-to-r from-purple-900/80 to-indigo-900/80 border border-purple-500/40 p-4 rounded-2xl flex items-center justify-between shadow-lg">
-                    <div className="flex items-center gap-3">
-                      <span className="bg-purple-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-xl shadow">NOTICE</span>
-                      <p className="text-xs font-bold text-purple-100">
-                        {(() => {
-                          const party = parties.find(p => p.addedBy === currentUser.username && p.status === 'approved');
-                          return `Party "${party?.theme || 'Event'}" on ${party?.date || ''} has been approved by admin!`;
-                        })()}
-                      </p>
-                    </div>
-                    <button 
-                      onClick={() => setShowNotice(false)}
-                      className="text-xs font-black text-purple-300 hover:text-white bg-purple-950/60 px-3 py-1.5 rounded-xl border border-purple-500/30 transition-all"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                )}
-
                 <div className="bg-gradient-to-br from-[#111827] via-[#0d1322] to-[#141c30] border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
                   <h2 className="font-black text-white text-2xl md:text-3xl tracking-tight mb-2 flex items-center gap-3">
@@ -667,7 +674,7 @@ export default function App() {
                             </div>
                             <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-purple-300/70 font-bold mt-1">
                               <span>{p.date}</span>
-                              <span>{formatTime(p.startTime)} ({p.duration || 2}h)</span>
+                              <span>{formatTime(p.startTime)} ({p.duration || 1}h)</span>
                               <span>Host: {p.hostName || 'N/A'}</span>
                               <span>Submitted by: {p.addedBy || 'Unknown'}</span>
                             </div>
@@ -703,7 +710,7 @@ export default function App() {
                           </div>
                           <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-purple-300/70 font-bold mt-1">
                             <span>{p.date}</span>
-                            <span>{formatTime(p.startTime)} ({p.duration || 2}h)</span>
+                            <span>{formatTime(p.startTime)} ({p.duration || 1}h)</span>
                             <span>Host: {p.hostName || 'N/A'}</span>
                             <span>Submitted by: {p.addedBy || 'Unknown'}</span>
                           </div>
@@ -758,36 +765,38 @@ export default function App() {
                   ))}
                   {admins.length === 0 && <p className="text-purple-400/50 text-sm font-medium">No registered accounts found.</p>}
                 </div>
+              </div>
+            )}
 
-                <div className="space-y-3 pt-8 border-t border-purple-500/20">
-                  <h3 className="font-black text-lg text-white mb-4">Master Activity & Audit Logs</h3>
-                  {parties
-                    .slice()
-                    .sort((a,b) => new Date(b.lastEditedAt || b.createdAt || 0) - new Date(a.lastEditedAt || a.createdAt || 0))
-                    .map(p => (
-                      <div key={p.id} className="text-xs bg-[#070b14] p-4 rounded-2xl border border-purple-500/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-purple-300/80 shadow-inner">
-                        <div className="font-bold text-white flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                          {p.theme}
-                          <span className="text-[10px] text-purple-400 font-normal">({p.status})</span>
-                        </div>
-                        <div className="flex flex-wrap gap-4 text-[11px] font-mono">
-                          <span>Submitted by: <strong className="text-purple-300">{p.addedBy || 'Unknown'}</strong></span>
-                          <span>Edited by: <strong className="text-purple-300">{p.lastEditedBy || 'None'}</strong></span>
-                          <span className="text-purple-400/60">
-                            {p.lastEditedAt ? new Date(p.lastEditedAt).toLocaleString('en-US') : (p.createdAt ? new Date(p.createdAt).toLocaleString('en-US') : 'Recent')}
-                          </span>
-                        </div>
+            {view === 'Logs' && currentUser?.role === 'owner' && (
+              <div className="space-y-3">
+                <h3 className="font-black text-lg text-white mb-4">Master Activity & Audit Logs</h3>
+                {parties
+                  .slice()
+                  .sort((a,b) => new Date(b.lastEditedAt || b.createdAt || 0) - new Date(a.lastEditedAt || a.createdAt || 0))
+                  .map(p => (
+                    <div key={p.id} className="text-xs bg-[#111827]/90 backdrop-blur-md p-4 rounded-2xl border border-purple-500/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-purple-300/80 shadow-xl">
+                      <div className="font-bold text-white flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                        {p.theme}
+                        <span className="text-[10px] text-purple-400 font-normal">({p.status})</span>
                       </div>
-                    ))}
-                </div>
+                      <div className="flex flex-wrap gap-4 text-[11px] font-mono">
+                        <span>Submitted by: <strong className="text-purple-300">{p.addedBy || 'Unknown'}</strong></span>
+                        <span>Edited by: <strong className="text-purple-300">{p.lastEditedBy || 'None'}</strong></span>
+                        <span className="text-purple-400/60">
+                          {p.lastEditedAt ? new Date(p.lastEditedAt).toLocaleString('en-US') : (p.createdAt ? new Date(p.createdAt).toLocaleString('en-US') : 'Recent')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                {parties.length === 0 && <p className="text-purple-400/50 text-sm font-medium">No audit logs available.</p>}
               </div>
             )}
           </>
         )}
       </main>
 
-      {}
       {selectedDay && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-md">
            <div className="bg-[#0d1322] p-6 rounded-3xl w-full max-w-lg border border-purple-500/30 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl shadow-purple-950/90">
@@ -823,7 +832,7 @@ export default function App() {
                 {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
 
-              <select required className="w-full bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-purple-200 text-sm focus:outline-none focus:border-purple-500 transition-colors" value={editModal.duration || 2} onChange={e=>setEditModal({...editModal, duration: Number(e.target.value)})}>
+              <select required className="w-full bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-purple-200 text-sm focus:outline-none focus:border-purple-500 transition-colors" value={editModal.duration || 1} onChange={e=>setEditModal({...editModal, duration: Number(e.target.value)})}>
                 {DURATION_OPTIONS.map(d => <option key={d.hours} value={d.hours}>{d.label}</option>)}
               </select>
               
@@ -927,13 +936,18 @@ export default function App() {
               </div>
 
               {isRegistering && (
-                <input 
-                  type="password" 
-                  placeholder="Confirm Password" 
-                  value={gateCP} 
-                  onChange={e=>setGateCP(e.target.value)} 
-                  className="w-full bg-black/40 border border-purple-500/20 rounded-2xl p-4 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors placeholder:text-purple-400/30"
-                />
+                <div className="relative">
+                  <input 
+                    type={showConfirmPass ? "text" : "password"} 
+                    placeholder="Confirm Password" 
+                    value={gateCP} 
+                    onChange={e=>setGateCP(e.target.value)} 
+                    className="w-full bg-black/40 border border-purple-500/20 rounded-2xl p-4 pr-12 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors placeholder:text-purple-400/30"
+                  />
+                  <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-4 top-4 text-purple-400/50 hover:text-purple-300 transition-colors">
+                    {showConfirmPass ? <EyeOff size={20}/> : <Eye size={20}/>}
+                  </button>
+                </div>
               )}
 
               {loginError && <p className="text-rose-400 text-xs font-bold bg-rose-950/50 p-3 rounded-xl border border-rose-500/30">{loginError}</p>}
@@ -953,8 +967,7 @@ export default function App() {
 
 function EventCard({ p }) {
     const live = isEventLive(p.date, p.startTime, p.duration);
-    const rawDuration = p.duration || 2;
-    const durationHours = rawDuration > 24 ? rawDuration / 3600000 : rawDuration;
+    const durationHours = p.duration || 1;
 
     return (
         <div className={`bg-[#111827]/90 backdrop-blur-md border p-6 rounded-3xl mb-4 relative transition-all duration-300 shadow-xl 
