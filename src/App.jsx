@@ -170,7 +170,8 @@ export default function App() {
     const nextMonthIdx = (currentMonthIdx + 1) % 12;
     const nextYear = currentMonthIdx === 11 ? currentYear + 1 : currentYear;
     
-    const approvedParties = parties.filter(p => p.status === 'approved' || (currentUser && currentUser.role !== 'host'));
+    // Filter out past parties (date < todayPT)
+    const approvedParties = parties.filter(p => p.status === 'approved' && getPTDateInt(p.date) >= todayPT);
 
     return {
       thisMonthEvents: approvedParties.filter(p => {
@@ -183,7 +184,7 @@ export default function App() {
         return (m - 1) === nextMonthIdx && y === nextYear;
       }).sort((a, b) => a.date.localeCompare(b.date))
     };
-  }, [parties, currentUser]);
+  }, [parties]);
   
   const [newAdminU, setNewAdminU] = useState('');
   const [newAdminP, setNewAdminP] = useState('');
@@ -277,7 +278,7 @@ export default function App() {
     return days;
   }, [currentMonth]);
 
-  const hasEvent = (date) => parties.some(p => (p.status === 'approved' || (currentUser && currentUser.role !== 'host')) && new Date(p.date).toDateString() === date.toDateString());
+  const hasEvent = (date) => parties.some(p => p.status === 'approved' && new Date(p.date).toDateString() === date.toDateString());
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -447,6 +448,18 @@ export default function App() {
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
   const isOwner = currentUser?.role === 'owner';
   const todayPT = getPTDateInt(new Date().toISOString());
+
+  // Filter parties for host management view: only parties they submitted OR where hostName matches their username
+  const hostFilteredParties = useMemo(() => {
+    if (!currentUser) return [];
+    if (isStaff) return parties.filter(p => p && p.date && getPTDateInt(p.date) >= todayPT);
+    return parties.filter(p => {
+      if (!p || !p.date || getPTDateInt(p.date) < todayPT) return false;
+      const isSubmitter = p.addedBy && p.addedBy.toLowerCase() === currentUser.username.toLowerCase();
+      const isHost = p.hostName && p.hostName.toLowerCase() === currentUser.username.toLowerCase();
+      return isSubmitter || isHost;
+    });
+  }, [parties, currentUser, isStaff, todayPT]);
 
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 selection:bg-purple-600 selection:text-white pb-16">
@@ -678,9 +691,8 @@ export default function App() {
             
                 <div className="space-y-4">
                   <h3 className="font-black text-lg mb-2 text-white flex items-center gap-2"><Archive size={18} className="text-purple-400"/> VU Storytellers Listed Events</h3>
-                  {parties && parties.length > 0 ? (
-                    parties
-                      .filter(p => p && p.date && getPTDateInt(p.date) >= todayPT)
+                  {hostFilteredParties && hostFilteredParties.length > 0 ? (
+                    hostFilteredParties
                       .sort((a, b) => new Date(a.date) - new Date(b.date))
                       .map(p => (
                         <div key={p.id} className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
@@ -714,9 +726,8 @@ export default function App() {
             {view === 'Manage' && isStaff && (
               <div className="space-y-4">
                 <h3 className="font-black text-lg mb-2 text-white flex items-center gap-2"><Archive size={18} className="text-purple-400"/> Storyteller Events & Approvals</h3>
-                {parties && parties.length > 0 ? (
-                  parties
-                    .filter(p => p && p.date && getPTDateInt(p.date) >= todayPT)
+                {hostFilteredParties && hostFilteredParties.length > 0 ? (
+                  hostFilteredParties
                     .sort((a, b) => new Date(a.date) - new Date(b.date))
                     .map(p => (
                       <div key={p.id} className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
@@ -823,8 +834,8 @@ export default function App() {
                   <h2 className="font-black text-base text-white">Events for {selectedDay.toDateString()}</h2>
                   <button onClick={() => setSelectedDay(null)} className="text-purple-300/70 hover:text-white transition-colors bg-purple-950/40 p-2 rounded-full border border-purple-500/20"><X size={18}/></button>
               </div>
-              {parties.filter(p => (p.status === 'approved' || currentUser.role !== 'host') && new Date(p.date).toDateString() === selectedDay.toDateString()).map(p => <EventCard key={p.id} p={p} currentUser={currentUser}/>)}
-              {parties.filter(p => (p.status === 'approved' || currentUser.role !== 'host') && new Date(p.date).toDateString() === selectedDay.toDateString()).length === 0 && (
+              {parties.filter(p => p.status === 'approved' && getPTDateInt(p.date) >= todayPT && new Date(p.date).toDateString() === selectedDay.toDateString()).map(p => <EventCard key={p.id} p={p} currentUser={currentUser}/>)}
+              {parties.filter(p => p.status === 'approved' && getPTDateInt(p.date) >= todayPT && new Date(p.date).toDateString() === selectedDay.toDateString()).length === 0 && (
                   <p className="text-purple-400/50 text-sm text-center py-8 font-medium">No events scheduled for this date.</p>
               )}
            </div>
