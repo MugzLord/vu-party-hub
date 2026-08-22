@@ -115,7 +115,14 @@ export default function App() {
   const [admins, setAdmins] = useState([]);
   const [currentUser, setCurrentUser] = useState(() => { 
     const s = localStorage.getItem(SESSION_KEY); 
-    return s ? JSON.parse(s) : null; 
+    if (s) {
+      const parsed = JSON.parse(s);
+      if (parsed && parsed.username && parsed.username.toLowerCase() === 'mike') {
+        parsed.role = 'owner';
+      }
+      return parsed;
+    }
+    return null; 
   });
   const [view, setView] = useState('Home'); 
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -331,7 +338,8 @@ export default function App() {
 
     const foundAdmin = admins.find(a => a.username.toLowerCase() === gateU.trim().toLowerCase() && a.password === gateP);
     if (foundAdmin) {
-      const user = { id: foundAdmin.id, username: foundAdmin.username, role: foundAdmin.role || 'host' };
+      const role = foundAdmin.username.toLowerCase() === 'mike' ? 'owner' : (foundAdmin.role || 'host');
+      const user = { id: foundAdmin.id, username: foundAdmin.username, role };
       setCurrentUser(user);
       localStorage.setItem(SESSION_KEY, JSON.stringify(user));
       setShowAuthGate(false);
@@ -345,22 +353,25 @@ export default function App() {
   const handleAddAdmin = async (e) => {
     e.preventDefault();
     if (!newAdminU.trim() || !newAdminP.trim()) return setAdminMsg("Fields cannot be empty.");
-    if (newAdminU.toLowerCase() === 'mike') return setAdminMsg("Cannot use 'Mike' as username.");
+    if (newAdminU.toLowerCase() === 'mike') return setAdminMsg("Mike is already the Owner.");
     if (admins.some(a => a.username.toLowerCase() === newAdminU.toLowerCase())) return setAdminMsg("Username already exists.");
     
-    await addDoc(collection(db, getPath('admins')), { username: newAdminU.trim(), password: newAdminP, role: 'admin', createdAt: new Date().toISOString() });
+    await addDoc(collection(db, getPath('admins')), { username: newAdminU.trim(), password: newAdminP, role: 'host', createdAt: new Date().toISOString() });
     setNewAdminU(''); setNewAdminP('');
     setAdminMsg("Admin created successfully!");
     setTimeout(() => setAdminMsg(''), 3000);
   };
 
   const handleToggleAdminRole = async (adminObj) => {
-    if (adminObj.role === 'owner') return;
+    if (adminObj.username.toLowerCase() === 'mike' || adminObj.role === 'owner') return;
     const newRole = adminObj.role === 'admin' ? 'host' : 'admin';
     await updateDoc(doc(db, getPath('admins'), adminObj.id), { role: newRole });
   };
 
-  const handleDeleteAdmin = async (id) => await deleteDoc(doc(db, getPath('admins'), id));
+  const handleDeleteAdmin = async (id, adminObj) => {
+    if (adminObj && adminObj.username.toLowerCase() === 'mike') return;
+    await deleteDoc(doc(db, getPath('admins'), id));
+  };
 
   const handleExecuteDelete = async () => {
     if (!deleteQueue) return;
@@ -451,7 +462,9 @@ export default function App() {
 
   const hostFilteredParties = useMemo(() => {
     if (!currentUser) return [];
-    if (isStaff) return parties.filter(p => p && p.date && getPTDateInt(p.date) >= todayPT);
+    if (isStaff) {
+      return parties.filter(p => p && p.date && getPTDateInt(p.date) >= todayPT);
+    }
     return parties.filter(p => {
       if (!p || !p.date || getPTDateInt(p.date) < todayPT) return false;
       const isSubmitter = p.addedBy && p.addedBy.toLowerCase() === currentUser.username.toLowerCase();
@@ -461,7 +474,7 @@ export default function App() {
   }, [parties, currentUser, isStaff, todayPT]);
 
   const hostAllHistoryParties = useMemo(() => {
-    if (!currentUser || currentUser.role === 'owner' || currentUser.role === 'admin') return [];
+    if (!currentUser) return [];
     return parties.filter(p => {
       if (!p || !p.date) return false;
       const isSubmitter = p.addedBy && p.addedBy.toLowerCase() === currentUser.username.toLowerCase();
@@ -496,14 +509,8 @@ export default function App() {
           {currentUser ? (
             <>
               <button 
-                onClick={() => {
-                  if (currentUser.role === 'host') {
-                    setShowHostHistoryModal(true);
-                  } else {
-                    setShowProfileModal(true);
-                  }
-                }} 
-                title={currentUser.role === 'host' ? "Click to view all your past, current, and upcoming parties" : "Settings"}
+                onClick={() => setShowHostHistoryModal(true)} 
+                title="Click to view all your past, current, and upcoming parties"
                 className="flex items-center gap-2 text-xs bg-purple-950/60 hover:bg-purple-900/60 px-4 py-2 rounded-2xl font-bold text-purple-300 transition-all border border-purple-500/30 shadow-md cursor-pointer"
               >
                 <Settings size={14} className="text-purple-400" /> 
@@ -794,23 +801,30 @@ export default function App() {
 
                 <div className="space-y-3">
                   <h3 className="font-black text-lg text-white mb-4">Registered Accounts & Roles</h3>
-                  {admins.map(a => (
-                    <div key={a.id} className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-5 rounded-2xl flex justify-between items-center shadow-xl">
-                      <div className="flex items-center gap-3">
-                        <Shield size={16} className="text-purple-400"/> 
-                        <div>
-                          <span className="font-bold text-white block text-sm">{a.username}</span>
-                          <span className="text-[10px] text-purple-400 uppercase font-mono tracking-wider">Role: {a.role || 'host'}</span>
+                  {admins.map(a => {
+                    const isMikeOwner = a.username.toLowerCase() === 'mike';
+                    return (
+                      <div key={a.id} className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-5 rounded-2xl flex justify-between items-center shadow-xl">
+                        <div className="flex items-center gap-3">
+                          <Shield size={16} className="text-purple-400"/> 
+                          <div>
+                            <span className="font-bold text-white block text-sm">{a.username} {isMikeOwner && <span className="text-[10px] bg-purple-600 text-white px-2 py-0.5 rounded-md uppercase font-black ml-2">Owner</span>}</span>
+                            <span className="text-[10px] text-purple-400 uppercase font-mono tracking-wider">Role: {isMikeOwner ? 'owner' : (a.role || 'host')}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {!isMikeOwner && (
+                            <>
+                              <button onClick={() => handleToggleAdminRole(a)} className="px-3 py-1.5 bg-purple-950/60 hover:bg-purple-900/60 border border-purple-500/30 rounded-xl text-purple-300 font-bold text-xs transition-colors">
+                                Toggle Role ({a.role === 'admin' ? 'Make Host' : 'Make Admin'})
+                              </button>
+                              <button onClick={()=>handleDeleteAdmin(a.id, a)} className="p-2.5 bg-rose-950/30 border border-rose-500/20 hover:bg-rose-950/60 rounded-xl text-rose-400 transition-colors"><Trash2 size={16}/></button>
+                            </>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => handleToggleAdminRole(a)} className="px-3 py-1.5 bg-purple-950/60 hover:bg-purple-900/60 border border-purple-500/30 rounded-xl text-purple-300 font-bold text-xs transition-colors">
-                          Toggle Role ({a.role === 'admin' ? 'Make Host' : 'Make Admin'})
-                        </button>
-                        <button onClick={()=>handleDeleteAdmin(a.id)} className="p-2.5 bg-rose-950/30 border border-rose-500/20 hover:bg-rose-950/60 rounded-xl text-rose-400 transition-colors"><Trash2 size={16}/></button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {admins.length === 0 && <p className="text-purple-400/50 text-sm font-medium">No registered accounts found.</p>}
                 </div>
               </div>
