@@ -109,7 +109,7 @@ export default function App() {
     const s = localStorage.getItem(SESSION_KEY); 
     return s ? JSON.parse(s) : null; 
   });
-  const [view, setView] = useState('Guide'); 
+  const [view, setView] = useState('Home'); 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
   const [guideTab, setGuideTab] = useState('current');
@@ -119,7 +119,7 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteQueue, setDeleteQueue] = useState(null); 
   const [customAlert, setCustomAlert] = useState(null); 
-  const [dismissedNotices, setDismissedNotices] = useState({});
+  const [showNotice, setShowNotice] = useState(true);
 
   // Forms & Inputs
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -137,15 +137,17 @@ export default function App() {
 
   const checkEventClash = (proposedEvent, excludeId = null) => {
     const newStart = parseEventTimestamp(proposedEvent.date, proposedEvent.startTime);
-    const newDur = proposedEvent.duration || 2;
-    const newEnd = newStart + (newDur * 60 * 60 * 1000);
+    const rawDur = proposedEvent.duration || 2;
+    const durHours = rawDur > 24 ? rawDur / 3600000 : rawDur;
+    const newEnd = newStart + (durHours * 60 * 60 * 1000);
 
     return parties.some(p => {
       if (excludeId && p.id === excludeId) return false;
       if (p.status !== 'approved') return false; 
       const pStart = parseEventTimestamp(p.date, p.startTime);
-      const pDur = p.duration || 2;
-      const pEnd = pStart + (pDur * 60 * 60 * 1000);
+      const rawPDur = p.duration || 2;
+      const pDurHours = rawPDur > 24 ? rawPDur / 3600000 : rawPDur;
+      const pEnd = pStart + (pDurHours * 60 * 60 * 1000);
       return newStart < pEnd && newEnd > pStart;
     });
   };
@@ -419,104 +421,6 @@ export default function App() {
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
   const todayPT = getPTDateInt(new Date().toISOString());
 
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col items-center justify-center p-4 selection:bg-purple-600 selection:text-white relative overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/15 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none"></div>
-
-        <div className="max-w-md w-full bg-[#0d1322]/90 border border-purple-500/20 p-8 rounded-3xl backdrop-blur-xl shadow-2xl shadow-purple-950/80 text-center relative z-10 space-y-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl mx-auto flex items-center justify-center border border-purple-400/40 shadow-lg shadow-purple-900/50">
-            <CalendarDays size={32} className="text-white" />
-          </div>
-          
-          <div className="space-y-2">
-            <h1 className="text-2xl font-black bg-gradient-to-r from-white via-purple-100 to-purple-300 bg-clip-text text-transparent">VU Storytellers</h1>
-            <p className="text-xs font-bold text-purple-400 uppercase tracking-widest">Party Schedule Hub</p>
-            <p className="text-xs text-slate-400 font-medium pt-2 leading-relaxed">
-              Private schedule for VU Storytellers. Please sign in to view and manage active gatherings.
-            </p>
-          </div>
-
-          <button 
-            onClick={() => { setShowAuthGate(true); setIsRegistering(false); setLoginError(''); }}
-            className="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:from-purple-500 hover:to-indigo-500 transition-all py-4 rounded-2xl font-black text-white text-sm shadow-xl shadow-purple-950/60 border border-purple-400/40 uppercase tracking-wider"
-          >
-            Sign-In
-          </button>
-
-          <div className="text-[11px] text-purple-300/60 font-light pt-2">
-            Disclaimer: All approved events are subject to IMVU Staff changes without prior notice. Independent community initiative, not officially affiliated with IMVU.
-          </div>
-        </div>
-
-        {showAuthGate && (
-          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-md">
-            <div className="bg-[#0d1322] p-8 rounded-3xl w-full max-w-sm border border-purple-500/30 shadow-2xl shadow-purple-950/90 relative">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-2">
-                  <Shield size={20} className="text-purple-400"/>
-                  <h2 className="font-black text-lg text-white">Sign-In</h2>
-                </div>
-                <button onClick={() => { setShowAuthGate(false); setLoginError(''); }} className="text-purple-300/70 hover:text-white transition-colors bg-purple-950/40 p-2 rounded-full border border-purple-500/20"><X size={16}/></button>
-              </div>
-
-              <div className="bg-purple-950/30 border border-purple-500/20 p-4 rounded-2xl mb-5 text-center space-y-3">
-                <p className="text-[11px] font-bold text-purple-300 tracking-wider">New VU Storyteller?</p>
-                <button 
-                  type="button" 
-                  onClick={() => setIsRegistering(!isRegistering)}
-                  className="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black py-3 rounded-xl border border-purple-400/30 transition-all shadow-md uppercase tracking-wider"
-                >
-                  {isRegistering ? 'Back to Sign In' : 'Register Account'}
-                </button>
-              </div>
-
-              <form onSubmit={handleLogin} className="space-y-4">
-                <input 
-                  placeholder="IMVU Username" 
-                  value={gateU} 
-                  onChange={e=>setGateU(e.target.value)} 
-                  className="w-full bg-black/40 border border-purple-500/20 rounded-2xl p-4 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors placeholder:text-purple-400/30"
-                />
-                <div className="relative">
-                  <input 
-                    type={showPass ? "text" : "password"} 
-                    placeholder="Password" 
-                    value={gateP} 
-                    onChange={e=>setGateP(e.target.value)} 
-                    className="w-full bg-black/40 border border-purple-500/20 rounded-2xl p-4 pr-12 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors placeholder:text-purple-400/30"
-                  />
-                  <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-4 text-purple-400/50 hover:text-purple-300 transition-colors">
-                    {showPass ? <EyeOff size={20}/> : <Eye size={20}/>}
-                  </button>
-                </div>
-
-                {isRegistering && (
-                  <input 
-                    type="password" 
-                    placeholder="Confirm Password" 
-                    value={gateCP} 
-                    onChange={e=>setGateCP(e.target.value)} 
-                    className="w-full bg-black/40 border border-purple-500/20 rounded-2xl p-4 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors placeholder:text-purple-400/30"
-                  />
-                )}
-
-                {loginError && <p className="text-rose-400 text-xs font-bold bg-rose-950/50 p-3 rounded-xl border border-rose-500/30">{loginError}</p>}
-                
-                <button type="submit" className="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:from-purple-500 hover:to-indigo-500 transition-all py-4 rounded-2xl font-black text-white text-sm border border-purple-400/40 shadow-xl shadow-purple-950/60 uppercase tracking-wider">
-                  {isRegistering ? 'Register Account' : 'Sign In'}
-                </button>
-
-                <p className="text-[11px] text-purple-300/70 text-center font-medium pt-1">Need help? Contact an Admin</p>
-              </form>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 selection:bg-purple-600 selection:text-white pb-16">
       <header className="relative z-40 bg-[#0d1322]/90 backdrop-blur-md border-b border-purple-500/20 p-4 md:px-8 flex justify-between items-center sticky top-0 shadow-2xl">
@@ -530,294 +434,362 @@ export default function App() {
               <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest flex items-center gap-1">🔥 Party Schedule Hub</p>
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-purple-200/80 bg-purple-950/40 px-3 py-1.5 rounded-xl border border-purple-500/30 shadow-inner">
-            <Clock size={12} className="text-purple-400 shrink-0" />
-            <span className="font-bold">{ptTime}</span>
-            <span className="opacity-60">PT</span>
-          </div>
+          {currentUser && (
+            <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-purple-200/80 bg-purple-950/40 px-3 py-1.5 rounded-xl border border-purple-500/30 shadow-inner">
+              <Clock size={12} className="text-purple-400 shrink-0" />
+              <span className="font-bold">{ptTime}</span>
+              <span className="opacity-60">PT</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
-          <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-2 text-xs bg-purple-950/60 hover:bg-purple-900/60 px-4 py-2 rounded-2xl font-bold text-purple-300 transition-all border border-purple-500/30 shadow-md">
-            <Settings size={14} className="text-purple-400" /> 
-            <span>{currentUser.username}</span>
-            <span className="bg-purple-600/60 text-white text-[9px] uppercase px-1.5 py-0.5 rounded-md font-black">{currentUser.role}</span>
-          </button>
-          <button onClick={() => { setCurrentUser(null); setView('Guide'); localStorage.removeItem(SESSION_KEY); }} className="text-xs font-black uppercase text-rose-400 hover:text-rose-300 p-2.5 bg-rose-950/30 hover:bg-rose-950/50 rounded-2xl border border-rose-500/30 transition-all">
-            <LogOut size={16} />
-          </button>
+          {currentUser ? (
+            <>
+              <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-2 text-xs bg-purple-950/60 hover:bg-purple-900/60 px-4 py-2 rounded-2xl font-bold text-purple-300 transition-all border border-purple-500/30 shadow-md">
+                <Settings size={14} className="text-purple-400" /> 
+                <span>{currentUser.username}</span>
+                <span className="bg-purple-600/60 text-white text-[9px] uppercase px-1.5 py-0.5 rounded-md font-black">{currentUser.role}</span>
+              </button>
+              <button onClick={() => { setCurrentUser(null); setView('Guide'); localStorage.removeItem(SESSION_KEY); }} className="text-xs font-black uppercase text-rose-400 hover:text-rose-300 p-2.5 bg-rose-950/30 hover:bg-rose-950/50 rounded-2xl border border-rose-500/30 transition-all">
+                <LogOut size={16} />
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setShowAuthGate(true)} className="flex items-center gap-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:from-purple-500 hover:to-indigo-500 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider text-white shadow-xl shadow-purple-950/60 border border-purple-400/40 transition-all">
+              <Shield size={16} /> Sign-In
+            </button>
+          )}
         </div>
       </header>
 
-      <div className="flex p-4 gap-3 max-w-4xl mx-auto overflow-x-auto relative z-30">
-        {['Guide', 'Monthly', 'Submit Party', currentUser?.role === 'owner' ? 'Staff' : ''].filter(Boolean).map((t) => (
-          <button
-            key={t}
-            onClick={() => setView(t)}
-            className={`px-6 py-3 rounded-2xl text-xs font-black uppercase flex items-center gap-2.5 whitespace-nowrap transition-all duration-300 shadow-lg ${view === t ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 text-white shadow-purple-950/80 border border-purple-400/50 scale-105' : 'bg-[#111827]/80 text-purple-300/70 hover:bg-purple-950/40 hover:text-white border border-purple-500/10'}`}
-          >
-            {t === 'Guide' && <BookOpen size={15} />}
-            {t === 'Monthly' && <Calendar size={15} />}
-            {t === 'Submit Party' && <Edit size={15} />}
-            {t === 'Staff' && <Users size={15} />}
-            {t}
-          </button>
-        ))}
-      </div>
+      {currentUser && (
+        <div className="flex p-4 gap-3 max-w-4xl mx-auto overflow-x-auto relative z-30">
+          {['Guide', 'Monthly', currentUser?.role === 'host' ? 'Submit Party' : 'Manage', currentUser?.role === 'owner' ? 'Staff' : ''].filter(Boolean).map((t) => (
+            <button
+              key={t}
+              onClick={() => setView(t)}
+              className={`px-6 py-3 rounded-2xl text-xs font-black uppercase flex items-center gap-2.5 whitespace-nowrap transition-all duration-300 shadow-lg ${view === t ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 text-white shadow-purple-950/80 border border-purple-400/50 scale-105' : 'bg-[#111827]/80 text-purple-300/70 hover:bg-purple-950/40 hover:text-white border border-purple-500/10'}`}
+            >
+              {t === 'Guide' && <BookOpen size={15} />}
+              {t === 'Monthly' && <Calendar size={15} />}
+              {t === 'Submit Party' && <Edit size={15} />}
+              {t === 'Manage' && <Edit size={15} />}
+              {t === 'Staff' && <Users size={15} />}
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
 
+      {}
       <main className="p-4 md:p-6 max-w-4xl mx-auto relative z-10">
-        {view === 'Guide' && (
-          <div className="space-y-6">
-            {parties.some(p => p.addedBy === currentUser.username && p.status === 'approved' && !dismissedNotices[p.id]) && (
-              <div className="bg-gradient-to-r from-purple-900/80 to-indigo-900/80 border border-purple-500/40 p-4 rounded-2xl flex items-center justify-between shadow-lg">
-                <div className="flex items-center gap-3">
-                  <span className="bg-purple-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-xl shadow">NOTICE</span>
-                  <p className="text-xs font-bold text-purple-100">
-                    {(() => {
-                      const party = parties.find(p => p.addedBy === currentUser.username && p.status === 'approved' && !dismissedNotices[p.id]);
-                      return `Party "${party?.theme || 'Event'}" on ${party?.date || ''} has been approved by admin!`;
-                    })()}
+        {!currentUser ? (
+          <div className="space-y-6 max-w-md mx-auto mt-12 text-center bg-[#0d1322]/90 border border-purple-500/20 p-8 rounded-3xl backdrop-blur-xl shadow-2xl">
+            <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl mx-auto flex items-center justify-center border border-purple-400/40 shadow-lg shadow-purple-900/50">
+              <CalendarDays size={32} className="text-white" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-black bg-gradient-to-r from-white via-purple-100 to-purple-300 bg-clip-text text-transparent">VU Storytellers</h1>
+              <p className="text-xs font-bold text-purple-400 uppercase tracking-widest">Party Schedule Hub</p>
+              <p className="text-xs text-slate-400 font-medium pt-2 leading-relaxed">
+                Private schedule for VU Storytellers. Please sign in to view and manage active gatherings.
+              </p>
+            </div>
+            <button 
+              onClick={() => setShowAuthGate(true)}
+              className="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:from-purple-500 hover:to-indigo-500 transition-all py-4 rounded-2xl font-black text-white text-sm shadow-xl shadow-purple-950/60 border border-purple-400/40 uppercase tracking-wider"
+            >
+              Sign-In
+            </button>
+          </div>
+        ) : (
+          <>
+            {view === 'Guide' && (
+              <div className="space-y-6">
+                {showNotice && parties.some(p => p.addedBy === currentUser.username && p.status === 'approved') && (
+                  <div className="bg-gradient-to-r from-purple-900/80 to-indigo-900/80 border border-purple-500/40 p-4 rounded-2xl flex items-center justify-between shadow-lg">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-purple-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-xl shadow">NOTICE</span>
+                      <p className="text-xs font-bold text-purple-100">
+                        {(() => {
+                          const party = parties.find(p => p.addedBy === currentUser.username && p.status === 'approved');
+                          return `Party "${party?.theme || 'Event'}" on ${party?.date || ''} has been approved by admin!`;
+                        })()}
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => setShowNotice(false)}
+                      className="text-xs font-black text-purple-300 hover:text-white bg-purple-950/60 px-3 py-1.5 rounded-xl border border-purple-500/30 transition-all"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+
+                <div className="bg-gradient-to-br from-[#111827] via-[#0d1322] to-[#141c30] border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
+                  <h2 className="font-black text-white text-2xl md:text-3xl tracking-tight mb-2 flex items-center gap-3">
+                    <BookOpen className="text-purple-400" size={28} /> VU Storytellers Party Schedule
+                  </h2>
+                  <p className="text-sm text-purple-200/80 font-medium mb-4">
+                    Exclusive schedule for VU Storytellers. Submit events and track timings in Pacific Time.
                   </p>
+                  <div className="text-[11px] font-thin text-indigo-300/70 bg-purple-950/30 p-3.5 rounded-2xl border border-purple-500/20 leading-relaxed">
+                    <span className="font-medium text-purple-300">Disclaimer:</span> All approved events are subject to IMVU Staff changes without prior notice. Independent community initiative, not officially affiliated with IMVU.
+                  </div>
                 </div>
-                <button 
-                  onClick={() => {
-                    const approvedParty = parties.find(p => p.addedBy === currentUser.username && p.status === 'approved' && !dismissedNotices[p.id]);
-                    if (approvedParty) {
-                      setDismissedNotices(prev => ({ ...prev, [approvedParty.id]: true }));
-                    }
-                  }}
-                  className="text-xs font-black text-purple-300 hover:text-white bg-purple-950/60 px-3 py-1.5 rounded-xl border border-purple-500/30 transition-all"
-                >
-                  Dismiss
-                </button>
+                
+                <div className="flex gap-2 border-b border-purple-500/20 pb-1">
+                  <button 
+                    onClick={() => setGuideTab('current')}
+                    className={`pb-2 px-4 font-black text-xs uppercase tracking-wider transition-all ${guideTab === 'current' ? 'text-white border-b-2 border-purple-500' : 'text-purple-400/50 hover:text-purple-300'}`}
+                  >
+                    Current Month Events
+                  </button>
+                  <button 
+                    onClick={() => setGuideTab('next')}
+                    className={`pb-2 px-4 font-black text-xs uppercase tracking-wider transition-all ${guideTab === 'next' ? 'text-white border-b-2 border-purple-500' : 'text-purple-400/50 hover:text-purple-300'}`}
+                  >
+                    Upcoming Month Events
+                  </button>
+                </div>
+          
+                <div className="bg-[#111827]/85 backdrop-blur-md border border-purple-500/20 p-6 rounded-3xl min-h-[300px] shadow-xl">
+                  <div className="mb-6 text-xs font-black text-purple-400/80 uppercase tracking-widest flex items-center gap-2">
+                    <Calendar size={14} />
+                    {(() => {
+                      const now = new Date();
+                      if (guideTab === 'current') {
+                        return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                      } else {
+                        const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                        return nextMonthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                      }
+                    })()}
+                  </div>
+                  {guideTab === 'current' ? (
+                    <div className="space-y-4">
+                      {thisMonthEvents.length > 0 ? thisMonthEvents.map(p => <EventCard key={p.id} p={p} currentUser={currentUser}/>) : <p className="text-purple-400/50 text-sm font-medium py-12 text-center">No storytelling parties scheduled for this month.</p>}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {nextMonthEvents.length > 0 ? nextMonthEvents.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-purple-400/50 text-sm font-medium py-12 text-center">No upcoming parties scheduled yet.</p>}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
-            <div className="bg-gradient-to-br from-[#111827] via-[#0d1322] to-[#141c30] border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
-              <h2 className="font-black text-white text-2xl md:text-3xl tracking-tight mb-2 flex items-center gap-3">
-                <BookOpen className="text-purple-400" size={28} /> VU Storytellers Party Schedule
-              </h2>
-              <p className="text-sm text-purple-200/80 font-medium mb-4">
-                Exclusive schedule for VU Storytellers. Submit events and track timings in Pacific Time.
-              </p>
-              <div className="text-[11px] font-thin text-indigo-300/70 bg-purple-950/30 p-3.5 rounded-2xl border border-purple-500/20 leading-relaxed">
-                <span className="font-medium text-purple-300">Disclaimer:</span> All approved events are subject to IMVU Staff changes without prior notice. Independent community initiative, not officially affiliated with IMVU.
+            {view === 'Monthly' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center bg-[#111827]/90 backdrop-blur-md p-4 rounded-2xl border border-purple-500/20 shadow-xl">
+                  <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="p-2.5 hover:bg-purple-950/50 rounded-xl text-purple-300 transition-colors border border-purple-500/20"><ChevronLeft size={18}/></button>
+                  <span className="font-black text-white uppercase tracking-widest text-sm">{currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+                  <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="p-2.5 hover:bg-purple-950/50 rounded-xl text-purple-300 transition-colors border border-purple-500/20"><ChevronRight size={18}/></button>
+                </div>
+                <div className="grid grid-cols-7 gap-2 bg-[#111827]/50 p-4 rounded-3xl border border-purple-500/20 shadow-xl">
+                  {['M','T','W','T','F','S','S'].map((d, index) => (
+                    <div key={`day-header-${index}`} className="text-xs font-black text-purple-400/70 pb-2 text-center">{d}</div>
+                  ))}
+                  {calendarDays.map((d, i) => {
+                    const hasEventToday = hasEvent(d.date);
+                    const isEventDay = d.monthType === 'current' && hasEventToday;
+                    
+                    return (
+                      <button 
+                        key={`day-cell-${i}`} 
+                        onClick={() => setSelectedDay(d.date)} 
+                        className={`aspect-square flex flex-col items-center justify-center text-sm font-black rounded-2xl relative transition-all duration-300 
+                          ${d.monthType === 'current' ? 'text-white' : 'text-purple-900/40'}
+                          ${selectedDay?.toDateString() === d.date.toDateString() 
+                            ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-950/80 scale-105 border border-purple-400/50' 
+                            : isEventDay 
+                              ? 'bg-purple-950/50 border border-purple-500/40 text-purple-200' 
+                              : d.monthType === 'current' ? 'bg-[#111827]' : 'bg-[#070b14]/50'}
+                          hover:border-purple-500/60 border border-purple-500/10`}
+                      >
+                        {d.date.getDate()}
+                        {hasEventToday && (
+                          <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${selectedDay?.toDateString() === d.date.toDateString() ? 'bg-white' : 'bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,1)]'}`}></div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
             
-            <div className="flex gap-2 border-b border-purple-500/20 pb-1">
-              <button 
-                onClick={() => setGuideTab('current')}
-                className={`pb-2 px-4 font-black text-xs uppercase tracking-wider transition-all ${guideTab === 'current' ? 'text-white border-b-2 border-purple-500' : 'text-purple-400/50 hover:text-purple-300'}`}
-              >
-                Current Month Events
-              </button>
-              <button 
-                onClick={() => setGuideTab('next')}
-                className={`pb-2 px-4 font-black text-xs uppercase tracking-wider transition-all ${guideTab === 'next' ? 'text-white border-b-2 border-purple-500' : 'text-purple-400/50 hover:text-purple-300'}`}
-              >
-                Upcoming Month Events
-              </button>
-            </div>
-      
-            <div className="bg-[#111827]/85 backdrop-blur-md border border-purple-500/20 p-6 rounded-3xl min-h-[300px] shadow-xl">
-              <div className="mb-6 text-xs font-black text-purple-400/80 uppercase tracking-widest flex items-center gap-2">
-                <Calendar size={14} />
-                {(() => {
-                  const now = new Date();
-                  if (guideTab === 'current') {
-                    return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                  } else {
-                    const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-                    return nextMonthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                  }
-                })()}
+            {view === 'Submit Party' && currentUser?.role === 'host' && (
+              <div className="space-y-8">
+                <div className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-2xl">
+                  <h3 className="font-black text-white text-xl mb-1">Schedule New Storyteller Gathering</h3>
+                  <p className="text-xs text-purple-300/70 font-medium mb-6">Signed in as: <strong className="text-purple-300">{currentUser.username}</strong> ({currentUser.role})</p>
+                  
+                  <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input required placeholder="Event Theme / Title" className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 placeholder:text-purple-400/30 focus:outline-none focus:border-purple-500 transition-colors text-white text-sm" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
+                    <input required placeholder="Host Name (IMVU Username)" className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 placeholder:text-purple-400/30 focus:outline-none focus:border-purple-500 transition-colors text-white text-sm" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
+                    <input placeholder="Co-Host Name (Optional)" className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 placeholder:text-purple-400/30 focus:outline-none focus:border-purple-500 transition-colors text-white text-sm" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
+                    
+                    <select required className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-purple-200 text-sm focus:outline-none focus:border-purple-500 transition-colors" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
+                      <option value="VU Storytellers">VU Storytellers</option>
+                      <option value="Special Guest">Special Guest</option>
+                    </select>
+                    
+                    <select required className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-purple-200 text-sm focus:outline-none focus:border-purple-500 transition-colors" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
+                      {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+
+                    <select required className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-purple-200 text-sm focus:outline-none focus:border-purple-500 transition-colors" value={formData.duration} onChange={e=>setFormData({...formData, duration: Number(e.target.value)})}>
+                      {DURATION_OPTIONS.map(d => <option key={d.hours} value={d.hours}>{d.label}</option>)}
+                    </select>
+                    
+                    <input required type="date" className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-purple-200 text-sm focus:outline-none focus:border-purple-500 transition-colors col-span-full md:col-span-1" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
+                    
+                    <button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:from-purple-500 hover:to-indigo-500 transition-all rounded-2xl font-black p-4 col-span-full text-white text-sm shadow-xl shadow-purple-950/60 border border-purple-400/40 uppercase tracking-wider disabled:opacity-50 mt-2">
+                      {isSubmitting ? 'SUBMITTING...' : 'SUBMIT PARTY FOR APPROVAL'}
+                    </button>
+                  </form>
+                </div>
+            
+                <div className="space-y-4">
+                  <h3 className="font-black text-lg mb-2 text-white flex items-center gap-2"><Archive size={18} className="text-purple-400"/> Storyteller Events & Approvals</h3>
+                  {parties && parties.length > 0 ? (
+                    parties
+                      .filter(p => p && p.date && getPTDateInt(p.date) >= todayPT)
+                      .sort((a, b) => new Date(a.date) - new Date(b.date))
+                      .map(p => (
+                        <div key={p.id} className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-3">
+                              <span className="font-black text-white text-base">{p.theme || 'Untitled Event'}</span>
+                              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${p.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
+                                {p.status === 'approved' ? 'Approved' : 'Pending Approval'}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-purple-300/70 font-bold mt-1">
+                              <span>{p.date}</span>
+                              <span>{formatTime(p.startTime)} ({p.duration || 2}h)</span>
+                              <span>Host: {p.hostName || 'N/A'}</span>
+                              <span>Submitted by: {p.addedBy || 'Unknown'}</span>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 w-full md:w-auto justify-end">
+                            <button onClick={() => setEditModal(p)} className="p-2.5 bg-purple-950/40 border border-purple-500/20 hover:bg-purple-900/50 rounded-xl text-purple-300 transition-colors"><Edit size={16}/></button>
+                            <button onClick={() => setDeleteQueue(p)} className="p-2.5 bg-rose-950/30 border border-rose-500/20 hover:bg-rose-950/60 rounded-xl text-rose-400 transition-colors"><Trash2 size={16}/></button>
+                          </div>
+                        </div>
+                      ))
+                  ) : (
+                    <p className="text-purple-400/50 text-sm font-medium">No active events to manage.</p>
+                  )}
+                </div>
               </div>
-              {guideTab === 'current' ? (
-                <div className="space-y-4">
-                  {thisMonthEvents.length > 0 ? thisMonthEvents.map(p => <EventCard key={p.id} p={p} currentUser={currentUser}/>) : <p className="text-purple-400/50 text-sm font-medium py-12 text-center">No storytelling parties scheduled for this month.</p>}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {nextMonthEvents.length > 0 ? nextMonthEvents.map(p => <EventCard key={p.id} p={p} currentUser={currentUser}/>) : <p className="text-purple-400/50 text-sm font-medium py-12 text-center">No upcoming parties scheduled yet.</p>}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+            )}
 
-        {view === 'Monthly' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center bg-[#111827]/90 backdrop-blur-md p-4 rounded-2xl border border-purple-500/20 shadow-xl">
-              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="p-2.5 hover:bg-purple-950/50 rounded-xl text-purple-300 transition-colors border border-purple-500/20"><ChevronLeft size={18}/></button>
-              <span className="font-black text-white uppercase tracking-widest text-sm">{currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
-              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="p-2.5 hover:bg-purple-950/50 rounded-xl text-purple-300 transition-colors border border-purple-500/20"><ChevronRight size={18}/></button>
-            </div>
-            <div className="grid grid-cols-7 gap-2 bg-[#111827]/50 p-4 rounded-3xl border border-purple-500/20 shadow-xl">
-              {['M','T','W','T','F','S','S'].map((d, index) => (
-                <div key={`day-header-${index}`} className="text-xs font-black text-purple-400/70 pb-2 text-center">{d}</div>
-              ))}
-              {calendarDays.map((d, i) => {
-                const hasEventToday = hasEvent(d.date);
-                const isEventDay = d.monthType === 'current' && hasEventToday;
-                
-                return (
-                  <button 
-                    key={`day-cell-${i}`} 
-                    onClick={() => setSelectedDay(d.date)} 
-                    className={`aspect-square flex flex-col items-center justify-center text-sm font-black rounded-2xl relative transition-all duration-300 
-                      ${d.monthType === 'current' ? 'text-white' : 'text-purple-900/40'}
-                      ${selectedDay?.toDateString() === d.date.toDateString() 
-                        ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-950/80 scale-105 border border-purple-400/50' 
-                        : isEventDay 
-                          ? 'bg-purple-950/50 border border-purple-500/40 text-purple-200' 
-                          : d.monthType === 'current' ? 'bg-[#111827]' : 'bg-[#070b14]/50'}
-                      hover:border-purple-500/60 border border-purple-500/10`}
-                  >
-                    {d.date.getDate()}
-                    {hasEventToday && (
-                      <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${selectedDay?.toDateString() === d.date.toDateString() ? 'bg-white' : 'bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,1)]'}`}></div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        
-        {view === 'Submit Party' && (
-          <div className="space-y-8">
-            <div className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-2xl">
-              <h3 className="font-black text-white text-xl mb-1">Schedule New Storyteller Gathering</h3>
-              <p className="text-xs text-purple-300/70 font-medium mb-6">Signed in as: <strong className="text-purple-300">{currentUser.username}</strong> ({currentUser.role})</p>
-              
-              <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input required placeholder="Event Theme / Title" className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 placeholder:text-purple-400/30 focus:outline-none focus:border-purple-500 transition-colors text-white text-sm" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
-                <input required placeholder="Host Name (IMVU Username)" className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 placeholder:text-purple-400/30 focus:outline-none focus:border-purple-500 transition-colors text-white text-sm" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
-                <input placeholder="Co-Host Name (Optional)" className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 placeholder:text-purple-400/30 focus:outline-none focus:border-purple-500 transition-colors text-white text-sm" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
-                
-                <select required className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-purple-200 text-sm focus:outline-none focus:border-purple-500 transition-colors" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
-                  <option value="VU Storytellers">VU Storytellers</option>
-                  <option value="Special Guest">Special Guest</option>
-                </select>
-                
-                <select required className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-purple-200 text-sm focus:outline-none focus:border-purple-500 transition-colors" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
-                  {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+            {view === 'Manage' && isStaff && (
+              <div className="space-y-4">
+                <h3 className="font-black text-lg mb-2 text-white flex items-center gap-2"><Archive size={18} className="text-purple-400"/> Manage Storyteller Events & Approvals</h3>
+                {parties && parties.length > 0 ? (
+                  parties
+                    .filter(p => p && p.date && getPTDateInt(p.date) >= todayPT)
+                    .sort((a, b) => new Date(a.date) - new Date(b.date))
+                    .map(p => (
+                      <div key={p.id} className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-3">
+                            <span className="font-black text-white text-base">{p.theme || 'Untitled Event'}</span>
+                            <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${p.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
+                              {p.status === 'approved' ? 'Approved' : 'Pending Approval'}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-purple-300/70 font-bold mt-1">
+                            <span>{p.date}</span>
+                            <span>{formatTime(p.startTime)} ({p.duration || 2}h)</span>
+                            <span>Host: {p.hostName || 'N/A'}</span>
+                            <span>Submitted by: {p.addedBy || 'Unknown'}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 w-full md:w-auto justify-end">
+                          {p.status !== 'approved' && (
+                            <button onClick={() => handleApprove(p)} className="px-4 py-2.5 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 rounded-xl text-emerald-300 font-bold text-xs transition-colors flex items-center gap-1.5 shadow-md">
+                              <CheckCircle size={14}/> Approve
+                            </button>
+                          )}
+                          <button onClick={() => setEditModal(p)} className="p-2.5 bg-purple-950/40 border border-purple-500/20 hover:bg-purple-900/50 rounded-xl text-purple-300 transition-colors"><Edit size={16}/></button>
+                          <button onClick={() => setDeleteQueue(p)} className="p-2.5 bg-rose-950/30 border border-rose-500/20 hover:bg-rose-950/60 rounded-xl text-rose-400 transition-colors"><Trash2 size={16}/></button>
+                        </div>
+                      </div>
+                    ))
+                ) : (
+                  <p className="text-purple-400/50 text-sm font-medium">No active events to manage.</p>
+                )}
+              </div>
+            )}
 
-                <select required className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-purple-200 text-sm focus:outline-none focus:border-purple-500 transition-colors" value={formData.duration} onChange={e=>setFormData({...formData, duration: Number(e.target.value)})}>
-                  {DURATION_OPTIONS.map(d => <option key={d.hours} value={d.hours}>{d.label}</option>)}
-                </select>
-                
-                <input required type="date" className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-purple-200 text-sm focus:outline-none focus:border-purple-500 transition-colors col-span-full md:col-span-1" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
-                
-                <button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:from-purple-500 hover:to-indigo-500 transition-all rounded-2xl font-black p-4 col-span-full text-white text-sm shadow-xl shadow-purple-950/60 border border-purple-400/40 uppercase tracking-wider disabled:opacity-50 mt-2">
-                  {isSubmitting ? 'SUBMITTING...' : 'SUBMIT PARTY FOR APPROVAL'}
-                </button>
-              </form>
-            </div>
-        
-            <div className="space-y-4">
-              <h3 className="font-black text-lg mb-2 text-white flex items-center gap-2"><Archive size={18} className="text-purple-400"/> Storyteller Events & Approvals</h3>
-              {parties && parties.length > 0 ? (
-                parties
-                  .filter(p => p && p.date && getPTDateInt(p.date) >= todayPT)
-                  .sort((a, b) => new Date(a.date) - new Date(b.date))
-                  .map(p => (
-                    <div key={p.id} className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-3">
-                          <span className="font-black text-white text-base">{p.theme || 'Untitled Event'}</span>
-                          <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${p.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
-                            {p.status === 'approved' ? 'Approved' : 'Pending Approval'}
+            {view === 'Staff' && currentUser?.role === 'owner' && (
+              <div className="space-y-8">
+                <div className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-2xl">
+                  <h3 className="font-black text-lg text-white mb-4">Create New Administrator / Host Account</h3>
+                  <form onSubmit={handleAddAdmin} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input placeholder="Username" value={newAdminU} onChange={e=>setNewAdminU(e.target.value)} className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-white placeholder:text-purple-400/30 text-sm focus:outline-none focus:border-purple-500 transition-colors" />
+                    <input placeholder="Initial Password" type="password" value={newAdminP} onChange={e=>setNewAdminP(e.target.value)} className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-white placeholder:text-purple-400/30 text-sm focus:outline-none focus:border-purple-500 transition-colors" />
+                    {adminMsg && <div className="col-span-full text-sm font-bold text-emerald-400 mt-1">{adminMsg}</div>}
+                    <button type="submit" className="col-span-full bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:from-purple-500 hover:to-indigo-500 transition-all rounded-2xl font-black p-4 text-white text-sm shadow-xl shadow-purple-950/60 border border-purple-400/40 uppercase tracking-wider">CREATE ACCOUNT</button>
+                  </form>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="font-black text-lg text-white mb-4">Registered Accounts & Roles</h3>
+                  {admins.map(a => (
+                    <div key={a.id} className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-5 rounded-2xl flex justify-between items-center shadow-xl">
+                      <div className="flex items-center gap-3">
+                        <Shield size={16} className="text-purple-400"/> 
+                        <div>
+                          <span className="font-bold text-white block text-sm">{a.username}</span>
+                          <span className="text-[10px] text-purple-400 uppercase font-mono tracking-wider">Role: {a.role || 'host'}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleToggleAdminRole(a)} className="px-3 py-1.5 bg-purple-950/60 hover:bg-purple-900/60 border border-purple-500/30 rounded-xl text-purple-300 font-bold text-xs transition-colors">
+                          Toggle Role ({a.role === 'admin' ? 'Make Host' : 'Make Admin'})
+                        </button>
+                        <button onClick={()=>handleDeleteAdmin(a.id)} className="p-2.5 bg-rose-950/30 border border-rose-500/20 hover:bg-rose-950/60 rounded-xl text-rose-400 transition-colors"><Trash2 size={16}/></button>
+                      </div>
+                    </div>
+                  ))}
+                  {admins.length === 0 && <p className="text-purple-400/50 text-sm font-medium">No registered accounts found.</p>}
+                </div>
+
+                <div className="space-y-3 pt-8 border-t border-purple-500/20">
+                  <h3 className="font-black text-lg text-white mb-4">Master Activity & Audit Logs</h3>
+                  {parties
+                    .slice()
+                    .sort((a,b) => new Date(b.lastEditedAt || b.createdAt || 0) - new Date(a.lastEditedAt || a.createdAt || 0))
+                    .map(p => (
+                      <div key={p.id} className="text-xs bg-[#070b14] p-4 rounded-2xl border border-purple-500/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-purple-300/80 shadow-inner">
+                        <div className="font-bold text-white flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                          {p.theme}
+                          <span className="text-[10px] text-purple-400 font-normal">({p.status})</span>
+                        </div>
+                        <div className="flex flex-wrap gap-4 text-[11px] font-mono">
+                          <span>Submitted by: <strong className="text-purple-300">{p.addedBy || 'Unknown'}</strong></span>
+                          <span>Edited by: <strong className="text-purple-300">{p.lastEditedBy || 'None'}</strong></span>
+                          <span className="text-purple-400/60">
+                            {p.lastEditedAt ? new Date(p.lastEditedAt).toLocaleString('en-US') : (p.createdAt ? new Date(p.createdAt).toLocaleString('en-US') : 'Recent')}
                           </span>
                         </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-purple-300/70 font-bold mt-1">
-                          <span>{p.date}</span>
-                          <span>{formatTime(p.startTime)} ({p.duration || 2}h)</span>
-                          <span>Host: {p.hostName || 'N/A'}</span>
-                          <span>Submitted by: {p.addedBy || 'Unknown'}</span>
-                        </div>
                       </div>
-                      <div className="flex gap-2 w-full md:w-auto justify-end">
-                        {p.status !== 'approved' && isStaff && (
-                          <button onClick={() => handleApprove(p)} className="px-4 py-2.5 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 rounded-xl text-emerald-300 font-bold text-xs transition-colors flex items-center gap-1.5 shadow-md">
-                            <CheckCircle size={14}/> Approve
-                          </button>
-                        )}
-                        <button onClick={() => setEditModal(p)} className="p-2.5 bg-purple-950/40 border border-purple-500/20 hover:bg-purple-900/50 rounded-xl text-purple-300 transition-colors"><Edit size={16}/></button>
-                        <button onClick={() => setDeleteQueue(p)} className="p-2.5 bg-rose-950/30 border border-rose-500/20 hover:bg-rose-950/60 rounded-xl text-rose-400 transition-colors"><Trash2 size={16}/></button>
-                      </div>
-                    </div>
-                  ))
-              ) : (
-                <p className="text-purple-400/50 text-sm font-medium">No active events to manage.</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {view === 'Staff' && currentUser?.role === 'owner' && (
-          <div className="space-y-8">
-            <div className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-2xl">
-              <h3 className="font-black text-lg text-white mb-4">Create New Administrator / Host Account</h3>
-              <form onSubmit={handleAddAdmin} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input placeholder="Username" value={newAdminU} onChange={e=>setNewAdminU(e.target.value)} className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-white placeholder:text-purple-400/30 text-sm focus:outline-none focus:border-purple-500 transition-colors" />
-                <input placeholder="Initial Password" type="password" value={newAdminP} onChange={e=>setNewAdminP(e.target.value)} className="bg-black/40 p-4 rounded-2xl border border-purple-500/20 text-white placeholder:text-purple-400/30 text-sm focus:outline-none focus:border-purple-500 transition-colors" />
-                {adminMsg && <div className="col-span-full text-sm font-bold text-emerald-400 mt-1">{adminMsg}</div>}
-                <button type="submit" className="col-span-full bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:from-purple-500 hover:to-indigo-500 transition-all rounded-2xl font-black p-4 text-white text-sm shadow-xl shadow-purple-950/60 border border-purple-400/40 uppercase tracking-wider">CREATE ACCOUNT</button>
-              </form>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="font-black text-lg text-white mb-4">Registered Accounts & Roles</h3>
-              {admins.map(a => (
-                <div key={a.id} className="bg-[#111827]/90 backdrop-blur-md border border-purple-500/20 p-5 rounded-2xl flex justify-between items-center shadow-xl">
-                  <div className="flex items-center gap-3">
-                    <Shield size={16} className="text-purple-400"/> 
-                    <div>
-                      <span className="font-bold text-white block text-sm">{a.username}</span>
-                      <span className="text-[10px] text-purple-400 uppercase font-mono tracking-wider">Role: {a.role || 'host'}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => handleToggleAdminRole(a)} className="px-3 py-1.5 bg-purple-950/60 hover:bg-purple-900/60 border border-purple-500/30 rounded-xl text-purple-300 font-bold text-xs transition-colors">
-                      Toggle Role ({a.role === 'admin' ? 'Make Host' : 'Make Admin'})
-                    </button>
-                    <button onClick={()=>handleDeleteAdmin(a.id)} className="p-2.5 bg-rose-950/30 border border-rose-500/20 hover:bg-rose-950/60 rounded-xl text-rose-400 transition-colors"><Trash2 size={16}/></button>
-                  </div>
+                    ))}
                 </div>
-              ))}
-              {admins.length === 0 && <p className="text-purple-400/50 text-sm font-medium">No registered accounts found.</p>}
-            </div>
-
-            <div className="space-y-3 pt-8 border-t border-purple-500/20">
-              <h3 className="font-black text-lg text-white mb-4">Master Activity & Audit Logs</h3>
-              {parties
-                .slice()
-                .sort((a,b) => new Date(b.lastEditedAt || b.createdAt || 0) - new Date(a.lastEditedAt || a.createdAt || 0))
-                .map(p => (
-                  <div key={p.id} className="text-xs bg-[#070b14] p-4 rounded-2xl border border-purple-500/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-purple-300/80 shadow-inner">
-                    <div className="font-bold text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                      {p.theme}
-                      <span className="text-[10px] text-purple-400 font-normal">({p.status})</span>
-                    </div>
-                    <div className="flex flex-wrap gap-4 text-[11px] font-mono">
-                      <span>Submitted by: <strong className="text-purple-300">{p.addedBy || 'Unknown'}</strong></span>
-                      <span>Edited by: <strong className="text-purple-300">{p.lastEditedBy || 'None'}</strong></span>
-                      <span className="text-purple-400/60">
-                        {p.lastEditedAt ? new Date(p.lastEditedAt).toLocaleString('en-US') : (p.createdAt ? new Date(p.createdAt).toLocaleString('en-US') : 'Recent')}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
+              </div>
+            )}
+          </>
         )}
       </main>
 
+      {}
       {selectedDay && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-md">
            <div className="bg-[#0d1322] p-6 rounded-3xl w-full max-w-lg border border-purple-500/30 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl shadow-purple-950/90">
@@ -922,11 +894,11 @@ export default function App() {
                 <Shield size={20} className="text-purple-400"/>
                 <h2 className="font-black text-lg text-white">Sign-In</h2>
               </div>
-              <button onClick={() => { setShowAuthGate(false); setLoginError(''); }} className="text-purple-300/70 hover:text-white transition-colors bg-purple-950/40 p-2 rounded-full border border-purple-500/20"><X size={16}/></button>
+              <button onClick={() => { setShowAuthGate(false); setLoginError(''); setIsRegistering(false); }} className="text-purple-300/70 hover:text-white transition-colors bg-purple-950/40 p-2 rounded-full border border-purple-500/20"><X size={16}/></button>
             </div>
 
             <div className="bg-purple-950/30 border border-purple-500/20 p-4 rounded-2xl mb-5 text-center space-y-3">
-              <p className="text-[11px] font-bold text-purple-300 tracking-wider">New VU Storyteller?</p>
+              <p className="text-[11px] font-bold text-purple-300">New VU Storyteller?</p>
               <button 
                 type="button" 
                 onClick={() => setIsRegistering(!isRegistering)}
@@ -969,7 +941,7 @@ export default function App() {
               {loginError && <p className="text-rose-400 text-xs font-bold bg-rose-950/50 p-3 rounded-xl border border-rose-500/30">{loginError}</p>}
               
               <button type="submit" className="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:from-purple-500 hover:to-indigo-500 transition-all py-4 rounded-2xl font-black text-white text-sm border border-purple-400/40 shadow-xl shadow-purple-950/60 uppercase tracking-wider">
-                {isRegistering ? 'Register Account' : 'Sign In'}
+                Sign In
               </button>
 
               <p className="text-[11px] text-purple-300/70 text-center font-medium pt-1">Need help? Contact an Admin</p>
@@ -981,8 +953,10 @@ export default function App() {
   );
 }
 
-function EventCard({ p, currentUser }) {
+function EventCard({ p }) {
     const live = isEventLive(p.date, p.startTime, p.duration);
+    const rawDuration = p.duration || 2;
+    const durationHours = rawDuration > 24 ? rawDuration / 3600000 : rawDuration;
 
     return (
         <div className={`bg-[#111827]/90 backdrop-blur-md border p-6 rounded-3xl mb-4 relative transition-all duration-300 shadow-xl 
@@ -1019,7 +993,7 @@ function EventCard({ p, currentUser }) {
                     </div>
                     <div className="flex flex-col items-end">
                         <span className="text-[10px] text-purple-400/60 uppercase tracking-wider font-black">Time & Duration</span>
-                        <span className="text-white text-sm font-bold">{formatTime(p.startTime)} <span className="text-purple-400 font-normal">({p.duration || 2}h)</span></span>
+                        <span className="text-white text-sm font-bold">{formatTime(p.startTime)} <span className="text-purple-400 font-normal">({durationHours}h)</span></span>
                     </div>
                 </div>
             </div>
