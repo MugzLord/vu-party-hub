@@ -124,6 +124,7 @@ export default function App() {
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [editModal, setEditModal] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showHostHistoryModal, setShowHostHistoryModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteQueue, setDeleteQueue] = useState(null); 
   const [customAlert, setCustomAlert] = useState(null); 
@@ -170,7 +171,6 @@ export default function App() {
     const nextMonthIdx = (currentMonthIdx + 1) % 12;
     const nextYear = currentMonthIdx === 11 ? currentYear + 1 : currentYear;
     
-    // Filter out past parties (date < todayPT)
     const approvedParties = parties.filter(p => p.status === 'approved' && getPTDateInt(p.date) >= todayPT);
 
     return {
@@ -449,7 +449,6 @@ export default function App() {
   const isOwner = currentUser?.role === 'owner';
   const todayPT = getPTDateInt(new Date().toISOString());
 
-  // Filter parties for host management view: only parties they submitted OR where hostName matches their username
   const hostFilteredParties = useMemo(() => {
     if (!currentUser) return [];
     if (isStaff) return parties.filter(p => p && p.date && getPTDateInt(p.date) >= todayPT);
@@ -460,6 +459,16 @@ export default function App() {
       return isSubmitter || isHost;
     });
   }, [parties, currentUser, isStaff, todayPT]);
+
+  const hostAllHistoryParties = useMemo(() => {
+    if (!currentUser || currentUser.role === 'owner' || currentUser.role === 'admin') return [];
+    return parties.filter(p => {
+      if (!p || !p.date) return false;
+      const isSubmitter = p.addedBy && p.addedBy.toLowerCase() === currentUser.username.toLowerCase();
+      const isHost = p.hostName && p.hostName.toLowerCase() === currentUser.username.toLowerCase();
+      return isSubmitter || isHost;
+    }).sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [parties, currentUser]);
 
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 selection:bg-purple-600 selection:text-white pb-16">
@@ -486,7 +495,17 @@ export default function App() {
         <div className="flex items-center gap-3">
           {currentUser ? (
             <>
-              <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-2 text-xs bg-purple-950/60 hover:bg-purple-900/60 px-4 py-2 rounded-2xl font-bold text-purple-300 transition-all border border-purple-500/30 shadow-md">
+              <button 
+                onClick={() => {
+                  if (currentUser.role === 'host') {
+                    setShowHostHistoryModal(true);
+                  } else {
+                    setShowProfileModal(true);
+                  }
+                }} 
+                title={currentUser.role === 'host' ? "Click to view all your past, current, and upcoming parties" : "Settings"}
+                className="flex items-center gap-2 text-xs bg-purple-950/60 hover:bg-purple-900/60 px-4 py-2 rounded-2xl font-bold text-purple-300 transition-all border border-purple-500/30 shadow-md cursor-pointer"
+              >
                 <Settings size={14} className="text-purple-400" /> 
                 <span>{currentUser.username}</span>
                 <span className="bg-purple-600/60 text-white text-[9px] uppercase px-1.5 py-0.5 rounded-md font-black">{currentUser.role}</span>
@@ -539,7 +558,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       <main className="p-4 md:p-6 max-w-4xl mx-auto relative z-10">
         {!currentUser ? (
           <div className="space-y-6 max-w-md mx-auto mt-12 text-center bg-[#0d1322]/90 border border-purple-500/20 p-8 rounded-3xl backdrop-blur-xl shadow-2xl">
@@ -837,6 +855,38 @@ export default function App() {
               {parties.filter(p => p.status === 'approved' && getPTDateInt(p.date) >= todayPT && new Date(p.date).toDateString() === selectedDay.toDateString()).map(p => <EventCard key={p.id} p={p} currentUser={currentUser}/>)}
               {parties.filter(p => p.status === 'approved' && getPTDateInt(p.date) >= todayPT && new Date(p.date).toDateString() === selectedDay.toDateString()).length === 0 && (
                   <p className="text-purple-400/50 text-sm text-center py-8 font-medium">No events scheduled for this date.</p>
+              )}
+           </div>
+        </div>
+      )}
+
+      {showHostHistoryModal && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-md">
+           <div className="bg-[#0d1322] p-6 rounded-3xl w-full max-w-xl border border-purple-500/30 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl shadow-purple-950/90">
+              <div className="flex justify-between items-center mb-2 pb-4 border-b border-purple-500/20">
+                  <h2 className="font-black text-base text-white flex items-center gap-2">
+                    <User size={18} className="text-purple-400"/> All Parties for {currentUser?.username} (Past, Current & Upcoming)
+                  </h2>
+                  <button onClick={() => setShowHostHistoryModal(false)} className="text-purple-300/70 hover:text-white transition-colors bg-purple-950/40 p-2 rounded-full border border-purple-500/20"><X size={18}/></button>
+              </div>
+              {hostAllHistoryParties.length > 0 ? (
+                hostAllHistoryParties.map(p => (
+                  <div key={p.id} className="bg-[#111827]/90 border border-purple-500/20 p-4 rounded-2xl space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-black text-white text-sm">{p.theme}</span>
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${p.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
+                        {p.status}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-xs text-purple-300/70 font-bold">
+                      <span>Date: {p.date}</span>
+                      <span>Time: {formatTime(p.startTime)} ({p.duration || 1}h)</span>
+                      <span>Host: {p.hostName}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-purple-400/50 text-sm text-center py-8 font-medium">No party history found for your account.</p>
               )}
            </div>
         </div>
