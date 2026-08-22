@@ -353,7 +353,7 @@ export default function App() {
       return;
     }
 
-    const foundAdmin = admins.find(a => a.username.toLowerCase() === gateU.toLowerCase());
+    const foundAdmin = admins.find(a => a.username.toLowerCase() === gateU.trim().toLowerCase());
     if (foundAdmin) {
       if (foundAdmin.password === gateP) {
         const user = { id: foundAdmin.id, username: foundAdmin.username, role: foundAdmin.role || 'host' };
@@ -370,35 +370,10 @@ export default function App() {
           timestamp: new Date().toISOString()
         });
       } else {
-        setLoginError('Invalid password');
+        setLoginError('Incorrect password. Please try again.');
       }
     } else {
-      // Automatic registration as Host if user does not exist
-      try {
-        const docRef = await addDoc(collection(db, getPath('admins')), {
-          username: gateU.trim(),
-          password: gateP,
-          role: 'host',
-          createdAt: new Date().toISOString()
-        });
-
-        const newUser = { id: docRef.id, username: gateU.trim(), role: 'host' };
-        setCurrentUser(newUser);
-        localStorage.setItem(SESSION_KEY, JSON.stringify(newUser));
-        setShowAuthGate(false);
-        setGateU(''); setGateP('');
-
-        await addDoc(collection(db, getPath('auditLogs')), {
-          action: 'AUTO_REGISTER_HOST',
-          details: `New host account automatically registered for '${newUser.username}'.`,
-          user: newUser.username,
-          role: 'host',
-          timestamp: new Date().toISOString()
-        });
-      } catch (err) {
-        console.error("Auto registration error:", err);
-        setLoginError('Registration error. Please try again.');
-      }
+      setLoginError('Username not found. Please check your credentials or contact staff.');
     }
   };
 
