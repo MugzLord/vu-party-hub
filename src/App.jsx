@@ -434,7 +434,7 @@ export default function App() {
             <h1 className="text-2xl font-black bg-gradient-to-r from-white via-purple-100 to-purple-300 bg-clip-text text-transparent">VU Storytellers</h1>
             <p className="text-xs font-bold text-purple-400 uppercase tracking-widest">Party Schedule Hub</p>
             <p className="text-xs text-slate-400 font-medium pt-2 leading-relaxed">
-              Exclusive private schedule for VU Storytellers. Please sign-in with your authorized account to access active gatherings.
+              Private schedule for VU Storytellers. Please sign in to view and manage active gatherings.
             </p>
           </div>
 
@@ -602,7 +602,7 @@ export default function App() {
                 Exclusive schedule for VU Storytellers. Submit events and track timings in Pacific Time.
               </p>
               <div className="text-[11px] font-thin text-indigo-300/70 bg-purple-950/30 p-3.5 rounded-2xl border border-purple-500/20 leading-relaxed">
-                <strong className="font-medium text-purple-300">Disclaimer:</strong> All approved events are subject to IMVU Staff changes without prior notice. Independent community initiative, not officially affiliated with IMVU.
+                <span className="font-medium text-purple-300">Disclaimer:</span> All approved events are subject to IMVU Staff changes without prior notice. Independent community initiative, not officially affiliated with IMVU.
               </div>
             </div>
             
