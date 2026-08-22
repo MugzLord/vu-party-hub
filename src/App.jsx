@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
 
 const getPTDateInt = (dateStr) => {
   if (!dateStr) return 0;
@@ -48,9 +48,8 @@ const getSafeConfig = () => {
 const app = getApps().length === 0 ? initializeApp(getSafeConfig()) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
-const googleProvider = new GoogleAuthProvider();
 const getPath = (colName) => typeof __app_id !== 'undefined' ? `artifacts/${__app_id}/public/data/${colName}` : colName;
-const SESSION_KEY = 'vu_storytellers_party_hub_v500';
+const SESSION_KEY = 'vu_storytellers_party_hub_v600';
 
 const TIME_OPTIONS = [
   "12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM",
@@ -114,6 +113,7 @@ export default function App() {
   const [parties, setParties] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [currentUser, setCurrentUser] = useState(() => { 
     const s = localStorage.getItem(SESSION_KEY); 
     return s ? JSON.parse(s) : null; 
@@ -127,9 +127,7 @@ export default function App() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteQueue, setDeleteQueue] = useState(null); 
-  const [authError, setAuthError] = useState('');
   
-  // Forms & Inputs
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [formData, setFormData] = useState({ 
     theme: '', 
@@ -145,21 +143,6 @@ export default function App() {
   const [gateP, setGateP] = useState('');
   const [loginError, setLoginError] = useState('');
   const [showPass, setShowPass] = useState(false);
-
-  // Helper to log access & actions for Mike's master audit view
-  const logActivity = async (action, details) => {
-    try {
-      await addDoc(collection(db, getPath('auditLogs')), {
-        action,
-        details,
-        user: currentUser?.username || gateU || 'Anonymous',
-        role: currentUser?.role || 'guest',
-        timestamp: new Date().toISOString()
-      });
-    } catch (e) {
-      console.error("Audit log error:", e);
-    }
-  };
 
   const checkEventClash = (proposedEvent, excludeId = null) => {
     const newStart = parseEventTimestamp(proposedEvent.date, proposedEvent.startTime);
@@ -186,20 +169,18 @@ export default function App() {
     return {
       thisMonthEvents: parties.filter(p => {
         const [y, m] = p.date ? p.date.split('-').map(Number) : [0, 0];
-        return (m - 1) === currentMonthIdx && y === currentYear && getPTDateInt(p.date) >= todayPT;
+        return (m - 1) === currentMonthIdx && y === currentYear && getPTDateInt(p.date) >= todayPT && p.status === 'approved';
       }).sort((a, b) => a.date.localeCompare(b.date)),
       
       nextMonthEvents: parties.filter(p => {
         const [y, m] = p.date ? p.date.split('-').map(Number) : [0, 0];
-        return (m - 1) === nextMonthIdx && y === nextYear;
+        return (m - 1) === nextMonthIdx && y === nextYear && p.status === 'approved';
       }).sort((a, b) => a.date.localeCompare(b.date))
     };
   }, [parties]);
   
-  // Admin & Host Account Management
   const [newAdminU, setNewAdminU] = useState('');
   const [newAdminP, setNewAdminP] = useState('');
-  const [newAdminRole, setNewAdminRole] = useState('host'); // 'host' or 'admin'
   const [adminMsg, setAdminMsg] = useState('');
   const [newPass, setNewPass] = useState('');
   const [pwdMsg, setPwdMsg] = useState(null);
@@ -266,11 +247,19 @@ export default function App() {
       (e) => console.error("Audit log permission error:", e)
     );
 
+    const unsubscribeNotifs = onSnapshot(collection(db, getPath('notifications')), 
+      (s) => {
+        if (isMounted) setNotifications(s.docs.map(d => ({ id: d.id, ...d.data() })));
+      },
+      (e) => console.error("Notification permission error:", e)
+    );
+
     return () => { 
       isMounted = false;
       unsubscribeParties(); 
       unsubscribeAdmins(); 
       unsubscribeLogs();
+      unsubscribeNotifs();
     };
   }, [isAuthReady]);
 
@@ -279,7 +268,7 @@ export default function App() {
     const month = currentMonth.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const firstDay = new Date(year, month, 1).getDay();
-    const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; // Mon=0..Sun=6
+    const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
     
     const days = [];
     for (let i = adjustedFirstDay - 1; i >= 0; i--) {
@@ -295,47 +284,12 @@ export default function App() {
     return days;
   }, [currentMonth]);
 
-  const hasEvent = (date) => parties.some(p => new Date(p.date).toDateString() === date.toDateString());
+  const hasEvent = (date) => parties.some(p => p.status === 'approved' && new Date(p.date).toDateString() === date.toDateString());
 
-  const handleGoogleLogin = async () => {
-    setAuthError('');
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const googleUsername = result.user.displayName || result.user.email.split('@')[0];
-      
-      // Check if already registered in admins/hosts collection
-      const existing = admins.find(a => a.username.toLowerCase() === googleUsername.toLowerCase());
-      const role = existing ? (existing.role || 'host') : 'host';
-
-      const userObj = {
-        id: existing?.id || result.user.uid,
-        username: googleUsername,
-        email: result.user.email,
-        photoURL: result.user.photoURL,
-        role: role
-      };
-
-      setCurrentUser(userObj);
-      localStorage.setItem(SESSION_KEY, JSON.stringify(userObj));
-      setFormData(prev => ({ ...prev, hostName: userObj.username }));
-      setShowAuthGate(false);
-
-      await addDoc(collection(db, getPath('auditLogs')), {
-        action: 'GOOGLE_LOGIN',
-        details: `Google Sign-In by ${userObj.username} (${userObj.email}) as ${role}`,
-        user: userObj.username,
-        role: role,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error("Google Auth error:", error);
-      setAuthError('Google Sign-In failed. Please try again.');
-    }
-  };
-
-  const handleLegacyLogin = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
+    
     if (gateU.toLowerCase() === 'mike' && gateP === 'Owner123') {
       const user = { id: 'owner', username: 'Mike', role: 'owner' };
       setCurrentUser(user);
@@ -356,7 +310,8 @@ export default function App() {
     const foundAdmin = admins.find(a => a.username.toLowerCase() === gateU.trim().toLowerCase());
     if (foundAdmin) {
       if (foundAdmin.password === gateP) {
-        const user = { id: foundAdmin.id, username: foundAdmin.username, role: foundAdmin.role || 'host' };
+        const role = foundAdmin.role || 'host';
+        const user = { id: foundAdmin.id, username: foundAdmin.username, role: role };
         setCurrentUser(user);
         localStorage.setItem(SESSION_KEY, JSON.stringify(user));
         setShowAuthGate(false);
@@ -364,16 +319,39 @@ export default function App() {
 
         await addDoc(collection(db, getPath('auditLogs')), {
           action: 'CREDENTIAL_LOGIN',
-          details: `User '${foundAdmin.username}' logged in as ${foundAdmin.role || 'host'}.`,
+          details: `User '${foundAdmin.username}' logged in as ${role}.`,
           user: foundAdmin.username,
-          role: foundAdmin.role || 'host',
+          role: role,
           timestamp: new Date().toISOString()
         });
       } else {
         setLoginError('Incorrect password. Please try again.');
       }
     } else {
-      setLoginError('Username not found. Please check your credentials or contact staff.');
+      // Auto-register new users as Host
+      try {
+        const newHostRef = await addDoc(collection(db, getPath('admins')), {
+          username: gateU.trim(),
+          password: gateP,
+          role: 'host',
+          createdAt: new Date().toISOString()
+        });
+        const user = { id: newHostRef.id, username: gateU.trim(), role: 'host' };
+        setCurrentUser(user);
+        localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+        setShowAuthGate(false);
+        setGateU(''); setGateP('');
+
+        await addDoc(collection(db, getPath('auditLogs')), {
+          action: 'AUTO_REGISTER_HOST',
+          details: `New host account registered & logged in for '${user.username}'.`,
+          user: user.username,
+          role: 'host',
+          timestamp: new Date().toISOString()
+        });
+      } catch (err) {
+        setLoginError('Username not found or registration failed.');
+      }
     }
   };
 
@@ -386,20 +364,20 @@ export default function App() {
     await addDoc(collection(db, getPath('admins')), { 
       username: newAdminU, 
       password: newAdminP, 
-      role: newAdminRole, // 'host' or 'admin'
+      role: 'host',
       createdAt: new Date().toISOString()
     });
 
     await addDoc(collection(db, getPath('auditLogs')), {
       action: 'CREATE_ACCOUNT',
-      details: `Created new ${newAdminRole} account for '${newAdminU}'.`,
+      details: `Created new host account for '${newAdminU}'.`,
       user: currentUser?.username || 'Mike',
       role: currentUser?.role || 'owner',
       timestamp: new Date().toISOString()
     });
 
     setNewAdminU(''); setNewAdminP('');
-    setAdminMsg(`${newAdminRole === 'host' ? 'Host' : 'Admin'} account created successfully!`);
+    setAdminMsg("Host account created successfully!");
     setTimeout(() => setAdminMsg(''), 3000);
   };
 
@@ -441,6 +419,22 @@ export default function App() {
     } catch (err) {
       console.error("Error deleting event:", err);
     }
+  };
+
+  const handleApproveEvent = async (party) => {
+    await updateDoc(doc(db, getPath('parties'), party.id), { status: 'approved' });
+    await addDoc(collection(db, getPath('auditLogs')), {
+      action: 'APPROVE_EVENT',
+      details: `Approved event '${party.theme}' scheduled for ${party.date}.`,
+      user: currentUser?.username || 'Admin',
+      role: currentUser?.role || 'admin',
+      timestamp: new Date().toISOString()
+    });
+    await addDoc(collection(db, getPath('notifications')), {
+      message: `Party "${party.theme}" on ${party.date} has been approved by admin!`,
+      timestamp: new Date().toISOString(),
+      forHost: party.hostName
+    });
   };
 
   const handleChangePassword = async (e) => {
@@ -509,21 +503,22 @@ export default function App() {
       const newEvent = { 
         ...formData, 
         duration: Number(formData.duration) || 120,
-        status: 'approved', 
+        status: currentUser?.role === 'owner' || currentUser?.role === 'admin' ? 'approved' : 'pending', 
         addedBy: currentUser?.username || 'Verified Storyteller', 
         createdAt: new Date().toISOString() 
       };
       await addDoc(collection(db, getPath('parties')), newEvent);
 
       await addDoc(collection(db, getPath('auditLogs')), {
-        action: 'CREATE_EVENT',
-        details: `Created new event '${formData.theme}' for ${formData.date} at ${formData.startTime}.`,
+        action: 'SUBMIT_EVENT',
+        details: `Submitted new event '${formData.theme}' for ${formData.date} at ${formData.startTime} (Status: ${newEvent.status}).`,
         user: currentUser?.username || 'Unknown',
         role: currentUser?.role || 'host',
         timestamp: new Date().toISOString()
       });
 
       setFormData({ theme: '', hostName: currentUser?.username || '', coHost: '', date: '', startTime: '6:00 PM', duration: 120, performers: 'VU Storytellers' });
+      alert(newEvent.status === 'approved' ? 'Party added successfully!' : 'Party submitted successfully! Waiting for admin approval.');
     } finally {
       setIsSubmitting(false);
     }
@@ -558,11 +553,7 @@ export default function App() {
         {currentUser ? (
           <div className="flex items-center gap-3">
             <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-2 text-xs bg-purple-600/15 hover:bg-purple-600/25 px-4 py-2 rounded-full font-bold text-purple-300 transition-all border border-purple-500/30 shadow-sm">
-              {currentUser.photoURL ? (
-                <img src={currentUser.photoURL} alt="" className="w-5 h-5 rounded-full object-cover" />
-              ) : (
-                <Settings size={14} className="text-purple-400" />
-              )}
+              <Settings size={14} className="text-purple-400" />
               <span>{currentUser.username}</span>
               <span className="text-[9px] uppercase bg-purple-500/30 px-1.5 py-0.2 rounded text-purple-200 font-mono">{currentUser.role}</span>
             </button>
@@ -577,9 +568,17 @@ export default function App() {
         )}
       </header>
 
+      {/* Notifications bar */}
+      {notifications.length > 0 && (
+        <div className="bg-purple-900/40 border-b border-purple-500/20 px-4 py-2 text-xs text-purple-200 flex items-center justify-center gap-3">
+          <span className="font-black uppercase tracking-widest bg-purple-600 text-white px-2 py-0.5 rounded text-[9px]">Notification</span>
+          <span className="truncate">{notifications[notifications.length - 1]?.message}</span>
+        </div>
+      )}
+
       {/* Navigation tabs */}
       <div className="flex p-4 gap-2.5 bg-[#120d1f]/80 border-b border-purple-500/10 overflow-x-auto relative z-30 max-w-4xl mx-auto mt-2 rounded-2xl shadow-inner">
-        {['Guide', 'Monthly', canManage ? 'Manage' : '', currentUser?.role === 'owner' ? 'Staff' : '', currentUser?.role === 'owner' ? 'Audit Logs' : ''].filter(Boolean).map((t) => (
+        {['Guide', 'Monthly', canManage ? 'Submit Party' : '', currentUser?.role === 'owner' ? 'Staff' : '', currentUser?.role === 'owner' ? 'Audit Logs' : ''].filter(Boolean).map((t) => (
           <button
             key={t}
             onClick={() => setView(t)}
@@ -587,7 +586,7 @@ export default function App() {
           >
             {t === 'Guide' && <BookOpen size={14} />}
             {t === 'Monthly' && <Calendar size={14} />}
-            {t === 'Manage' && <Edit size={14} />}
+            {t === 'Submit Party' && <Edit size={14} />}
             {t === 'Staff' && <Users size={14} />}
             {t === 'Audit Logs' && <Activity size={14} />}
             {t}
@@ -688,7 +687,7 @@ export default function App() {
           </div>
         )}
         
-        {view === 'Manage' && canManage && (
+        {view === 'Submit Party' && canManage && (
           <div className="space-y-8">
             <form onSubmit={handleAdd} className="bg-[#151022] border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-xl grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="col-span-full">
@@ -712,25 +711,34 @@ export default function App() {
               <input required type="date" className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-slate-300 focus:outline-none focus:border-purple-500 transition-colors text-sm col-span-full md:col-span-1" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
               
               <button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl font-black p-4 col-span-full hover:from-purple-500 hover:to-indigo-500 transition-all text-white mt-2 shadow-lg shadow-purple-900/40 disabled:opacity-50">
-                {isSubmitting ? 'SCHEDULING...' : 'ADD PARTY TO SCHEDULE'}
+                {isSubmitting ? 'SUBMITTING...' : 'SUBMIT PARTY FOR APPROVAL'}
               </button>
             </form>
         
             <div className="space-y-4">
-              <h3 className="font-black text-lg text-white flex items-center gap-2"><Archive size={18} className="text-purple-400"/> Active Storyteller Events</h3>
+              <h3 className="font-black text-lg text-white flex items-center gap-2"><Archive size={18} className="text-purple-400"/> Storyteller Events & Approvals</h3>
               {upcomingParties.length > 0 ? (
                 upcomingParties.map(p => (
                   <div key={p.id} className="bg-[#151022] border border-purple-500/15 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-md">
                     <div className="flex flex-col gap-1.5">
-                      <span className="font-bold text-white text-base">{p.theme || 'Untitled Event'}</span>
+                      <div className="flex items-center gap-2.5">
+                        <span className="font-bold text-white text-base">{p.theme || 'Untitled Event'}</span>
+                        <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded-md font-black ${p.status === 'approved' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
+                          {p.status || 'pending'}
+                        </span>
+                      </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 font-bold">
                         <span className="text-purple-300">{p.date}</span>
                         <span>{formatTime(p.startTime)} ({p.duration ? `${p.duration / 60}h` : '2h'})</span>
                         <span>Host: <strong className="text-white">{p.hostName || 'N/A'}</strong></span>
-                        {p.addedBy && <span className="text-slate-500 font-normal">Added by: {p.addedBy}</span>}
                       </div>
                     </div>
-                    <div className="flex gap-2 w-full md:w-auto justify-end">
+                    <div className="flex gap-2 w-full md:w-auto justify-end items-center">
+                      {p.status !== 'approved' && (currentUser?.role === 'owner' || currentUser?.role === 'admin') && (
+                        <button onClick={() => handleApproveEvent(p)} className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5">
+                          <CheckCircle size={14}/> Approve
+                        </button>
+                      )}
                       <button onClick={() => setEditModal(p)} className="p-2.5 bg-[#0e0a19] border border-purple-500/20 hover:bg-purple-600/20 rounded-xl text-purple-400 transition-colors"><Edit size={16}/></button>
                       <button onClick={() => setDeleteQueue(p)} className="p-2.5 bg-[#0e0a19] border border-purple-500/20 hover:bg-rose-500/20 rounded-xl text-rose-400 transition-colors"><Trash2 size={16}/></button>
                     </div>
@@ -747,15 +755,11 @@ export default function App() {
           <div className="space-y-8">
             <div className="bg-[#151022] border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-xl">
               <h3 className="font-black text-lg text-white mb-4">Create Host or Staff Account</h3>
-              <form onSubmit={handleAddAdmin} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <input placeholder="IMVU Username / ID" value={newAdminU} onChange={e=>setNewAdminU(e.target.value)} className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors text-sm" />
+              <form onSubmit={handleAddAdmin} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input placeholder="IMVU Username" value={newAdminU} onChange={e=>setNewAdminU(e.target.value)} className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors text-sm" />
                 <input placeholder="Assigned Password" type="password" value={newAdminP} onChange={e=>setNewAdminP(e.target.value)} className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors text-sm" />
-                <select className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-slate-300 focus:outline-none focus:border-purple-500 text-sm" value={newAdminRole} onChange={e=>setNewAdminRole(e.target.value)}>
-                  <option value="host">Storyteller Host</option>
-                  <option value="admin">Staff Admin</option>
-                </select>
                 {adminMsg && <div className="col-span-full text-sm font-bold text-emerald-400 mt-1">{adminMsg}</div>}
-                <button type="submit" className="col-span-full bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl font-black p-4 text-white hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg shadow-purple-900/40">CREATE ACCOUNT</button>
+                <button type="submit" className="col-span-full bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl font-black p-4 text-white hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg shadow-purple-900/40">CREATE HOST ACCOUNT</button>
               </form>
             </div>
 
@@ -768,14 +772,14 @@ export default function App() {
                     <div>
                       <span className="font-bold text-white">{a.username}</span>
                       <button onClick={()=>handleToggleRole(a.id, a.role || 'host', a.username)} className="ml-3 text-[10px] uppercase bg-purple-500/20 hover:bg-purple-500/30 px-2 py-0.5 rounded text-purple-300 font-mono transition-colors">
-                        {a.role || 'host'} (Click to change)
+                        {a.role || 'host'} (Click to toggle Admin)
                       </button>
                     </div>
                   </div>
                   <button onClick={()=>handleDeleteAdmin(a.id, a.username)} className="p-2.5 bg-[#0e0a19] border border-purple-500/20 hover:bg-rose-500/20 rounded-xl text-rose-400 transition-colors"><Trash2 size={16}/></button>
                 </div>
               ))}
-              {admins.length === 0 && <p className="text-slate-500 text-sm italic">No registered host/staff accounts found.</p>}
+              {admins.length === 0 && <p className="text-slate-500 text-sm italic">No registered accounts found.</p>}
             </div>
           </div>
         )}
@@ -829,9 +833,9 @@ export default function App() {
                   <h2 className="font-black text-lg text-white">Events for {selectedDay.toDateString()}</h2>
                   <button onClick={() => setSelectedDay(null)} className="text-slate-400 hover:text-white transition-colors bg-purple-600/10 p-2 rounded-full border border-purple-500/20"><X size={18}/></button>
               </div>
-              {parties.filter(p => new Date(p.date).toDateString() === selectedDay.toDateString()).map(p => <EventCard key={p.id} p={p}/>)}
-              {parties.filter(p => new Date(p.date).toDateString() === selectedDay.toDateString()).length === 0 && (
-                  <p className="text-slate-500 text-sm text-center py-10 italic">No storyteller gatherings scheduled for this date.</p>
+              {parties.filter(p => p.status === 'approved' && new Date(p.date).toDateString() === selectedDay.toDateString()).map(p => <EventCard key={p.id} p={p}/>)}
+              {parties.filter(p => p.status === 'approved' && new Date(p.date).toDateString() === selectedDay.toDateString()).length === 0 && (
+                  <p className="text-slate-500 text-sm text-center py-10 italic">No approved storyteller gatherings scheduled for this date.</p>
               )}
            </div>
         </div>
@@ -878,46 +882,29 @@ export default function App() {
         </div>
       )}
 
-      {/* Auth Gate Modal with Google & Credentials */}
+      {/* Auth Gate Modal */}
       {showAuthGate && (
         <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 backdrop-blur-md">
            <div className="bg-[#151022] p-8 rounded-3xl w-full max-w-sm border border-purple-500/30 shadow-2xl space-y-6">
               <div className="flex justify-between items-center">
                   <h2 className="font-black text-xl text-white flex items-center gap-2.5"><Shield size={20} className="text-purple-400"/> Sign-In</h2>
-                  <button onClick={() => { setShowAuthGate(false); setLoginError(''); setAuthError(''); }} className="text-slate-400 hover:text-white bg-purple-600/10 p-2 rounded-full border border-purple-500/20"><X size={16}/></button>
+                  <button onClick={() => { setShowAuthGate(false); setLoginError(''); }} className="text-slate-400 hover:text-white bg-purple-600/10 p-2 rounded-full border border-purple-500/20"><X size={16}/></button>
               </div>
 
-              {/* Google Sign-In Option */}
-              <div className="space-y-3">
-                <button 
-                  onClick={handleGoogleLogin} 
-                  className="w-full bg-white hover:bg-slate-100 text-slate-900 transition-all py-3.5 px-4 rounded-xl font-bold flex items-center justify-center gap-3 shadow-md text-sm"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                  </svg>
-                  Sign in with Google
-                </button>
-                {authError && <p className="text-rose-400 text-xs font-bold text-center">{authError}</p>}
+              {/* Notice for new users */}
+              <div className="bg-purple-950/50 border border-purple-500/25 rounded-2xl p-4 text-center shadow-inner">
+                <p className="text-xs font-black text-purple-200 tracking-wide uppercase">For New Users</p>
+                <p className="text-[11px] text-purple-300/80 font-medium mt-1">Please contact Admin to get access.</p>
               </div>
 
-              <div className="flex items-center gap-4 text-xs text-slate-500 uppercase font-bold tracking-widest">
-                <div className="h-px bg-purple-500/20 flex-1"></div>
-                <span>or IMVU username</span>
-                <div className="h-px bg-purple-500/20 flex-1"></div>
-              </div>
-
-              <form onSubmit={handleLegacyLogin} className="space-y-3.5">
-                <input placeholder="IMVU Username / ID" value={gateU} onChange={e=>setGateU(e.target.value)} className="w-full bg-[#0e0a19] border border-purple-500/20 rounded-xl p-3.5 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors"/>
+              <form onSubmit={handleLogin} className="space-y-3.5">
+                <input placeholder="IMVU Username" value={gateU} onChange={e=>setGateU(e.target.value)} className="w-full bg-[#0e0a19] border border-purple-500/20 rounded-xl p-3.5 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors"/>
                 <div className="relative">
                     <input type={showPass ? "text" : "password"} placeholder="Password" value={gateP} onChange={e=>setGateP(e.target.value)} className="w-full bg-[#0e0a19] border border-purple-500/20 rounded-xl p-3.5 pr-12 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors"/>
                     <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-3.5 text-slate-400 hover:text-white transition-colors">{showPass ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
                 </div>
                 {loginError && <p className="text-rose-400 text-xs font-bold pt-1">{loginError}</p>}
-                <button type="submit" className="w-full bg-[#201836] hover:bg-[#2c224a] transition-all py-3.5 rounded-xl font-bold text-white text-sm border border-purple-500/30">Sign In with Password</button>
+                <button type="submit" className="w-full bg-[#201836] hover:bg-[#2c224a] transition-all py-3.5 rounded-xl font-bold text-white text-sm border border-purple-500/30 shadow-md">Sign In</button>
               </form>
            </div>
         </div>
@@ -932,20 +919,16 @@ export default function App() {
                   <button type="button" onClick={()=>{ setShowProfileModal(false); setPwdMsg(null); setNewPass(''); }} className="text-slate-400 hover:text-white bg-purple-600/10 p-2 rounded-full border border-purple-500/20"><X size={16}/></button>
               </div>
               <div className="flex items-center gap-3 bg-[#0e0a19] p-3.5 rounded-2xl border border-purple-500/15">
-                {currentUser?.photoURL ? (
-                  <img src={currentUser.photoURL} alt="" className="w-10 h-10 rounded-full object-cover border border-purple-400/40" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-purple-600/20 flex items-center justify-center text-purple-300 font-bold">
-                    {currentUser?.username?.[0]?.toUpperCase()}
-                  </div>
-                )}
+                <div className="w-10 h-10 rounded-full bg-purple-600/20 flex items-center justify-center text-purple-300 font-bold">
+                  {currentUser?.username?.[0]?.toUpperCase()}
+                </div>
                 <div>
                   <p className="font-bold text-white text-sm">{currentUser?.username}</p>
                   <p className="text-[11px] text-purple-400 font-mono capitalize">{currentUser?.role || 'host'} Account</p>
                 </div>
               </div>
 
-              {currentUser?.role !== 'owner' && !currentUser?.email && (
+              {currentUser?.role !== 'owner' && (
                 <>
                   <p className="text-xs text-slate-400 font-medium pt-2">Change your password below.</p>
                   <input type="password" placeholder="Enter new password" value={newPass} onChange={e=>setNewPass(e.target.value)} className="w-full bg-[#0e0a19] p-3.5 rounded-xl border border-purple-500/20 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors" />
@@ -975,53 +958,53 @@ export default function App() {
 }
 
 function EventCard({ p }) {
-    const duration = p.duration || 120;
-    const live = isEventLive(p.date, p.startTime, duration);
+  const duration = p.duration || 120;
+  const live = isEventLive(p.date, p.startTime, duration);
 
-    return (
-        <div className={`bg-[#151022] border p-5 rounded-2xl mb-3.5 relative transition-all duration-300 shadow-md
-            ${live 
-                ? 'border-purple-500/60 shadow-[0_0_25px_rgba(168,85,247,0.35)] ring-1 ring-purple-500/40 bg-gradient-to-br from-[#1c1330] to-[#151022]' 
-                : 'border-purple-500/15 hover:border-purple-500/30 hover:shadow-[0_0_20px_rgba(168,85,247,0.1)]'
-            }`}>
-            
-            {/* Header: Theme and Live Badge */}
-            <div className="flex justify-between items-start mb-3">
-                <div className="font-black text-white text-base md:text-[17px] leading-tight flex items-center gap-2">
-                  <span>{p.theme}</span>
-                </div>
-                {live && (
-                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-[10px] font-black px-2.5 py-1 rounded-lg animate-pulse text-white uppercase tracking-wider shrink-0 ml-2 shadow-md">
-                        live now
-                    </div>
-                )}
-            </div>
-
-            {/* Content: Host, Role, Date, Time */}
-            <div className="flex flex-col gap-2.5 text-sm font-bold">
-                <div className="flex justify-between items-center text-xs">
-                    <span className="tracking-widest flex items-center gap-1.5">
-                        <span className="text-purple-400/70 uppercase text-[10px]">Host:</span>
-                        <span className="text-white font-semibold">{p.hostName}</span>
-                    </span>
-                    
-                    <span className="bg-purple-500/15 text-purple-300 px-2.5 py-0.5 rounded-md text-[10px] border border-purple-500/30 uppercase tracking-wider font-mono">
-                        {p.performers || 'VU Storytellers'}
-                    </span>
-                </div>
-                
-                {/* Date and Time Row */}
-                <div className="flex justify-between items-center mt-1 pt-2.5 border-t border-purple-500/10 text-xs">
-                    <div className="flex flex-col">
-                        <span className="text-[9px] text-purple-400/60 uppercase tracking-widest font-mono">Date</span>
-                        <span className="text-white font-bold">{formatDate(p.date)}</span>
-                    </div>
-                    <div className="flex flex-col items-end">
-                        <span className="text-[9px] text-purple-400/60 uppercase tracking-widest font-mono">Time & Duration</span>
-                        <span className="text-white font-bold">{formatTime(p.startTime)} <span className="text-purple-400 font-normal">({duration / 60}h)</span></span>
-                    </div>
-                </div>
-            </div>
+  return (
+    <div className={`bg-[#151022] border p-5 rounded-2xl mb-3.5 relative transition-all duration-300 shadow-md
+      ${live 
+        ? 'border-purple-500/60 shadow-[0_0_25px_rgba(168,85,247,0.35)] ring-1 ring-purple-500/40 bg-gradient-to-br from-[#1c1330] to-[#151022]' 
+        : 'border-purple-500/15 hover:border-purple-500/30 hover:shadow-[0_0_20px_rgba(168,85,247,0.1)]'
+      }`}>
+      
+      {/* Header: Theme and Live Badge */}
+      <div className="flex justify-between items-start mb-3">
+        <div className="font-black text-white text-base md:text-[17px] leading-tight flex items-center gap-2">
+          <span>{p.theme}</span>
         </div>
-    );
+        {live && (
+          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-[10px] font-black px-2.5 py-1 rounded-lg animate-pulse text-white uppercase tracking-wider shrink-0 ml-2 shadow-md">
+            live now
+          </div>
+        )}
+      </div>
+
+      {/* Content: Host, Role, Date, Time */}
+      <div className="flex flex-col gap-2.5 text-sm font-bold">
+        <div className="flex justify-between items-center text-xs">
+          <span className="tracking-widest flex items-center gap-1.5">
+            <span className="text-purple-400/70 uppercase text-[10px]">Host:</span>
+            <span className="text-white font-semibold">{p.hostName}</span>
+          </span>
+          
+          <span className="bg-purple-500/15 text-purple-300 px-2.5 py-0.5 rounded-md text-[10px] border border-purple-500/30 uppercase tracking-wider font-mono">
+            {p.performers || 'VU Storytellers'}
+          </span>
+        </div>
+        
+        {/* Date and Time Row */}
+        <div className="flex justify-between items-center mt-1 pt-2.5 border-t border-purple-500/10 text-xs">
+          <div className="flex flex-col">
+            <span className="text-[9px] text-purple-400/60 uppercase tracking-widest font-mono">Date</span>
+            <span className="text-white font-bold">{formatDate(p.date)}</span>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className="text-[9px] text-purple-400/60 uppercase tracking-widest font-mono">Time & Duration</span>
+            <span className="text-white font-bold">{formatTime(p.startTime)} <span className="text-purple-400 font-normal">({duration / 60}h)</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
