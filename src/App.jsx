@@ -891,7 +891,7 @@ export default function App() {
               {/* Notice for new users */}
               <div className="bg-purple-950/60 border border-purple-500/30 rounded-2xl p-4 text-center shadow-inner">
                 <p className="text-xs font-black text-purple-200 tracking-wide uppercase">For New Users</p>
-                <p className="text-[11px] text-purple-300/80 font-medium mt-1">Please contact Admin to get access.</p>
+                <p className="text-[11px] text-purple-300/80 font-medium mt-1">Need an account? Contact an Admin to get access..</p>
               </div>
 
               <form onSubmit={handleLogin} className="space-y-4">
