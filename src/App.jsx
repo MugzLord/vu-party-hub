@@ -4,7 +4,7 @@ import {
   Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Users, X, Save, Settings, Eye, EyeOff, Archive, Award, CheckCircle, Activity, AlertTriangle, Sparkles, Flame, Radio
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
 
 const getPTDateInt = (dateStr) => {
@@ -49,7 +49,7 @@ const app = getApps().length === 0 ? initializeApp(getSafeConfig()) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
 const getPath = (colName) => typeof __app_id !== 'undefined' ? `artifacts/${__app_id}/public/data/${colName}` : colName;
-const SESSION_KEY = 'vu_storytellers_party_hub_v750';
+const SESSION_KEY = 'vu_storytellers_party_hub_v760';
 
 const TIME_OPTIONS = [
   "12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM",
@@ -114,6 +114,7 @@ export default function App() {
   const [admins, setAdmins] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [dismissedNotifs, setDismissedNotifs] = useState({});
   const [currentUser, setCurrentUser] = useState(() => { 
     const s = localStorage.getItem(SESSION_KEY); 
     return s ? JSON.parse(s) : null; 
@@ -127,7 +128,7 @@ export default function App() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteQueue, setDeleteQueue] = useState(null); 
-  const [customAlert, setCustomAlert] = useState(null); // { message, title }
+  const [customAlert, setCustomAlert] = useState(null); 
   
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [formData, setFormData] = useState({ 
@@ -329,7 +330,7 @@ export default function App() {
         setLoginError('Incorrect password. Please try again.');
       }
     } else {
-      setLoginError('Username not found. Please contact Admin to get access.');
+      setLoginError('Username not found. Please contact Admin for access.');
     }
   };
 
@@ -512,9 +513,21 @@ export default function App() {
     .filter(p => p.date && getPTDateInt(p.date) >= todayPT)
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  // Personalized one-time view notifications for current user only
+  const myNotifications = useMemo(() => {
+    if (!currentUser) return [];
+    return notifications.filter(n => 
+      (n.forHost === currentUser.username || !n.forHost) && !dismissedNotifs[n.id]
+    );
+  }, [notifications, currentUser, dismissedNotifs]);
+
+  const dismissNotification = (id) => {
+    setDismissedNotifs(prev => ({ ...prev, [id]: true }));
+  };
+
   return (
     <div className="min-h-screen bg-[#09060f] text-slate-100 font-sans selection:bg-purple-600 selection:text-white relative overflow-hidden">
-      {/* Background ambient glowing gradient orbs for vibrant life */}
+      {/* Background ambient glowing gradient orbs */}
       <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-700/15 rounded-full blur-[130px] pointer-events-none animate-pulse"></div>
       <div className="absolute top-1/3 right-10 w-[400px] h-[400px] bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none"></div>
       <div className="absolute bottom-10 left-10 w-[450px] h-[450px] bg-fuchsia-600/10 rounded-full blur-[150px] pointer-events-none"></div>
@@ -558,11 +571,19 @@ export default function App() {
         )}
       </header>
 
-      {/* Notifications bar */}
-      {notifications.length > 0 && (
-        <div className="bg-gradient-to-r from-purple-900/60 via-indigo-900/60 to-purple-900/60 border-b border-purple-500/30 px-4 py-2.5 text-xs text-purple-100 flex items-center justify-center gap-3 shadow-lg">
-          <span className="font-black uppercase tracking-widest bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white px-2.5 py-0.5 rounded-full text-[9px] shadow">Notice</span>
-          <span className="truncate font-medium">{notifications[notifications.length - 1]?.message}</span>
+      {/* Personalized one-time view notifications bar that vanishes upon dismiss */}
+      {myNotifications.length > 0 && (
+        <div className="bg-gradient-to-r from-purple-900/80 via-indigo-900/80 to-purple-900/80 border-b border-purple-500/40 px-4 py-3 text-xs text-purple-100 flex items-center justify-between shadow-xl backdrop-blur-md">
+          <div className="flex items-center gap-3 max-w-3xl mx-auto">
+            <span className="font-black uppercase tracking-widest bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white px-2.5 py-0.5 rounded-full text-[9px] shadow">Notice</span>
+            <span className="font-medium">{myNotifications[myNotifications.length - 1]?.message}</span>
+            <button 
+              onClick={() => dismissNotification(myNotifications[myNotifications.length - 1]?.id)} 
+              className="text-purple-300 hover:text-white bg-purple-950/80 px-3 py-1 rounded-xl text-[10px] font-bold border border-purple-500/30 transition-all"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 
@@ -593,7 +614,12 @@ export default function App() {
               <h2 className="font-black text-white text-2xl md:text-3xl mb-2 flex items-center gap-3 drop-shadow-md">
                 <Award className="text-fuchsia-400" size={30} /> VU Storytellers Party Schedule
               </h2>
-              <p className="text-sm text-purple-200/80 font-medium leading-relaxed">Browse upcoming immersive storytelling gatherings, check live rooms, and view schedule details in Pacific Time.</p>
+              <p className="text-sm text-purple-200/90 font-medium leading-relaxed">
+                Exclusive schedule for VU Storytellers. Submit events and track timings in Pacific Time.
+              </p>
+              <p className="text-[11px] text-amber-200/70 font-thin leading-relaxed mt-2.5 bg-amber-950/30 p-3 rounded-2xl border border-amber-500/30 tracking-wide">
+                <strong className="text-amber-200 font-normal">Disclaimer:</strong> All approved events are subject to IMVU Staff changes without prior notice. Independent community initiative, not officially affiliated with IMVU.
+              </p>
             </div>
             
             {/* Tab Buttons */}
@@ -888,10 +914,20 @@ export default function App() {
                   <button onClick={() => { setShowAuthGate(false); setLoginError(''); }} className="text-purple-300 hover:text-white bg-purple-600/20 p-2.5 rounded-2xl border border-purple-500/30"><X size={16}/></button>
               </div>
 
-              {/* Notice for new users */}
-              <div className="bg-purple-950/60 border border-purple-500/30 rounded-2xl p-4 text-center shadow-inner">
-                <p className="text-xs font-black text-purple-200 tracking-wide uppercase">For New Users</p>
-                <p className="text-[11px] text-purple-300/80 font-medium mt-1">Need an account? Contact an Admin to get access..</p>
+              {/* Register / Create Account Button for New Users */}
+              <div className="bg-purple-950/60 border border-purple-500/30 rounded-2xl p-4 text-center shadow-inner space-y-2">
+                <p className="text-xs font-black text-purple-200 tracking-wide uppercase">New Storyteller?</p>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setShowAuthGate(false);
+                    // Open registration or auto-switch to registration state
+                    setCustomAlert({ title: 'Account Registration', message: 'Enter your desired username and password below and click Sign In to automatically register your new Host account!' });
+                  }} 
+                  className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow transition-all border border-purple-400/40"
+                >
+                  Register / Create Account
+                </button>
               </div>
 
               <form onSubmit={handleLogin} className="space-y-4">
