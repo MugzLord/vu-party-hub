@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CalendarDays, LogOut, ChevronLeft, ChevronRight, 
-  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Users, X, Save, Settings, Eye, EyeOff, Archive, Award, CheckCircle, Activity, AlertTriangle
+  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Users, X, Save, Settings, Eye, EyeOff, Archive, Award, CheckCircle, Activity, AlertTriangle, Sparkles, Flame, Radio
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
@@ -49,7 +49,7 @@ const app = getApps().length === 0 ? initializeApp(getSafeConfig()) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
 const getPath = (colName) => typeof __app_id !== 'undefined' ? `artifacts/${__app_id}/public/data/${colName}` : colName;
-const SESSION_KEY = 'vu_storytellers_party_hub_v700';
+const SESSION_KEY = 'vu_storytellers_party_hub_v750';
 
 const TIME_OPTIONS = [
   "12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM",
@@ -291,7 +291,6 @@ export default function App() {
     e.preventDefault();
     setLoginError('');
     
-    // Explicit Owner check for Mike
     if (gateU.trim().toLowerCase() === 'mike' && gateP === 'Owner123') {
       const user = { id: 'owner', username: 'Mike', role: 'owner' };
       setCurrentUser(user);
@@ -514,100 +513,109 @@ export default function App() {
     .sort((a, b) => a.date.localeCompare(b.date));
 
   return (
-    <div className="min-h-screen bg-[#0d0914] text-slate-100 font-sans selection:bg-purple-600 selection:text-white">
-      <header className="relative z-40 bg-[#161026] border-b border-purple-500/10 p-4 flex justify-between items-center sticky top-0 shadow-lg shadow-black/40 backdrop-blur-md">
+    <div className="min-h-screen bg-[#09060f] text-slate-100 font-sans selection:bg-purple-600 selection:text-white relative overflow-hidden">
+      {/* Background ambient glowing gradient orbs for vibrant life */}
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-700/15 rounded-full blur-[130px] pointer-events-none animate-pulse"></div>
+      <div className="absolute top-1/3 right-10 w-[400px] h-[400px] bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none"></div>
+      <div className="absolute bottom-10 left-10 w-[450px] h-[450px] bg-fuchsia-600/10 rounded-full blur-[150px] pointer-events-none"></div>
+
+      {/* Header */}
+      <header className="relative z-40 bg-[#140d24]/90 border-b border-purple-500/20 p-4 md:px-8 flex justify-between items-center sticky top-0 shadow-xl shadow-black/60 backdrop-blur-xl">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center border border-purple-400/30 shadow-md shadow-purple-900/40">
-              <BookOpen size={22} className="text-white" />
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-gradient-to-tr from-purple-600 via-indigo-600 to-fuchsia-500 rounded-2xl flex items-center justify-center border border-purple-400/40 shadow-lg shadow-purple-900/60 transform hover:scale-105 transition-transform">
+              <Sparkles size={22} className="text-white animate-spin" style={{ animationDuration: '8s' }} />
             </div>
             <div>
-              <h1 className="font-black text-white text-base tracking-wide">VU Storytellers</h1>
-              <p className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">Party Schedule Hub</p>
+              <h1 className="font-black text-white text-lg tracking-wide bg-gradient-to-r from-white via-purple-200 to-fuchsia-300 bg-clip-text text-transparent">VU Storytellers</h1>
+              <p className="text-[11px] text-purple-400 font-bold uppercase tracking-widest flex items-center gap-1">
+                <Flame size={12} className="text-amber-400 fill-amber-400" /> Party Schedule Hub
+              </p>
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono text-purple-200/80 bg-purple-950/40 px-3 py-1 rounded-lg border border-purple-500/20 shadow-inner">
-            <Clock size={11} className="text-purple-400 shrink-0" />
-            <span className="font-bold">{ptTime}</span>
-            <span className="opacity-60">PT</span>
+          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-purple-200/90 bg-purple-950/60 px-3.5 py-1.5 rounded-xl border border-purple-500/30 shadow-inner">
+            <Clock size={13} className="text-purple-400 shrink-0 animate-pulse" />
+            <span className="font-extrabold">{ptTime}</span>
+            <span className="opacity-60 text-[10px]">PT</span>
           </div>
         </div>
 
         {currentUser ? (
           <div className="flex items-center gap-3">
-            <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-2 text-xs bg-purple-600/15 hover:bg-purple-600/25 px-4 py-2 rounded-full font-bold text-purple-300 transition-all border border-purple-500/30 shadow-sm">
-              <Settings size={14} className="text-purple-400" />
-              <span>{currentUser.username}</span>
-              <span className="text-[9px] uppercase bg-purple-500/30 px-1.5 py-0.2 rounded text-purple-200 font-mono">{currentUser.role}</span>
+            <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-2 text-xs bg-gradient-to-r from-purple-900/50 to-indigo-900/50 hover:from-purple-800/60 hover:to-indigo-800/60 px-4 py-2 rounded-2xl font-bold text-purple-200 transition-all border border-purple-500/40 shadow-md shadow-purple-950/50 group">
+              <Settings size={14} className="text-purple-400 group-hover:rotate-90 transition-transform duration-300" />
+              <span className="font-extrabold">{currentUser.username}</span>
+              <span className="text-[9px] uppercase bg-gradient-to-r from-purple-600 to-indigo-600 px-2 py-0.5 rounded-full text-white font-mono shadow-sm">{currentUser.role}</span>
             </button>
-            <button onClick={() => { setCurrentUser(null); setView('Guide'); localStorage.removeItem(SESSION_KEY); }} title="Sign Out" className="text-xs font-black uppercase text-rose-400 hover:text-rose-300 p-2 bg-rose-500/10 rounded-xl border border-rose-500/20 transition-colors">
+            <button onClick={() => { setCurrentUser(null); setView('Guide'); localStorage.removeItem(SESSION_KEY); }} title="Sign Out" className="text-xs font-black uppercase text-rose-400 hover:text-white p-2.5 bg-rose-500/10 hover:bg-rose-600 rounded-2xl border border-rose-500/30 transition-all shadow-md shadow-rose-950/40">
               <LogOut size={16} />
             </button>
           </div>
         ) : (
-          <button onClick={() => setShowAuthGate(true)} className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-purple-900/30 border border-purple-400/30">
-            <Shield size={15} /> Sign-In
+          <button onClick={() => setShowAuthGate(true)} className="flex items-center gap-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:from-purple-500 hover:to-indigo-500 transition-all px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider text-white shadow-xl shadow-purple-900/50 border border-purple-400/40 transform hover:scale-105">
+            <Shield size={16} className="text-purple-200" /> Sign-In
           </button>
         )}
       </header>
 
       {/* Notifications bar */}
       {notifications.length > 0 && (
-        <div className="bg-purple-900/40 border-b border-purple-500/20 px-4 py-2 text-xs text-purple-200 flex items-center justify-center gap-3">
-          <span className="font-black uppercase tracking-widest bg-purple-600 text-white px-2 py-0.5 rounded text-[9px]">Notification</span>
-          <span className="truncate">{notifications[notifications.length - 1]?.message}</span>
+        <div className="bg-gradient-to-r from-purple-900/60 via-indigo-900/60 to-purple-900/60 border-b border-purple-500/30 px-4 py-2.5 text-xs text-purple-100 flex items-center justify-center gap-3 shadow-lg">
+          <span className="font-black uppercase tracking-widest bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white px-2.5 py-0.5 rounded-full text-[9px] shadow">Notice</span>
+          <span className="truncate font-medium">{notifications[notifications.length - 1]?.message}</span>
         </div>
       )}
 
       {/* Navigation tabs */}
-      <div className="flex p-4 gap-2.5 bg-[#120d1f]/80 border-b border-purple-500/10 overflow-x-auto relative z-30 max-w-4xl mx-auto mt-2 rounded-2xl shadow-inner">
+      <div className="flex p-3 gap-3 bg-[#110a1f]/90 border-b border-purple-500/15 overflow-x-auto relative z-30 max-w-4xl mx-auto mt-4 rounded-2xl shadow-2xl backdrop-blur-md">
         {['Guide', 'Monthly', canManage ? 'Submit Party' : '', currentUser?.role === 'owner' ? 'Staff' : '', currentUser?.role === 'owner' ? 'Audit Logs' : ''].filter(Boolean).map((t) => (
           <button
             key={t}
             onClick={() => setView(t)}
-            className={`px-6 py-3 rounded-xl text-xs font-black uppercase flex items-center gap-2 whitespace-nowrap transition-all ${view === t ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30 border border-purple-400/30 scale-[1.02]' : 'bg-[#1a1429] text-slate-400 hover:bg-[#231b38] hover:text-slate-200 border border-white/5'}`}
+            className={`px-6 py-3.5 rounded-xl text-xs font-black uppercase flex items-center gap-2.5 whitespace-nowrap transition-all duration-300 ${view === t ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 text-white shadow-lg shadow-purple-600/40 border border-purple-400/50 scale-[1.03]' : 'bg-[#18112a] text-purple-300/70 hover:bg-[#22183b] hover:text-white border border-purple-500/10'}`}
           >
-            {t === 'Guide' && <BookOpen size={14} />}
-            {t === 'Monthly' && <Calendar size={14} />}
-            {t === 'Submit Party' && <Edit size={14} />}
-            {t === 'Staff' && <Users size={14} />}
-            {t === 'Audit Logs' && <Activity size={14} />}
+            {t === 'Guide' && <BookOpen size={15} className={view === t ? 'text-white' : 'text-purple-400'} />}
+            {t === 'Monthly' && <Calendar size={15} className={view === t ? 'text-white' : 'text-purple-400'} />}
+            {t === 'Submit Party' && <Edit size={15} className={view === t ? 'text-white' : 'text-purple-400'} />}
+            {t === 'Staff' && <Users size={15} className={view === t ? 'text-white' : 'text-purple-400'} />}
+            {t === 'Audit Logs' && <Activity size={15} className={view === t ? 'text-white' : 'text-purple-400'} />}
             {t}
           </button>
         ))}
       </div>
 
-      <main className="p-4 md:p-6 max-w-4xl mx-auto relative z-10">
+      <main className="p-4 md:p-8 max-w-4xl mx-auto relative z-10">
         {view === 'Guide' && (
           <div className="space-y-6">
-            <div className="bg-gradient-to-r from-purple-950/40 to-indigo-950/40 p-6 rounded-3xl border border-purple-500/20 shadow-xl relative overflow-hidden">
-              <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
-              <h2 className="font-black text-white text-2xl mb-1 flex items-center gap-2.5">
-                <Award className="text-purple-400" size={26} /> VU Storytellers Party Schedule
+            <div className="bg-gradient-to-br from-purple-950/70 via-indigo-950/60 to-[#18102d] p-7 rounded-3xl border border-purple-500/30 shadow-2xl shadow-purple-950/50 relative overflow-hidden backdrop-blur-md">
+              <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-fuchsia-600/20 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute top-0 right-5 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
+              <h2 className="font-black text-white text-2xl md:text-3xl mb-2 flex items-center gap-3 drop-shadow-md">
+                <Award className="text-fuchsia-400" size={30} /> VU Storytellers Party Schedule
               </h2>
-              <p className="text-sm text-purple-200/70 font-medium">Browse upcoming immersive storytelling gatherings, check live rooms, and view schedule details in Pacific Time.</p>
+              <p className="text-sm text-purple-200/80 font-medium leading-relaxed">Browse upcoming immersive storytelling gatherings, check live rooms, and view schedule details in Pacific Time.</p>
             </div>
             
             {/* Tab Buttons */}
-            <div className="flex gap-3 border-b border-purple-500/10 pb-1">
+            <div className="flex gap-4 border-b border-purple-500/20 pb-1">
               <button 
                 onClick={() => setGuideTab('current')}
-                className={`pb-2.5 px-5 font-black text-sm uppercase tracking-wider transition-all rounded-t-lg ${guideTab === 'current' ? 'text-white border-b-2 border-purple-500 bg-purple-600/10' : 'text-slate-400 hover:text-slate-200'}`}
+                className={`pb-3 px-6 font-black text-sm uppercase tracking-wider transition-all rounded-t-xl ${guideTab === 'current' ? 'text-white border-b-2 border-purple-500 bg-gradient-to-t from-purple-600/20 to-transparent shadow-sm' : 'text-purple-400/60 hover:text-purple-200'}`}
               >
                 Current Month Events
               </button>
               <button 
                 onClick={() => setGuideTab('next')}
-                className={`pb-2.5 px-5 font-black text-sm uppercase tracking-wider transition-all rounded-t-lg ${guideTab === 'next' ? 'text-white border-b-2 border-purple-500 bg-purple-600/10' : 'text-slate-400 hover:text-slate-200'}`}
+                className={`pb-3 px-6 font-black text-sm uppercase tracking-wider transition-all rounded-t-xl ${guideTab === 'next' ? 'text-white border-b-2 border-purple-500 bg-gradient-to-t from-purple-600/20 to-transparent shadow-sm' : 'text-purple-400/60 hover:text-purple-200'}`}
               >
                 Upcoming Month Events
               </button>
             </div>
       
             {/* Tab Content */}
-            <div className="bg-[#151022] border border-purple-500/15 p-6 rounded-3xl shadow-xl min-h-[300px]">
-              <div className="mb-5 text-xs font-bold text-purple-400 uppercase tracking-widest flex items-center gap-2">
-                <Calendar size={14} />
+            <div className="bg-[#130b20]/90 border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-2xl min-h-[320px] backdrop-blur-xl">
+              <div className="mb-6 text-xs font-extrabold text-fuchsia-400 uppercase tracking-widest flex items-center gap-2 bg-purple-950/60 px-4 py-2 rounded-xl border border-purple-500/30 w-fit">
+                <Calendar size={15} className="text-purple-300" />
                 {(() => {
                   const now = new Date();
                   if (guideTab === 'current') {
@@ -619,12 +627,12 @@ export default function App() {
                 })()}
               </div>
               {guideTab === 'current' ? (
-                <div className="space-y-3.5">
-                  {thisMonthEvents.length > 0 ? thisMonthEvents.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-slate-500 text-sm italic py-10 text-center">No storytelling parties scheduled for this month.</p>}
+                <div className="space-y-4">
+                  {thisMonthEvents.length > 0 ? thisMonthEvents.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-purple-400/60 text-sm italic py-16 text-center font-medium bg-[#1a112e]/50 rounded-2xl border border-purple-500/10">No storytelling parties scheduled for this month.</p>}
                 </div>
               ) : (
-                <div className="space-y-3.5">
-                  {nextMonthEvents.length > 0 ? nextMonthEvents.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-slate-500 text-sm italic py-10 text-center">No events scheduled for the upcoming month yet.</p>}
+                <div className="space-y-4">
+                  {nextMonthEvents.length > 0 ? nextMonthEvents.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-purple-400/60 text-sm italic py-16 text-center font-medium bg-[#1a112e]/50 rounded-2xl border border-purple-500/10">No events scheduled for the upcoming month yet.</p>}
                 </div>
               )}
             </div>
@@ -633,14 +641,14 @@ export default function App() {
 
         {view === 'Monthly' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center bg-[#151022] p-5 rounded-2xl border border-purple-500/15 shadow-lg">
-              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="p-2.5 hover:bg-purple-600/20 rounded-xl transition-colors text-purple-300"><ChevronLeft size={20}/></button>
-              <span className="font-black text-white uppercase tracking-widest text-sm md:text-base">{currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
-              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="p-2.5 hover:bg-purple-600/20 rounded-xl transition-colors text-purple-300"><ChevronRight size={20}/></button>
+            <div className="flex justify-between items-center bg-[#130b20]/90 p-5 md:p-6 rounded-3xl border border-purple-500/25 shadow-xl backdrop-blur-xl">
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="p-3 hover:bg-purple-600/30 rounded-2xl transition-all text-purple-200 border border-purple-500/20 shadow"><ChevronLeft size={22}/></button>
+              <span className="font-black text-white uppercase tracking-widest text-base md:text-lg bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">{currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="p-3 hover:bg-purple-600/30 rounded-2xl transition-all text-purple-200 border border-purple-500/20 shadow"><ChevronRight size={22}/></button>
             </div>
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-3">
               {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d, index) => (
-                <div key={`day-header-${index}`} className="text-xs font-black text-purple-400 pb-2 text-center uppercase">{d}</div>
+                <div key={`day-header-${index}`} className="text-xs font-black text-purple-400 pb-2 text-center uppercase tracking-wider">{d}</div>
               ))}
               {calendarDays.map((d, i) => {
                 const hasEventToday = hasEvent(d.date);
@@ -650,18 +658,18 @@ export default function App() {
                   <button 
                     key={`day-cell-${i}`} 
                     onClick={() => setSelectedDay(d.date)} 
-                    className={`aspect-square flex flex-col items-center justify-center text-sm md:text-base font-bold rounded-2xl relative transition-all 
+                    className={`aspect-square flex flex-col items-center justify-center text-base md:text-lg font-black rounded-2xl relative transition-all duration-300 
                       ${d.monthType === 'current' ? 'text-white' : 'text-slate-600'}
                       ${selectedDay?.toDateString() === d.date.toDateString() 
-                        ? 'bg-gradient-to-br from-purple-600 to-indigo-600 !text-white shadow-lg shadow-purple-900/50 scale-105 border border-purple-400/40' 
+                        ? 'bg-gradient-to-br from-purple-600 via-indigo-600 to-fuchsia-600 !text-white shadow-xl shadow-purple-900/60 scale-105 border border-purple-300/50' 
                         : isEventDay 
-                          ? 'bg-purple-900/30 border border-purple-500/40 text-purple-200' 
-                          : d.monthType === 'current' ? 'bg-[#151022]' : 'bg-[#0a0712]'}
-                      hover:bg-purple-600/10 border border-purple-500/10`}
+                          ? 'bg-purple-900/40 border border-purple-500/50 text-purple-100 shadow-md shadow-purple-950/50' 
+                          : d.monthType === 'current' ? 'bg-[#130b20]/90' : 'bg-[#0a0612]/80'}
+                      hover:bg-purple-600/20 border border-purple-500/15`}
                   >
                     {d.date.getDate()}
                     {hasEventToday && (
-                      <div className={`absolute bottom-2.5 w-2 h-2 rounded-full ${selectedDay?.toDateString() === d.date.toDateString() ? 'bg-white animate-pulse' : 'bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.8)]'}`}></div>
+                      <div className={`absolute bottom-3 w-2.5 h-2.5 rounded-full ${selectedDay?.toDateString() === d.date.toDateString() ? 'bg-white animate-ping' : 'bg-fuchsia-400 shadow-[0_0_12px_rgba(232,121,249,0.9)]'}`}></div>
                     )}
                   </button>
                 );
@@ -672,62 +680,65 @@ export default function App() {
         
         {view === 'Submit Party' && canManage && (
           <div className="space-y-8">
-            <form onSubmit={handleAdd} className="bg-[#151022] border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-xl grid grid-cols-1 md:grid-cols-2 gap-5">
+            <form onSubmit={handleAdd} className="bg-[#130b20]/90 border border-purple-500/25 p-6 md:p-10 rounded-3xl shadow-2xl grid grid-cols-1 md:grid-cols-2 gap-6 backdrop-blur-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
               <div className="col-span-full">
-                <h3 className="font-black text-lg text-white mb-1">Schedule New VU Storyteller Party</h3>
-                <p className="text-xs text-slate-400">Signed in as: <span className="text-purple-400 font-bold">{currentUser?.username || 'Host'}</span> ({currentUser?.role})</p>
+                <h3 className="font-black text-xl text-white mb-1 flex items-center gap-2">
+                  <Sparkles className="text-purple-400" size={22} /> Schedule New VU Storyteller Party
+                </h3>
+                <p className="text-xs text-purple-300/70 font-medium">Signed in as: <span className="text-purple-300 font-bold bg-purple-950/80 px-2.5 py-0.5 rounded-lg border border-purple-500/30">{currentUser?.username || 'Host'}</span> ({currentUser?.role})</p>
               </div>
-              <input required placeholder="Event Theme / Title" className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors text-white text-sm" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
-              <input required placeholder="Host Name (IMVU Username)" className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors text-white text-sm" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
-              <input placeholder="Co-Host Name (Optional)" className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors text-white text-sm" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
-              <select required className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-slate-300 focus:outline-none focus:border-purple-500 transition-colors text-sm" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
+              <input required placeholder="Event Theme / Title" className="bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 placeholder:text-purple-400/40 focus:outline-none focus:border-purple-400 transition-all text-white text-sm shadow-inner" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
+              <input required placeholder="Host Name (IMVU Username)" className="bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 placeholder:text-purple-400/40 focus:outline-none focus:border-purple-400 transition-all text-white text-sm shadow-inner" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
+              <input placeholder="Co-Host Name (Optional)" className="bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 placeholder:text-purple-400/40 focus:outline-none focus:border-purple-400 transition-all text-white text-sm shadow-inner" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
+              <select required className="bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 text-purple-200 focus:outline-none focus:border-purple-400 transition-all text-sm shadow-inner" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
                 <option value="VU Storytellers">VU Storytellers</option>
                 <option value="Others">Others</option>                
               </select>
-              <select required className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-slate-300 focus:outline-none focus:border-purple-500 transition-colors text-sm" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
+              <select required className="bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 text-purple-200 focus:outline-none focus:border-purple-400 transition-all text-sm shadow-inner" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
                 {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              <select required className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-slate-300 focus:outline-none focus:border-purple-500 transition-colors text-sm" value={formData.duration} onChange={e=>setFormData({...formData, duration: Number(e.target.value)})}>
+              <select required className="bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 text-purple-200 focus:outline-none focus:border-purple-400 transition-all text-sm shadow-inner" value={formData.duration} onChange={e=>setFormData({...formData, duration: Number(e.target.value)})}>
                 {DURATION_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
               </select>
-              <input required type="date" className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-slate-300 focus:outline-none focus:border-purple-500 transition-colors text-sm col-span-full md:col-span-1" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
+              <input required type="date" className="bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 text-purple-200 focus:outline-none focus:border-purple-400 transition-all text-sm col-span-full md:col-span-1 shadow-inner" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
               
-              <button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl font-black p-4 col-span-full hover:from-purple-500 hover:to-indigo-500 transition-all text-white mt-2 shadow-lg shadow-purple-900/40 disabled:opacity-50">
+              <button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 rounded-2xl font-black p-4.5 col-span-full hover:from-purple-500 hover:to-indigo-500 transition-all text-white mt-3 shadow-xl shadow-purple-950/60 border border-purple-400/40 disabled:opacity-50 transform hover:scale-[1.01]">
                 {isSubmitting ? 'SUBMITTING...' : 'SUBMIT PARTY FOR APPROVAL'}
               </button>
             </form>
         
             <div className="space-y-4">
-              <h3 className="font-black text-lg text-white flex items-center gap-2"><Archive size={18} className="text-purple-400"/> Storyteller Events & Approvals</h3>
+              <h3 className="font-black text-xl text-white flex items-center gap-2"><Archive size={20} className="text-purple-400"/> Storyteller Events & Approvals</h3>
               {upcomingParties.length > 0 ? (
                 upcomingParties.map(p => (
-                  <div key={p.id} className="bg-[#151022] border border-purple-500/15 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-md">
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center gap-2.5">
-                        <span className="font-bold text-white text-base">{p.theme || 'Untitled Event'}</span>
-                        <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded-md font-black ${p.status === 'approved' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
+                  <div key={p.id} className="bg-[#130b20]/90 border border-purple-500/20 p-6 rounded-3xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl backdrop-blur-xl">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-3">
+                        <span className="font-black text-white text-lg">{p.theme || 'Untitled Event'}</span>
+                        <span className={`text-[10px] uppercase font-mono px-2.5 py-1 rounded-full font-black tracking-wider ${p.status === 'approved' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'}`}>
                           {p.status || 'pending'}
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 font-bold">
-                        <span className="text-purple-300">{p.date}</span>
+                      <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-purple-200/80 font-bold">
+                        <span className="text-purple-300 bg-purple-950/60 px-2 py-0.5 rounded-md border border-purple-500/20">{p.date}</span>
                         <span>{formatTime(p.startTime)} ({p.duration ? `${p.duration / 60}h` : '2h'})</span>
                         <span>Host: <strong className="text-white">{p.hostName || 'N/A'}</strong></span>
                       </div>
                     </div>
-                    <div className="flex gap-2 w-full md:w-auto justify-end items-center">
+                    <div className="flex gap-2.5 w-full md:w-auto justify-end items-center">
                       {p.status !== 'approved' && (currentUser?.role === 'owner' || currentUser?.role === 'admin') && (
-                        <button onClick={() => handleApproveEvent(p)} className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5">
-                          <CheckCircle size={14}/> Approve
+                        <button onClick={() => handleApproveEvent(p)} className="px-4 py-2.5 bg-emerald-600/30 hover:bg-emerald-600/40 border border-emerald-500/40 text-emerald-200 text-xs font-black rounded-2xl transition-all flex items-center gap-1.5 shadow-md">
+                          <CheckCircle size={15}/> Approve
                         </button>
                       )}
-                      <button onClick={() => setEditModal(p)} className="p-2.5 bg-[#0e0a19] border border-purple-500/20 hover:bg-purple-600/20 rounded-xl text-purple-400 transition-colors"><Edit size={16}/></button>
-                      <button onClick={() => setDeleteQueue(p)} className="p-2.5 bg-[#0e0a19] border border-purple-500/20 hover:bg-rose-500/20 rounded-xl text-rose-400 transition-colors"><Trash2 size={16}/></button>
+                      <button onClick={() => setEditModal(p)} className="p-3 bg-[#0b0615] border border-purple-500/30 hover:bg-purple-600/30 rounded-2xl text-purple-300 transition-all shadow"><Edit size={17}/></button>
+                      <button onClick={() => setDeleteQueue(p)} className="p-3 bg-[#0b0615] border border-purple-500/30 hover:bg-rose-500/30 rounded-2xl text-rose-300 transition-all shadow"><Trash2 size={17}/></button>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-slate-500 text-sm italic">No active events to manage.</p>
+                <p className="text-purple-400/60 text-sm italic py-8 text-center bg-[#130b20]/50 rounded-2xl border border-purple-500/10">No active events to manage.</p>
               )}
             </div>
           </div>
@@ -735,71 +746,75 @@ export default function App() {
 
         {view === 'Staff' && currentUser?.role === 'owner' && (
           <div className="space-y-8">
-            <div className="bg-[#151022] border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-xl">
-              <h3 className="font-black text-lg text-white mb-4">Create Host or Staff Account</h3>
+            <div className="bg-[#130b20]/90 border border-purple-500/25 p-6 md:p-8 rounded-3xl shadow-2xl backdrop-blur-xl">
+              <h3 className="font-black text-xl text-white mb-4 flex items-center gap-2"><Users size={20} className="text-purple-400" /> Create Host or Staff Account</h3>
               <form onSubmit={handleAddAdmin} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input placeholder="IMVU Username" value={newAdminU} onChange={e=>setNewAdminU(e.target.value)} className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors text-sm" />
-                <input placeholder="Assigned Password" type="password" value={newAdminP} onChange={e=>setNewAdminP(e.target.value)} className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors text-sm" />
-                {adminMsg && <div className="col-span-full text-sm font-bold text-emerald-400 mt-1">{adminMsg}</div>}
-                <button type="submit" className="col-span-full bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl font-black p-4 text-white hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg shadow-purple-900/40">CREATE HOST ACCOUNT</button>
+                <input placeholder="IMVU Username" value={newAdminU} onChange={e=>setNewAdminU(e.target.value)} className="bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 text-white placeholder:text-purple-400/40 focus:outline-none focus:border-purple-400 transition-all text-sm shadow-inner" />
+                <input placeholder="Assigned Password" type="password" value={newAdminP} onChange={e=>setNewAdminP(e.target.value)} className="bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 text-white placeholder:text-purple-400/40 focus:outline-none focus:border-purple-400 transition-all text-sm shadow-inner" />
+                {adminMsg && <div className="col-span-full text-sm font-bold text-emerald-400 mt-1 bg-emerald-950/40 p-3 rounded-xl border border-emerald-500/30">{adminMsg}</div>}
+                <button type="submit" className="col-span-full bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl font-black p-4 text-white hover:from-purple-500 hover:to-indigo-500 transition-all shadow-xl shadow-purple-950/60 border border-purple-400/40">CREATE HOST ACCOUNT</button>
               </form>
             </div>
 
             <div className="space-y-4">
-              <h3 className="font-black text-lg text-white mb-2">Registered Storytellers & Staff Accounts</h3>
+              <h3 className="font-black text-xl text-white mb-2">Registered Storytellers & Staff Accounts</h3>
               {admins.map(a => (
-                <div key={a.id} className="bg-[#151022] border border-purple-500/15 p-5 rounded-2xl flex justify-between items-center shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <Shield size={18} className="text-purple-400"/>
+                <div key={a.id} className="bg-[#130b20]/90 border border-purple-500/20 p-5 rounded-3xl flex justify-between items-center shadow-lg backdrop-blur-xl">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+                      <Shield size={18}/>
+                    </div>
                     <div>
-                      <span className="font-bold text-white">{a.username}</span>
-                      <button onClick={()=>handleToggleRole(a.id, a.role || 'host', a.username)} className="ml-3 text-[10px] uppercase bg-purple-500/20 hover:bg-purple-500/30 px-2 py-0.5 rounded text-purple-300 font-mono transition-colors">
-                        {a.role || 'host'} (Click to toggle Admin)
-                      </button>
+                      <span className="font-extrabold text-white text-base">{a.username}</span>
+                      <div>
+                        <button onClick={()=>handleToggleRole(a.id, a.role || 'host', a.username)} className="mt-1 text-[10px] uppercase bg-purple-500/20 hover:bg-purple-500/40 px-2.5 py-1 rounded-lg text-purple-200 font-mono transition-all border border-purple-500/30 font-bold">
+                          Role: {a.role || 'host'} (Click to toggle Admin)
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <button onClick={()=>handleDeleteAdmin(a.id, a.username)} className="p-2.5 bg-[#0e0a19] border border-purple-500/20 hover:bg-rose-500/20 rounded-xl text-rose-400 transition-colors"><Trash2 size={16}/></button>
+                  <button onClick={()=>handleDeleteAdmin(a.id, a.username)} className="p-3 bg-[#0b0615] border border-purple-500/30 hover:bg-rose-500/30 rounded-2xl text-rose-300 transition-all shadow"><Trash2 size={17}/></button>
                 </div>
               ))}
-              {admins.length === 0 && <p className="text-slate-500 text-sm italic">No registered accounts found.</p>}
+              {admins.length === 0 && <p className="text-purple-400/60 text-sm italic py-8 text-center bg-[#130b20]/50 rounded-2xl border border-purple-500/10">No registered accounts found.</p>}
             </div>
           </div>
         )}
 
         {view === 'Audit Logs' && currentUser?.role === 'owner' && (
           <div className="space-y-6">
-            <div className="bg-[#151022] border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-xl">
+            <div className="bg-[#130b20]/90 border border-purple-500/25 p-6 md:p-8 rounded-3xl shadow-2xl backdrop-blur-xl">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="font-black text-lg text-white flex items-center gap-2.5">
-                  <Activity className="text-purple-400" size={20} /> Master Access & Activity Log (Mike's View)
+                <h3 className="font-black text-xl text-white flex items-center gap-2.5">
+                  <Activity className="text-purple-400" size={22} /> Master Access & Activity Log (Mike's View)
                 </h3>
-                <span className="text-xs text-purple-300 font-mono bg-purple-950/60 px-3 py-1 rounded-lg border border-purple-500/30">
+                <span className="text-xs text-purple-200 font-mono bg-purple-950/80 px-3.5 py-1.5 rounded-xl border border-purple-500/40 shadow-inner font-extrabold">
                   {auditLogs.length} Events Recorded
                 </span>
               </div>
 
-              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+              <div className="space-y-3.5 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                 {auditLogs
                   .slice()
                   .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
                   .map(log => (
-                    <div key={log.id} className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/15 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 text-xs shadow-inner">
-                      <div className="flex items-start md:items-center gap-3">
-                        <span className="bg-purple-600/20 text-purple-300 px-2.5 py-1 rounded-md text-[10px] font-mono uppercase tracking-wider font-black shrink-0 border border-purple-500/30">
+                    <div key={log.id} className="bg-[#0b0615] p-4.5 rounded-2xl border border-purple-500/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 text-xs shadow-inner">
+                      <div className="flex items-start md:items-center gap-3.5">
+                        <span className="bg-purple-600/30 text-purple-200 px-3 py-1.5 rounded-xl text-[10px] font-mono uppercase tracking-wider font-black shrink-0 border border-purple-500/40 shadow-sm">
                           {log.action}
                         </span>
                         <div>
-                          <p className="text-white font-bold">{log.details}</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">User: <strong className="text-purple-300">{log.user}</strong> ({log.role})</p>
+                          <p className="text-white font-extrabold text-sm">{log.details}</p>
+                          <p className="text-xs text-purple-300/70 mt-0.5">User: <strong className="text-purple-200">{log.user}</strong> ({log.role})</p>
                         </div>
                       </div>
-                      <div className="text-[11px] text-slate-500 font-mono shrink-0">
+                      <div className="text-xs text-purple-400/80 font-mono shrink-0 bg-purple-950/50 px-3 py-1.5 rounded-xl border border-purple-500/20">
                         {log.timestamp ? new Date(log.timestamp).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''} PT
                       </div>
                     </div>
                   ))}
                 {auditLogs.length === 0 && (
-                  <p className="text-slate-500 text-sm text-center py-10 italic">No activity logs recorded yet.</p>
+                  <p className="text-purple-400/60 text-sm text-center py-16 italic font-medium bg-[#0b0615] rounded-2xl border border-purple-500/10">No activity logs recorded yet.</p>
                 )}
               </div>
             </div>
@@ -810,14 +825,14 @@ export default function App() {
       {/* Monthly Day Modal */}
       {selectedDay && (
         <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 backdrop-blur-md">
-           <div className="bg-[#151022] p-6 rounded-3xl w-full max-w-lg border border-purple-500/30 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="flex justify-between items-center mb-2 pb-4 border-b border-purple-500/15">
-                  <h2 className="font-black text-lg text-white">Events for {selectedDay.toDateString()}</h2>
-                  <button onClick={() => setSelectedDay(null)} className="text-slate-400 hover:text-white transition-colors bg-purple-600/10 p-2 rounded-full border border-purple-500/20"><X size={18}/></button>
+           <div className="bg-[#140d24] p-6 md:p-8 rounded-3xl w-full max-w-lg border border-purple-500/40 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl backdrop-blur-2xl">
+              <div className="flex justify-between items-center mb-2 pb-4 border-b border-purple-500/20">
+                  <h2 className="font-black text-xl text-white">Events for {selectedDay.toDateString()}</h2>
+                  <button onClick={() => setSelectedDay(null)} className="text-purple-300 hover:text-white transition-colors bg-purple-600/20 p-2.5 rounded-2xl border border-purple-500/30"><X size={18}/></button>
               </div>
               {parties.filter(p => p.status === 'approved' && new Date(p.date).toDateString() === selectedDay.toDateString()).map(p => <EventCard key={p.id} p={p}/>)}
               {parties.filter(p => p.status === 'approved' && new Date(p.date).toDateString() === selectedDay.toDateString()).length === 0 && (
-                  <p className="text-slate-500 text-sm text-center py-10 italic">No approved storyteller gatherings scheduled for this date.</p>
+                  <p className="text-purple-400/60 text-sm text-center py-12 italic font-medium bg-[#0b0615] rounded-2xl border border-purple-500/10">No approved storyteller gatherings scheduled for this date.</p>
               )}
            </div>
         </div>
@@ -826,37 +841,37 @@ export default function App() {
       {/* Edit Event Modal */}
       {editModal && (
         <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 backdrop-blur-md">
-           <form onSubmit={handleUpdate} className="bg-[#151022] p-6 md:p-8 rounded-3xl w-full max-w-lg border border-purple-500/30 space-y-4 shadow-2xl">
-              <div className="flex justify-between items-center mb-2 pb-4 border-b border-purple-500/15">
-                  <h2 className="font-black text-lg text-white flex items-center gap-2"><Edit size={18} className="text-purple-400"/> Edit Storyteller Gathering</h2>
-                  <button type="button" onClick={() => setEditModal(null)} className="text-slate-400 hover:text-white bg-purple-600/10 p-2 rounded-full border border-purple-500/20"><X size={16}/></button>
+           <form onSubmit={handleUpdate} className="bg-[#140d24] p-6 md:p-8 rounded-3xl w-full max-w-lg border border-purple-500/40 space-y-4 shadow-2xl backdrop-blur-2xl">
+              <div className="flex justify-between items-center mb-2 pb-4 border-b border-purple-500/20">
+                  <h2 className="font-black text-xl text-white flex items-center gap-2"><Edit size={20} className="text-purple-400"/> Edit Storyteller Gathering</h2>
+                  <button type="button" onClick={() => setEditModal(null)} className="text-purple-300 hover:text-white bg-purple-600/20 p-2.5 rounded-2xl border border-purple-500/30"><X size={18}/></button>
               </div>
               
-              <input required placeholder="Event Theme" className="w-full bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 placeholder:text-slate-600 focus:outline-none focus:border-purple-500 text-white text-sm transition-colors" value={editModal.theme} onChange={e=>setEditModal({...editModal, theme: e.target.value})}/>
-              <input required placeholder="Host Name (IMVU Username)" className="w-full bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 placeholder:text-slate-600 focus:outline-none focus:border-purple-500 text-white text-sm transition-colors" value={editModal.hostName} onChange={e=>setEditModal({...editModal, hostName: e.target.value})}/>
-              <input placeholder="Co-Host Name (Optional)" className="w-full bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 placeholder:text-slate-600 focus:outline-none focus:border-purple-500 text-white text-sm transition-colors" value={editModal.coHost} onChange={e=>setEditModal({...editModal, coHost: e.target.value})}/>
+              <input required placeholder="Event Theme" className="w-full bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 placeholder:text-purple-400/40 focus:outline-none focus:border-purple-400 text-white text-sm transition-all shadow-inner" value={editModal.theme} onChange={e=>setEditModal({...editModal, theme: e.target.value})}/>
+              <input required placeholder="Host Name (IMVU Username)" className="w-full bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 placeholder:text-purple-400/40 focus:outline-none focus:border-purple-400 text-white text-sm transition-all shadow-inner" value={editModal.hostName} onChange={e=>setEditModal({...editModal, hostName: e.target.value})}/>
+              <input placeholder="Co-Host Name (Optional)" className="w-full bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 placeholder:text-purple-400/40 focus:outline-none focus:border-purple-400 text-white text-sm transition-all shadow-inner" value={editModal.coHost} onChange={e=>setEditModal({...editModal, coHost: e.target.value})}/>
               
-              <select required className="w-full bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-slate-300 focus:outline-none focus:border-purple-500 text-sm transition-colors" value={editModal.performers} onChange={e=>setEditModal({...editModal, performers: e.target.value})}>
+              <select required className="w-full bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 text-purple-200 focus:outline-none focus:border-purple-400 text-sm transition-all shadow-inner" value={editModal.performers} onChange={e=>setEditModal({...editModal, performers: e.target.value})}>
                 <option value="VU Storytellers">VU Storytellers</option>
                 <option value="Guest Troupe">Guest Troupe</option>
                 <option value="Special Feature">Special Feature</option>
               </select>
               
-              <select required className="w-full bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-slate-300 focus:outline-none focus:border-purple-500 text-sm transition-colors" value={editModal.startTime} onChange={e=>setEditModal({...editModal, startTime: e.target.value})}>
+              <select required className="w-full bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 text-purple-200 focus:outline-none focus:border-purple-400 text-sm transition-all shadow-inner" value={editModal.startTime} onChange={e=>setEditModal({...editModal, startTime: e.target.value})}>
                 {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
 
-              <select required className="w-full bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-slate-300 focus:outline-none focus:border-purple-500 text-sm transition-colors" value={editModal.duration || 120} onChange={e=>setEditModal({...editModal, duration: Number(e.target.value)})}>
+              <select required className="w-full bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 text-purple-200 focus:outline-none focus:border-purple-400 text-sm transition-all shadow-inner" value={editModal.duration || 120} onChange={e=>setEditModal({...editModal, duration: Number(e.target.value)})}>
                 {DURATION_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
               </select>
               
-              <input required type="date" className="w-full bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-slate-300 focus:outline-none focus:border-purple-500 text-sm transition-colors" value={editModal.date} onChange={e=>setEditModal({...editModal, date: e.target.value})}/>
+              <input required type="date" className="w-full bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 text-purple-200 focus:outline-none focus:border-purple-400 text-sm transition-all shadow-inner" value={editModal.date} onChange={e=>setEditModal({...editModal, date: e.target.value})}/>
               
-              <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={() => setEditModal(null)} className="bg-[#0e0a19] border border-purple-500/20 flex-1 p-4 rounded-xl flex items-center justify-center gap-2 font-black text-slate-300 hover:bg-purple-600/10 transition-colors text-sm">
+              <div className="flex gap-4 pt-4">
+                  <button type="button" onClick={() => setEditModal(null)} className="bg-[#0b0615] border border-purple-500/30 flex-1 p-4 rounded-2xl flex items-center justify-center gap-2 font-black text-purple-200 hover:bg-purple-600/20 transition-all text-sm shadow">
                       CANCEL
                   </button>
-                  <button type="submit" className="bg-gradient-to-r from-purple-600 to-indigo-600 flex-1 p-4 rounded-xl flex items-center justify-center gap-2 font-black text-white hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg shadow-purple-900/40 text-sm">
+                  <button type="submit" className="bg-gradient-to-r from-purple-600 to-indigo-600 flex-1 p-4 rounded-2xl flex items-center justify-center gap-2 font-black text-white hover:from-purple-500 hover:to-indigo-500 transition-all shadow-xl shadow-purple-950/60 text-sm border border-purple-400/40">
                       <Save size={18}/> SAVE
                   </button>
               </div>
@@ -867,26 +882,26 @@ export default function App() {
       {/* Auth Gate Modal */}
       {showAuthGate && (
         <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 backdrop-blur-md">
-           <div className="bg-[#151022] p-8 rounded-3xl w-full max-w-sm border border-purple-500/30 shadow-2xl space-y-6">
+           <div className="bg-[#140d24] p-8 rounded-3xl w-full max-w-sm border border-purple-500/40 shadow-2xl space-y-6 backdrop-blur-2xl">
               <div className="flex justify-between items-center">
-                  <h2 className="font-black text-xl text-white flex items-center gap-2.5"><Shield size={20} className="text-purple-400"/> Sign-In</h2>
-                  <button onClick={() => { setShowAuthGate(false); setLoginError(''); }} className="text-slate-400 hover:text-white bg-purple-600/10 p-2 rounded-full border border-purple-500/20"><X size={16}/></button>
+                  <h2 className="font-black text-xl text-white flex items-center gap-2.5"><Shield size={22} className="text-purple-400"/> Sign-In</h2>
+                  <button onClick={() => { setShowAuthGate(false); setLoginError(''); }} className="text-purple-300 hover:text-white bg-purple-600/20 p-2.5 rounded-2xl border border-purple-500/30"><X size={16}/></button>
               </div>
 
               {/* Notice for new users */}
-              <div className="bg-purple-950/50 border border-purple-500/25 rounded-2xl p-4 text-center shadow-inner">
+              <div className="bg-purple-950/60 border border-purple-500/30 rounded-2xl p-4 text-center shadow-inner">
                 <p className="text-xs font-black text-purple-200 tracking-wide uppercase">For New Users</p>
                 <p className="text-[11px] text-purple-300/80 font-medium mt-1">Please contact Admin to get access.</p>
               </div>
 
-              <form onSubmit={handleLogin} className="space-y-3.5">
-                <input placeholder="IMVU Username" value={gateU} onChange={e=>setGateU(e.target.value)} className="w-full bg-[#0e0a19] border border-purple-500/20 rounded-xl p-3.5 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors"/>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <input placeholder="IMVU Username" value={gateU} onChange={e=>setGateU(e.target.value)} className="w-full bg-[#0b0615] border border-purple-500/30 rounded-2xl p-4 text-white text-sm focus:outline-none focus:border-purple-400 transition-all shadow-inner placeholder:text-purple-400/40"/>
                 <div className="relative">
-                    <input type={showPass ? "text" : "password"} placeholder="Password" value={gateP} onChange={e=>setGateP(e.target.value)} className="w-full bg-[#0e0a19] border border-purple-500/20 rounded-xl p-3.5 pr-12 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors"/>
-                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-3.5 text-slate-400 hover:text-white transition-colors">{showPass ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
+                    <input type={showPass ? "text" : "password"} placeholder="Password" value={gateP} onChange={e=>setGateP(e.target.value)} className="w-full bg-[#0b0615] border border-purple-500/30 rounded-2xl p-4 pr-12 text-white text-sm focus:outline-none focus:border-purple-400 transition-all shadow-inner placeholder:text-purple-400/40"/>
+                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-4 text-purple-300 hover:text-white transition-colors">{showPass ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
                 </div>
-                {loginError && <p className="text-rose-400 text-xs font-bold pt-1">{loginError}</p>}
-                <button type="submit" className="w-full bg-[#201836] hover:bg-[#2c224a] transition-all py-3.5 rounded-xl font-bold text-white text-sm border border-purple-500/30 shadow-md">Sign In</button>
+                {loginError && <p className="text-rose-400 text-xs font-bold pt-1 bg-rose-950/50 p-3 rounded-xl border border-rose-500/30">{loginError}</p>}
+                <button type="submit" className="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:from-purple-500 hover:to-indigo-500 transition-all py-4 rounded-2xl font-black text-white text-sm border border-purple-400/40 shadow-xl shadow-purple-950/60">Sign In</button>
               </form>
            </div>
         </div>
@@ -895,27 +910,27 @@ export default function App() {
       {/* Profile Modal */}
       {showProfileModal && (
         <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 backdrop-blur-md">
-           <form onSubmit={handleChangePassword} className="bg-[#151022] p-8 rounded-3xl w-full max-w-sm border border-purple-500/30 space-y-4 shadow-2xl">
+           <form onSubmit={handleChangePassword} className="bg-[#140d24] p-8 rounded-3xl w-full max-w-sm border border-purple-500/40 space-y-4 shadow-2xl backdrop-blur-2xl">
               <div className="flex justify-between items-center mb-2">
-                  <h2 className="font-black text-lg text-white">Storyteller Profile</h2>
-                  <button type="button" onClick={()=>{ setShowProfileModal(false); setPwdMsg(null); setNewPass(''); }} className="text-slate-400 hover:text-white bg-purple-600/10 p-2 rounded-full border border-purple-500/20"><X size={16}/></button>
+                  <h2 className="font-black text-xl text-white">Storyteller Profile</h2>
+                  <button type="button" onClick={()=>{ setShowProfileModal(false); setPwdMsg(null); setNewPass(''); }} className="text-purple-300 hover:text-white bg-purple-600/20 p-2.5 rounded-2xl border border-purple-500/30"><X size={16}/></button>
               </div>
-              <div className="flex items-center gap-3 bg-[#0e0a19] p-3.5 rounded-2xl border border-purple-500/15">
-                <div className="w-10 h-10 rounded-full bg-purple-600/20 flex items-center justify-center text-purple-300 font-bold">
+              <div className="flex items-center gap-3.5 bg-[#0b0615] p-4 rounded-2xl border border-purple-500/20 shadow-inner">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white font-extrabold shadow-md">
                   {currentUser?.username?.[0]?.toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-bold text-white text-sm">{currentUser?.username}</p>
-                  <p className="text-[11px] text-purple-400 font-mono capitalize">{currentUser?.role || 'host'} Account</p>
+                  <p className="font-extrabold text-white text-base">{currentUser?.username}</p>
+                  <p className="text-xs text-purple-300 font-mono capitalize">{currentUser?.role || 'host'} Account</p>
                 </div>
               </div>
 
               {currentUser?.role !== 'owner' && (
                 <>
-                  <p className="text-xs text-slate-400 font-medium pt-2">Change your password below.</p>
-                  <input type="password" placeholder="Enter new password" value={newPass} onChange={e=>setNewPass(e.target.value)} className="w-full bg-[#0e0a19] p-3.5 rounded-xl border border-purple-500/20 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors" />
-                  {pwdMsg && <p className={`text-xs font-bold ${pwdMsg.type === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>{pwdMsg.text}</p>}
-                  <button type="submit" className="bg-gradient-to-r from-purple-600 to-indigo-600 w-full p-3.5 rounded-xl font-black text-white hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md text-sm mt-1">UPDATE PASSWORD</button>
+                  <p className="text-xs text-purple-300/80 font-medium pt-2">Change your password below.</p>
+                  <input type="password" placeholder="Enter new password" value={newPass} onChange={e=>setNewPass(e.target.value)} className="w-full bg-[#0b0615] p-4 rounded-2xl border border-purple-500/30 text-white text-sm placeholder:text-purple-400/40 focus:outline-none focus:border-purple-400 transition-all shadow-inner" />
+                  {pwdMsg && <p className={`text-xs font-bold p-3 rounded-xl border ${pwdMsg.type === 'error' ? 'text-rose-400 bg-rose-950/40 border-rose-500/30' : 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30'}`}>{pwdMsg.text}</p>}
+                  <button type="submit" className="bg-gradient-to-r from-purple-600 to-indigo-600 w-full p-4 rounded-2xl font-black text-white hover:from-purple-500 hover:to-indigo-500 transition-all shadow-xl shadow-purple-950/60 text-sm mt-2 border border-purple-400/40">UPDATE PASSWORD</button>
                 </>
               )}
            </form>
@@ -924,16 +939,16 @@ export default function App() {
 
       {/* Custom Centered Alert Modal with Warning Icon */}
       {customAlert && (
-        <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[120] backdrop-blur-md">
-            <div className="bg-[#151022] p-6 rounded-3xl w-full max-w-sm border border-amber-500/40 space-y-4 shadow-2xl text-center">
-                <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
-                  <AlertTriangle size={24} />
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[120] backdrop-blur-md animate-fadeIn">
+            <div className="bg-[#140d24] p-7 rounded-3xl w-full max-w-sm border border-amber-500/40 space-y-5 shadow-2xl text-center backdrop-blur-2xl">
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mx-auto text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.4)] animate-bounce">
+                  <AlertTriangle size={28} />
                 </div>
                 <div>
-                  <h2 className="font-black text-white text-lg">{customAlert.title || 'Notice'}</h2>
-                  <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">{customAlert.message}</p>
+                  <h2 className="font-black text-white text-xl">{customAlert.title || 'Notice'}</h2>
+                  <p className="text-xs text-purple-200/90 mt-2 leading-relaxed font-medium">{customAlert.message}</p>
                 </div>
-                <button onClick={() => setCustomAlert(null)} className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl font-black text-white text-xs uppercase tracking-wider hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg shadow-purple-900/40">
+                <button onClick={() => setCustomAlert(null)} className="w-full py-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 rounded-2xl font-black text-white text-xs uppercase tracking-wider hover:from-purple-500 hover:to-indigo-500 transition-all shadow-xl shadow-purple-950/60 border border-purple-400/40">
                     OK
                 </button>
             </div>
@@ -943,12 +958,17 @@ export default function App() {
       {/* Delete Confirmation Modal */}
       {deleteQueue && (
         <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[100] backdrop-blur-md">
-            <div className="bg-[#151022] p-6 rounded-3xl w-full max-w-sm border border-rose-500/30 space-y-4 shadow-2xl">
-                <h2 className="font-black text-white text-lg">Confirm Deletion</h2>
-                <p className="text-sm text-slate-400">Are you sure you want to delete <span className="text-white font-bold">{deleteQueue.theme}</span>?</p>
-                <div className="flex gap-3 mt-4">
-                    <button onClick={() => setDeleteQueue(null)} className="flex-1 p-3 bg-[#0e0a19] border border-purple-500/20 rounded-xl font-bold text-white hover:bg-purple-600/10 transition-colors text-sm">Cancel</button>
-                    <button onClick={handleExecuteDelete} className="flex-1 p-3 bg-rose-600 rounded-xl font-bold text-white hover:bg-rose-500 transition-all shadow-lg shadow-rose-900/40 text-sm">Yes, Delete</button>
+            <div className="bg-[#140d24] p-7 rounded-3xl w-full max-w-sm border border-rose-500/40 space-y-5 shadow-2xl backdrop-blur-2xl">
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center mx-auto text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.4)]">
+                  <Trash2 size={24} />
+                </div>
+                <div className="text-center">
+                  <h2 className="font-black text-white text-xl">Confirm Deletion</h2>
+                  <p className="text-xs text-purple-200/80 mt-2">Are you sure you want to delete <span className="text-white font-bold">{deleteQueue.theme}</span>?</p>
+                </div>
+                <div className="flex gap-3 pt-1">
+                    <button onClick={() => setDeleteQueue(null)} className="flex-1 p-3.5 bg-[#0b0615] border border-purple-500/30 rounded-2xl font-bold text-purple-200 hover:bg-purple-600/20 transition-all text-sm shadow">Cancel</button>
+                    <button onClick={handleExecuteDelete} className="flex-1 p-3.5 bg-rose-600 rounded-2xl font-bold text-white hover:bg-rose-500 transition-all shadow-xl shadow-rose-950/60 text-sm border border-rose-400/40">Yes, Delete</button>
                 </div>
             </div>
         </div>
@@ -962,46 +982,46 @@ function EventCard({ p }) {
   const live = isEventLive(p.date, p.startTime, duration);
 
   return (
-    <div className={`bg-[#151022] border p-5 rounded-2xl mb-3.5 relative transition-all duration-300 shadow-md
+    <div className={`bg-gradient-to-br from-[#140d24] to-[#10091d] border p-6 rounded-3xl mb-4 relative transition-all duration-300 shadow-xl backdrop-blur-xl group
       ${live 
-        ? 'border-purple-500/60 shadow-[0_0_25px_rgba(168,85,247,0.35)] ring-1 ring-purple-500/40 bg-gradient-to-br from-[#1c1330] to-[#151022]' 
-        : 'border-purple-500/15 hover:border-purple-500/30 hover:shadow-[0_0_20px_rgba(168,85,247,0.1)]'
+        ? 'border-purple-400/80 shadow-[0_0_35px_rgba(168,85,247,0.4)] ring-2 ring-purple-500/50 bg-gradient-to-br from-[#1c1236] to-[#130b20]' 
+        : 'border-purple-500/20 hover:border-purple-400/50 hover:shadow-[0_0_25px_rgba(168,85,247,0.2)]'
       }`}>
       
       {/* Header: Theme and Live Badge */}
-      <div className="flex justify-between items-start mb-3">
-        <div className="font-black text-white text-base md:text-[17px] leading-tight flex items-center gap-2">
-          <span>{p.theme}</span>
+      <div className="flex justify-between items-start mb-3.5">
+        <div className="font-black text-white text-lg md:text-xl leading-snug flex items-center gap-2.5">
+          <span className="bg-gradient-to-r from-white via-purple-100 to-fuchsia-200 bg-clip-text text-transparent">{p.theme}</span>
         </div>
         {live && (
-          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-[10px] font-black px-2.5 py-1 rounded-lg animate-pulse text-white uppercase tracking-wider shrink-0 ml-2 shadow-md">
-            live now
+          <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 text-[10px] font-black px-3 py-1.5 rounded-xl animate-pulse text-white uppercase tracking-wider shrink-0 ml-3 shadow-lg shadow-purple-950/80 flex items-center gap-1.5 border border-purple-300/40">
+            <Radio size={12} className="text-white animate-spin" /> live now
           </div>
         )}
       </div>
 
       {/* Content: Host, Role, Date, Time */}
-      <div className="flex flex-col gap-2.5 text-sm font-bold">
+      <div className="flex flex-col gap-3 text-sm font-bold">
         <div className="flex justify-between items-center text-xs">
-          <span className="tracking-widest flex items-center gap-1.5">
-            <span className="text-purple-400/70 uppercase text-[10px]">Host:</span>
-            <span className="text-white font-semibold">{p.hostName}</span>
+          <span className="tracking-wide flex items-center gap-2">
+            <span className="text-purple-300/70 uppercase text-[10px] font-mono tracking-widest bg-purple-950/60 px-2 py-0.5 rounded-md border border-purple-500/20">Host</span>
+            <span className="text-white font-extrabold text-sm">{p.hostName}</span>
           </span>
           
-          <span className="bg-purple-500/15 text-purple-300 px-2.5 py-0.5 rounded-md text-[10px] border border-purple-500/30 uppercase tracking-wider font-mono">
+          <span className="bg-gradient-to-r from-purple-600/20 to-indigo-600/20 text-purple-200 px-3 py-1 rounded-xl text-[10px] border border-purple-500/30 uppercase tracking-wider font-mono font-black shadow-sm">
             {p.performers || 'VU Storytellers'}
           </span>
         </div>
         
         {/* Date and Time Row */}
-        <div className="flex justify-between items-center mt-1 pt-2.5 border-t border-purple-500/10 text-xs">
+        <div className="flex justify-between items-center mt-1 pt-3 border-t border-purple-500/15 text-xs">
           <div className="flex flex-col">
-            <span className="text-[9px] text-purple-400/60 uppercase tracking-widest font-mono">Date</span>
-            <span className="text-white font-bold">{formatDate(p.date)}</span>
+            <span className="text-[10px] text-purple-400/60 uppercase tracking-widest font-mono">Date</span>
+            <span className="text-white font-extrabold text-sm mt-0.5">{formatDate(p.date)}</span>
           </div>
           <div className="flex flex-col items-end">
-            <span className="text-[9px] text-purple-400/60 uppercase tracking-widest font-mono">Time & Duration</span>
-            <span className="text-white font-bold">{formatTime(p.startTime)} <span className="text-purple-400 font-normal">({duration / 60}h)</span></span>
+            <span className="text-[10px] text-purple-400/60 uppercase tracking-widest font-mono">Time & Duration</span>
+            <span className="text-white font-extrabold text-sm mt-0.5">{formatTime(p.startTime)} <span className="text-purple-300 font-normal">({duration / 60}h)</span></span>
           </div>
         </div>
       </div>
