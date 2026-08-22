@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CalendarDays, LogOut, ChevronLeft, ChevronRight, 
-  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Users, X, Save, Settings, Eye, EyeOff, Archive, AlertTriangle, CheckCircle
+  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Users, X, Save, Settings, Eye, EyeOff, Archive, AlertTriangle, CheckCircle, Home
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
@@ -121,7 +121,6 @@ export default function App() {
   const [customAlert, setCustomAlert] = useState(null); 
   const [showNotice, setShowNotice] = useState(true);
 
-  // Forms & Inputs
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [formData, setFormData] = useState({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', duration: 2, performers: 'VU Storytellers' });
   const [gateU, setGateU] = useState('');
@@ -175,7 +174,6 @@ export default function App() {
     };
   }, [parties, currentUser]);
   
-  // Admin Management
   const [newAdminU, setNewAdminU] = useState('');
   const [newAdminP, setNewAdminP] = useState('');
   const [adminMsg, setAdminMsg] = useState('');
@@ -435,7 +433,7 @@ export default function App() {
             </div>
           </div>
           {currentUser && (
-            <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-purple-200/80 bg-purple-950/40 px-3 py-1.5 rounded-xl border border-purple-500/30 shadow-inner">
+            <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-purple-200/80 bg-purple-950/40 px-3 py-1.5 rounded-2xl border border-purple-500/30 shadow-inner">
               <Clock size={12} className="text-purple-400 shrink-0" />
               <span className="font-bold">{ptTime}</span>
               <span className="opacity-60">PT</span>
@@ -451,7 +449,7 @@ export default function App() {
                 <span>{currentUser.username}</span>
                 <span className="bg-purple-600/60 text-white text-[9px] uppercase px-1.5 py-0.5 rounded-md font-black">{currentUser.role}</span>
               </button>
-              <button onClick={() => { setCurrentUser(null); setView('Guide'); localStorage.removeItem(SESSION_KEY); }} className="text-xs font-black uppercase text-rose-400 hover:text-rose-300 p-2.5 bg-rose-950/30 hover:bg-rose-950/50 rounded-2xl border border-rose-500/30 transition-all">
+              <button onClick={() => { setCurrentUser(null); setView('Home'); localStorage.removeItem(SESSION_KEY); }} className="text-xs font-black uppercase text-rose-400 hover:text-rose-300 p-2.5 bg-rose-950/30 hover:bg-rose-950/50 rounded-2xl border border-rose-500/30 transition-all">
                 <LogOut size={16} />
               </button>
             </>
@@ -465,13 +463,13 @@ export default function App() {
 
       {currentUser && (
         <div className="flex p-4 gap-3 max-w-4xl mx-auto overflow-x-auto relative z-30">
-          {['Guide', 'Monthly', currentUser?.role === 'host' ? 'Submit Party' : 'Manage', currentUser?.role === 'owner' ? 'Staff' : ''].filter(Boolean).map((t) => (
+          {['Home', 'Monthly', currentUser?.role === 'host' ? 'Submit Party' : 'Manage', currentUser?.role === 'owner' ? 'Staff' : ''].filter(Boolean).map((t) => (
             <button
               key={t}
               onClick={() => setView(t)}
               className={`px-6 py-3 rounded-2xl text-xs font-black uppercase flex items-center gap-2.5 whitespace-nowrap transition-all duration-300 shadow-lg ${view === t ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 text-white shadow-purple-950/80 border border-purple-400/50 scale-105' : 'bg-[#111827]/80 text-purple-300/70 hover:bg-purple-950/40 hover:text-white border border-purple-500/10'}`}
             >
-              {t === 'Guide' && <BookOpen size={15} />}
+              {t === 'Home' && <Home size={15} />}
               {t === 'Monthly' && <Calendar size={15} />}
               {t === 'Submit Party' && <Edit size={15} />}
               {t === 'Manage' && <Edit size={15} />}
@@ -493,7 +491,7 @@ export default function App() {
               <h1 className="text-2xl font-black bg-gradient-to-r from-white via-purple-100 to-purple-300 bg-clip-text text-transparent">VU Storytellers</h1>
               <p className="text-xs font-bold text-purple-400 uppercase tracking-widest">Party Schedule Hub</p>
               <p className="text-xs text-slate-400 font-medium pt-2 leading-relaxed">
-                Private schedule for VU Storytellers. Please sign in to view and manage active gatherings.
+                Private schedule for VU Storytellers. Please sign in to access event schedules.
               </p>
             </div>
             <button 
@@ -505,7 +503,7 @@ export default function App() {
           </div>
         ) : (
           <>
-            {view === 'Guide' && (
+            {view === 'Home' && (
               <div className="space-y-6">
                 {showNotice && parties.some(p => p.addedBy === currentUser.username && p.status === 'approved') && (
                   <div className="bg-gradient-to-r from-purple-900/80 to-indigo-900/80 border border-purple-500/40 p-4 rounded-2xl flex items-center justify-between shadow-lg">
@@ -653,7 +651,7 @@ export default function App() {
                 </div>
             
                 <div className="space-y-4">
-                  <h3 className="font-black text-lg mb-2 text-white flex items-center gap-2"><Archive size={18} className="text-purple-400"/> Storyteller Events & Approvals</h3>
+                  <h3 className="font-black text-lg mb-2 text-white flex items-center gap-2"><Archive size={18} className="text-purple-400"/> VU Storytellers Listed Events</h3>
                   {parties && parties.length > 0 ? (
                     parties
                       .filter(p => p && p.date && getPTDateInt(p.date) >= todayPT)
@@ -689,7 +687,7 @@ export default function App() {
 
             {view === 'Manage' && isStaff && (
               <div className="space-y-4">
-                <h3 className="font-black text-lg mb-2 text-white flex items-center gap-2"><Archive size={18} className="text-purple-400"/> Manage Storyteller Events & Approvals</h3>
+                <h3 className="font-black text-lg mb-2 text-white flex items-center gap-2"><Archive size={18} className="text-purple-400"/> Storyteller Events & Approvals</h3>
                 {parties && parties.length > 0 ? (
                   parties
                     .filter(p => p && p.date && getPTDateInt(p.date) >= todayPT)
