@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CalendarDays, LogOut, ChevronLeft, ChevronRight, 
-  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Users, X, Save, Settings, Eye, EyeOff, Archive, Award, CheckCircle, Activity
+  Shield, Calendar, BookOpen, Trash2, Edit, Clock, User, Users, X, Save, Settings, Eye, EyeOff, Archive, Award, CheckCircle, Activity, AlertTriangle
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
@@ -49,7 +49,7 @@ const app = getApps().length === 0 ? initializeApp(getSafeConfig()) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
 const getPath = (colName) => typeof __app_id !== 'undefined' ? `artifacts/${__app_id}/public/data/${colName}` : colName;
-const SESSION_KEY = 'vu_storytellers_party_hub_v600';
+const SESSION_KEY = 'vu_storytellers_party_hub_v700';
 
 const TIME_OPTIONS = [
   "12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM",
@@ -127,6 +127,7 @@ export default function App() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteQueue, setDeleteQueue] = useState(null); 
+  const [customAlert, setCustomAlert] = useState(null); // { message, title }
   
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [formData, setFormData] = useState({ 
@@ -290,7 +291,8 @@ export default function App() {
     e.preventDefault();
     setLoginError('');
     
-    if (gateU.toLowerCase() === 'mike' && gateP === 'Owner123') {
+    // Explicit Owner check for Mike
+    if (gateU.trim().toLowerCase() === 'mike' && gateP === 'Owner123') {
       const user = { id: 'owner', username: 'Mike', role: 'owner' };
       setCurrentUser(user);
       localStorage.setItem(SESSION_KEY, JSON.stringify(user));
@@ -328,30 +330,7 @@ export default function App() {
         setLoginError('Incorrect password. Please try again.');
       }
     } else {
-      // Auto-register new users as Host
-      try {
-        const newHostRef = await addDoc(collection(db, getPath('admins')), {
-          username: gateU.trim(),
-          password: gateP,
-          role: 'host',
-          createdAt: new Date().toISOString()
-        });
-        const user = { id: newHostRef.id, username: gateU.trim(), role: 'host' };
-        setCurrentUser(user);
-        localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-        setShowAuthGate(false);
-        setGateU(''); setGateP('');
-
-        await addDoc(collection(db, getPath('auditLogs')), {
-          action: 'AUTO_REGISTER_HOST',
-          details: `New host account registered & logged in for '${user.username}'.`,
-          user: user.username,
-          role: 'host',
-          timestamp: new Date().toISOString()
-        });
-      } catch (err) {
-        setLoginError('Username not found or registration failed.');
-      }
+      setLoginError('Username not found. Please contact Admin to get access.');
     }
   };
 
@@ -466,7 +445,7 @@ export default function App() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     if (checkEventClash(editModal, editModal.id)) {
-      alert("Clash Detected: Another storyteller event is already scheduled during this duration window!");
+      setCustomAlert({ title: 'Clash Detected', message: 'Another storyteller event is already scheduled during this duration window!' });
       return;
     }
     
@@ -494,16 +473,17 @@ export default function App() {
     if (isSubmitting) return;
 
     if (checkEventClash(formData)) {
-      alert("Clash Detected: A party is already scheduled during this time slot!");
+      setCustomAlert({ title: 'Clash Detected', message: 'A party is already scheduled during this time slot!' });
       return;
     }
 
     setIsSubmitting(true);
     try {
+      const isOwnerOrAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin';
       const newEvent = { 
         ...formData, 
         duration: Number(formData.duration) || 120,
-        status: currentUser?.role === 'owner' || currentUser?.role === 'admin' ? 'approved' : 'pending', 
+        status: isOwnerOrAdmin ? 'approved' : 'pending', 
         addedBy: currentUser?.username || 'Verified Storyteller', 
         createdAt: new Date().toISOString() 
       };
@@ -518,7 +498,10 @@ export default function App() {
       });
 
       setFormData({ theme: '', hostName: currentUser?.username || '', coHost: '', date: '', startTime: '6:00 PM', duration: 120, performers: 'VU Storytellers' });
-      alert(newEvent.status === 'approved' ? 'Party added successfully!' : 'Party submitted successfully! Waiting for admin approval.');
+      setCustomAlert({ 
+        title: isOwnerOrAdmin ? 'Success' : 'Submitted for Approval', 
+        message: isOwnerOrAdmin ? 'Party added successfully!' : 'Party submitted successfully! Waiting for admin approval.' 
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -691,7 +674,7 @@ export default function App() {
           <div className="space-y-8">
             <form onSubmit={handleAdd} className="bg-[#151022] border border-purple-500/20 p-6 md:p-8 rounded-3xl shadow-xl grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="col-span-full">
-                <h3 className="font-black text-lg text-white mb-1">Schedule New Storyteller Gathering</h3>
+                <h3 className="font-black text-lg text-white mb-1">Schedule New VU Storyteller Party</h3>
                 <p className="text-xs text-slate-400">Signed in as: <span className="text-purple-400 font-bold">{currentUser?.username || 'Host'}</span> ({currentUser?.role})</p>
               </div>
               <input required placeholder="Event Theme / Title" className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors text-white text-sm" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
@@ -699,8 +682,7 @@ export default function App() {
               <input placeholder="Co-Host Name (Optional)" className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors text-white text-sm" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
               <select required className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-slate-300 focus:outline-none focus:border-purple-500 transition-colors text-sm" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
                 <option value="VU Storytellers">VU Storytellers</option>
-                <option value="Guest Troupe">Guest Troupe</option>
-                <option value="Special Feature">Special Feature</option>
+                <option value="Others">Others</option>                
               </select>
               <select required className="bg-[#0e0a19] p-4 rounded-xl border border-purple-500/20 text-slate-300 focus:outline-none focus:border-purple-500 transition-colors text-sm" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
                 {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
@@ -937,6 +919,24 @@ export default function App() {
                 </>
               )}
            </form>
+        </div>
+      )}
+
+      {/* Custom Centered Alert Modal with Warning Icon */}
+      {customAlert && (
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[120] backdrop-blur-md">
+            <div className="bg-[#151022] p-6 rounded-3xl w-full max-w-sm border border-amber-500/40 space-y-4 shadow-2xl text-center">
+                <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h2 className="font-black text-white text-lg">{customAlert.title || 'Notice'}</h2>
+                  <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">{customAlert.message}</p>
+                </div>
+                <button onClick={() => setCustomAlert(null)} className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl font-black text-white text-xs uppercase tracking-wider hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg shadow-purple-900/40">
+                    OK
+                </button>
+            </div>
         </div>
       )}
 
