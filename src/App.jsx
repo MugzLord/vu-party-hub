@@ -25,13 +25,28 @@ const getPTDateInt = (dateStr) => {
   const month = parts.find(p => p.type === 'month').value;
   const day = parts.find(p => p.type === 'day').value;
   
-  return parseInt(`${year}${month}${day}`);
+  return parseInt(`${year}${month}${day}`, 10);
 };
 
-const getViteEnv = (key) => { try { const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {}; return env[key] || null; } catch (e) { return null; } };
+const getViteEnv = (key) => { 
+  try { 
+    const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {}; 
+    return env[key] || null; 
+  } catch (e) { 
+    return null; 
+  } 
+};
+
 const getSafeConfig = () => {
   if (typeof __firebase_config !== 'undefined' && __firebase_config && __firebase_config !== "undefined") return JSON.parse(__firebase_config);
-  return { apiKey: getViteEnv('VITE_FIREBASE_API_KEY'), authDomain: getViteEnv('VITE_FIREBASE_AUTH_DOMAIN'), projectId: getViteEnv('VITE_FIREBASE_PROJECT_ID'), storageBucket: getViteEnv('VITE_FIREBASE_STORAGE_BUCKET'), messagingSenderId: getViteEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'), appId: getViteEnv('VITE_FIREBASE_APP_ID') };
+  return { 
+    apiKey: getViteEnv('VITE_FIREBASE_API_KEY'), 
+    authDomain: getViteEnv('VITE_FIREBASE_AUTH_DOMAIN'), 
+    projectId: getViteEnv('VITE_FIREBASE_PROJECT_ID'), 
+    storageBucket: getViteEnv('VITE_FIREBASE_STORAGE_BUCKET'), 
+    messagingSenderId: getViteEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'), 
+    appId: getViteEnv('VITE_FIREBASE_APP_ID') 
+  };
 };
 
 const app = getApps().length === 0 ? initializeApp(getSafeConfig()) : getApp();
@@ -58,13 +73,12 @@ const formatTime = (timeStr) => {
   if (/(am|pm)/i.test(timeStr)) {
     return timeStr.toUpperCase();
   }
-  
 
   const parts = timeStr.split(':');
   if (parts.length === 2) {
     const hours = parseInt(parts[0], 10);
     const minutes = parts[1];
- 
+
     if (isNaN(hours)) return timeStr;
 
     const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -74,27 +88,34 @@ const formatTime = (timeStr) => {
   return timeStr;
 };
 
+// Helper to convert date + time string into a valid timestamp
+const parseEventTimestamp = (dateStr, timeStr) => {
+  if (!dateStr || !timeStr) return 0;
+  const [time, modifier] = timeStr.split(' ');
+  let [hours, minutes] = time.split(':').map(Number);
+  if (modifier === 'PM' && hours !== 12) hours += 12;
+  if (modifier === 'AM' && hours === 12) hours = 0;
+
+  const d = new Date(dateStr);
+  d.setHours(hours, minutes, 0, 0);
+  return d.getTime();
+};
+
 const isEventLive = (dateStr, startTimeStr) => {
-    const now = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
-    const eventDate = new Date(dateStr);
-    const [time, modifier] = startTimeStr.split(' ');
-    let [hours, minutes] = time.split(':').map(Number);
-    if (modifier === 'PM' && hours !== 12) hours += 12;
-    if (modifier === 'AM' && hours === 12) hours = 0;
-    
-    const eventStartTime = new Date(eventDate);
-    eventStartTime.setHours(hours, minutes, 0, 0);
-    
-    
-    const endTime = new Date(eventStartTime.getTime() + 120 * 60 * 1000); // Changed to 120 mins
-    
-    return eventDate.toDateString() === now.toDateString() && now >= eventStartTime && now <= endTime;
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  const eventStartTime = parseEventTimestamp(dateStr, startTimeStr);
+  const endTime = eventStartTime + (120 * 60 * 1000); // 2 hours
+
+  return new Date(dateStr).toDateString() === now.toDateString() && now.getTime() >= eventStartTime && now.getTime() <= endTime;
 };
 
 export default function App() {
   const [parties, setParties] = useState([]);
   const [admins, setAdmins] = useState([]);
-  const [currentUser, setCurrentUser] = useState(() => { const s = localStorage.getItem(SESSION_KEY); return s ? JSON.parse(s) : null; });
+  const [currentUser, setCurrentUser] = useState(() => { 
+    const s = localStorage.getItem(SESSION_KEY); 
+    return s ? JSON.parse(s) : null; 
+  });
   const [view, setView] = useState('Guide'); 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
@@ -113,15 +134,17 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [showPass, setShowPass] = useState(false);
 
-  const isClashing = (proposedEvent) => {
-      const newStart = new Date(`${proposedEvent.date}T${proposedEvent.startTime.replace(' ', '')}`).getTime();
-      const newEnd = newStart + (2 * 60 * 60 * 1000); // Assuming 2hr duration
-  
-      return parties.some(p => {
-          const pStart = new Date(`${p.date}T${p.startTime.replace(' ', '')}`).getTime();
-          const pEnd = pStart + (2 * 60 * 60 * 1000);
-          return newStart < pEnd && newEnd > pStart;
-      });
+  // Overlap clash detector (checks 2-hour duration windows)
+  const checkEventClash = (proposedEvent, excludeId = null) => {
+    const newStart = parseEventTimestamp(proposedEvent.date, proposedEvent.startTime);
+    const newEnd = newStart + (2 * 60 * 60 * 1000);
+
+    return parties.some(p => {
+      if (excludeId && p.id === excludeId) return false;
+      const pStart = parseEventTimestamp(p.date, p.startTime);
+      const pEnd = pStart + (2 * 60 * 60 * 1000);
+      return newStart < pEnd && newEnd > pStart;
+    });
   };
 
   const { thisMonthEvents, nextMonthEvents } = useMemo(() => {
@@ -167,43 +190,38 @@ export default function App() {
   const [ptTime, setPtTime] = useState('');
 
   useEffect(() => {
-      const updateTime = () => {
-          const formatter = new Intl.DateTimeFormat('en-US', {
-              timeZone: 'America/Los_Angeles',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true,
-          });
-          setPtTime(formatter.format(new Date()));
-      };
+    const updateTime = () => {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Los_Angeles',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      });
+      setPtTime(formatter.format(new Date()));
+    };
 
-      updateTime();
-      const interval = setInterval(updateTime, 1000);
-      return () => clearInterval(interval);
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
   }, []);
+
   useEffect(() => {
     if (!isAuthReady) return;
 
-    // Use a variable to track if the component is mounted to prevent state updates on unmounted component
     let isMounted = true;
 
     const unsubscribeParties = onSnapshot(collection(db, getPath('parties')), 
       (s) => {
-        const rawData = s.docs.map(d => ({id: d.id, ...d.data()}));
-        console.log("DEBUG: Total events found in DB:", rawData.length);
-        console.log("DEBUG: Raw events data:", rawData); // THIS IS THE KEY
-        if (isMounted) {
-          setParties(rawData);
-        }
+        const rawData = s.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (isMounted) setParties(rawData);
       },
       (e) => console.error("Firestore error:", e)
     );
+
     const unsubscribeAdmins = onSnapshot(collection(db, getPath('admins')), 
       (s) => {
-        if (isMounted) {
-          setAdmins(s.docs.map(d => ({id: d.id, ...d.data()})));
-        }
+        if (isMounted) setAdmins(s.docs.map(d => ({ id: d.id, ...d.data() })));
       },
       (e) => console.error("Firestore permission error:", e)
     );
@@ -219,30 +237,25 @@ export default function App() {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     
-    // Days in current month
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const firstDay = new Date(year, month, 1).getDay();
     const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; // Mon=0..Sun=6
     
     const days = [];
 
-    // 1. Fill previous month's trailing days
-    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    // Trailing days from previous month
     for (let i = adjustedFirstDay - 1; i >= 0; i--) {
-      // Changed currentMonth: false to monthType: 'prev'
       days.push({ date: new Date(year, month, -i), monthType: 'prev' });
     }
 
-    // 2. Fill current month's days
+    // Current month days
     for (let i = 1; i <= daysInMonth; i++) {
-      // Changed currentMonth: true to monthType: 'current'
       days.push({ date: new Date(year, month, i), monthType: 'current' });
     }
 
-    // 3. Fill next month's leading days to complete a 6-row grid (42 days)
+    // Leading days for next month to complete 42 cells (6 rows)
     const remainingDays = 42 - days.length;
     for (let i = 1; i <= remainingDays; i++) {
-      // Changed currentMonth: false to monthType: 'next'
       days.push({ date: new Date(year, month + 1, i), monthType: 'next' });
     }
     
@@ -255,118 +268,116 @@ export default function App() {
     e.preventDefault();
     setLoginError('');
     
-    // Hardcoded master owner
     if (gateU.toLowerCase() === 'mike' && gateP === 'Owner123') {
-        const user = { id: 'owner', username: 'Mike', role: 'owner' };
-        setCurrentUser(user);
-        localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-        setShowAuthGate(false);
-        setGateU(''); setGateP('');
-        return;
+      const user = { id: 'owner', username: 'Mike', role: 'owner' };
+      setCurrentUser(user);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+      setShowAuthGate(false);
+      setGateU(''); setGateP('');
+      return;
     }
 
-    // Check firestore admins
     const foundAdmin = admins.find(a => a.username.toLowerCase() === gateU.toLowerCase() && a.password === gateP);
     if (foundAdmin) {
-        const user = { id: foundAdmin.id, username: foundAdmin.username, role: 'admin' };
-        setCurrentUser(user);
-        localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-        setShowAuthGate(false);
-        setGateU(''); setGateP('');
+      const user = { id: foundAdmin.id, username: foundAdmin.username, role: 'admin' };
+      setCurrentUser(user);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+      setShowAuthGate(false);
+      setGateU(''); setGateP('');
     } else {
-        setLoginError('Invalid credentials');
+      setLoginError('Invalid credentials');
     }
   };
 
   const handleAddAdmin = async (e) => {
-      e.preventDefault();
-      if (!newAdminU.trim() || !newAdminP.trim()) return setAdminMsg("Fields cannot be empty.");
-      if (newAdminU.toLowerCase() === 'mike') return setAdminMsg("Cannot use 'Mike' as username.");
-      if (admins.some(a => a.username.toLowerCase() === newAdminU.toLowerCase())) return setAdminMsg("Username already exists.");
-      
-      await addDoc(collection(db, getPath('admins')), { username: newAdminU, password: newAdminP, role: 'admin' });
-      setNewAdminU(''); setNewAdminP('');
-      setAdminMsg("Admin created successfully!");
-      setTimeout(() => setAdminMsg(''), 3000);
+    e.preventDefault();
+    if (!newAdminU.trim() || !newAdminP.trim()) return setAdminMsg("Fields cannot be empty.");
+    if (newAdminU.toLowerCase() === 'mike') return setAdminMsg("Cannot use 'Mike' as username.");
+    if (admins.some(a => a.username.toLowerCase() === newAdminU.toLowerCase())) return setAdminMsg("Username already exists.");
+    
+    await addDoc(collection(db, getPath('admins')), { username: newAdminU, password: newAdminP, role: 'admin' });
+    setNewAdminU(''); setNewAdminP('');
+    setAdminMsg("Admin created successfully!");
+    setTimeout(() => setAdminMsg(''), 3000);
   };
 
   const handleDeleteAdmin = async (id) => await deleteDoc(doc(db, getPath('admins'), id));
 
   const handleExecuteDelete = async () => {
-      if (!deleteQueue) return;
-      try {
-          await deleteDoc(doc(db, getPath('parties'), deleteQueue.id));
-          setDeleteQueue(null); // Closing modal automatically
-      } catch (err) {
-          console.error("Error deleting event:", err);
-      }
+    if (!deleteQueue) return;
+    try {
+      await deleteDoc(doc(db, getPath('parties'), deleteQueue.id));
+      setDeleteQueue(null);
+    } catch (err) {
+      console.error("Error deleting event:", err);
+    }
   };
 
   const handleChangePassword = async (e) => {
-      e.preventDefault();
-      if (!newPass.trim()) return setPwdMsg({type: 'error', text: 'Password cannot be empty'});
-      if (currentUser.role === 'owner') return setPwdMsg({type: 'error', text: 'Owner password cannot be changed here.'});
-      
-      try {
-          await updateDoc(doc(db, getPath('admins'), currentUser.id), { password: newPass });
-          setPwdMsg({type: 'success', text: 'Password updated successfully!'});
-          setTimeout(() => {
-              setShowProfileModal(false);
-              setPwdMsg(null);
-              setNewPass('');
-          }, 1500);
-      } catch(err) {
-          setPwdMsg({type: 'error', text: 'Error updating password.'});
-      }
+    e.preventDefault();
+    if (!newPass.trim()) return setPwdMsg({ type: 'error', text: 'Password cannot be empty' });
+    if (currentUser.role === 'owner') return setPwdMsg({ type: 'error', text: 'Owner password cannot be changed here.' });
+    
+    try {
+      await updateDoc(doc(db, getPath('admins'), currentUser.id), { password: newPass });
+      setPwdMsg({ type: 'success', text: 'Password updated successfully!' });
+      setTimeout(() => {
+        setShowProfileModal(false);
+        setPwdMsg(null);
+        setNewPass('');
+      }, 1500);
+    } catch(err) {
+      setPwdMsg({ type: 'error', text: 'Error updating password.' });
+    }
   };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
+    if (checkEventClash(editModal, editModal.id)) {
+      alert("Clash Detected: Another event is already scheduled during this 2-hour window!");
+      return;
+    }
     
-    // Create the updated object
     const updatedEvent = { 
-        ...editModal, 
-        lastEditedBy: currentUser?.username || 'Admin', 
-        lastEditedAt: new Date().toISOString() 
+      ...editModal, 
+      lastEditedBy: currentUser?.username || 'Admin', 
+      lastEditedAt: new Date().toISOString() 
     };
 
-    // Perform the update
     await updateDoc(doc(db, getPath('parties'), editModal.id), updatedEvent);
     setEditModal(null);
-};
+  };
 
-const handleAdd = async (e) => {
-  e.preventDefault();
-  if (isSubmitting) return; // Stop if already submitting
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (isSubmitting) return;
 
-  // 1. Clash Detection
-  const isClashing = parties.some(p => p.date === formData.date && p.startTime === formData.startTime);
-  if (isClashing) {
-    alert("Clash Detected: An event is already scheduled at this time!");
-    return;
-  }
+    if (checkEventClash(formData)) {
+      alert("Clash Detected: An event is already scheduled within this 2-hour window!");
+      return;
+    }
 
-  setIsSubmitting(true);
-  try {
-    const newEvent = { 
+    setIsSubmitting(true);
+    try {
+      const newEvent = { 
         ...formData, 
-        status: 'approved',
-        addedBy: currentUser?.username || 'Unknown',
+        status: 'approved', 
+        addedBy: currentUser?.username || 'Unknown', 
         createdAt: new Date().toISOString() 
-    };
-    await addDoc(collection(db, getPath('parties')), newEvent);
-    setFormData({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', performers: 'VUI' });
-  } finally {
-    setIsSubmitting(false); // Re-enable button
-  }
-};
+      };
+      await addDoc(collection(db, getPath('parties')), newEvent);
+      setFormData({ theme: '', hostName: '', coHost: '', date: '', startTime: '6:00 PM', performers: 'VUI' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'owner';
-  
-  // Replace the 'today' and 'upcomingParties' lines with this:
   const todayPT = getPTDateInt(new Date().toISOString());
   const upcomingParties = parties
     .filter(p => p.date && getPTDateInt(p.date) >= todayPT)
     .sort((a, b) => a.date.localeCompare(b.date));
+
   return (
     <div className="min-h-screen bg-[#0a0f1d]">
       <header className="relative z-40 bg-[#111827] border-b border-white/5 p-4 flex justify-between items-center sticky top-0">
@@ -378,9 +389,9 @@ const handleAdd = async (e) => {
             <h1 className="font-black text-white text-lg">VU Party HUB</h1>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2 text-[9px] md:text-[11px] font-mono text-slate-400 bg-white/5 px-2 py-1 md:px-3 md:py-1 rounded-md border border-white/5">
-              <Clock size={10} className="text-indigo-500 shrink-0" />
-              <span className="font-bold">{ptTime}</span>
-              <span className="opacity-60">PT</span>
+            <Clock size={10} className="text-indigo-500 shrink-0" />
+            <span className="font-bold">{ptTime}</span>
+            <span className="opacity-60">PT</span>
           </div>
         </div>
 
@@ -415,288 +426,287 @@ const handleAdd = async (e) => {
           </button>
         ))}
       </div>
-           
 
       <main className="p-4 md:p-6 max-w-4xl mx-auto relative z-10">
         {view === 'Guide' && (
-            <div className="space-y-6">
-                <h2 className="font-black text-white text-2xl">Welcome to the VU Party Hub</h2>
-                
-                {/* Tab Buttons */}
-                <div className="flex gap-2 border-b border-white/10 pb-1">
-                    <button 
-                        onClick={() => setGuideTab('current')}
-                        className={`pb-2 px-4 font-black text-sm uppercase transition-colors ${guideTab === 'current' ? 'text-white border-b-2 border-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        Current Events
-                    </button>
-                    <button 
-                        onClick={() => setGuideTab('next')}
-                        className={`pb-2 px-4 font-black text-sm uppercase transition-colors ${guideTab === 'next' ? 'text-white border-b-2 border-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        Upcoming Events
-                    </button>
-                </div>
-        
-                {/* Tab Content */}
-                <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl min-h-[300px]">
-                    <div className="mb-4 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                        {(() => {
-                            const now = new Date();
-                            if (guideTab === 'current') {
-                                return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                            } else {
-                                // Calculate next month even if current is December
-                                const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-                                return nextMonthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                            }
-                        })()}
-                    </div>
-                    {guideTab === 'current' ? (
-                        <div className="space-y-3">
-                            {thisMonthEvents.length > 0 ? thisMonthEvents.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-slate-500 text-sm">No events this month.</p>}
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {nextMonthEvents.length > 0 ? nextMonthEvents.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-slate-500 text-sm">No events scheduled yet.</p>}
-                        </div>
-                    )}
-                </div>
+          <div className="space-y-6">
+            <h2 className="font-black text-white text-2xl">Welcome to the VU Party Hub</h2>
+            
+            {/* Tab Buttons */}
+            <div className="flex gap-2 border-b border-white/10 pb-1">
+              <button 
+                onClick={() => setGuideTab('current')}
+                className={`pb-2 px-4 font-black text-sm uppercase transition-colors ${guideTab === 'current' ? 'text-white border-b-2 border-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Current Events
+              </button>
+              <button 
+                onClick={() => setGuideTab('next')}
+                className={`pb-2 px-4 font-black text-sm uppercase transition-colors ${guideTab === 'next' ? 'text-white border-b-2 border-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Upcoming Events
+              </button>
             </div>
+
+            {/* Tab Content */}
+            <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl min-h-[300px]">
+              <div className="mb-4 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                {(() => {
+                  const now = new Date();
+                  if (guideTab === 'current') {
+                    return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                  } else {
+                    const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                    return nextMonthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                  }
+                })()}
+              </div>
+              {guideTab === 'current' ? (
+                <div className="space-y-3">
+                  {thisMonthEvents.length > 0 ? thisMonthEvents.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-slate-500 text-sm">No events this month.</p>}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {nextMonthEvents.length > 0 ? nextMonthEvents.map(p => <EventCard key={p.id} p={p}/>) : <p className="text-slate-500 text-sm">No events scheduled yet.</p>}
+                </div>
+              )}
+            </div>
+          </div>
         )}
-                {view === 'Monthly' && (
-           <div className="space-y-6">
+
+        {view === 'Monthly' && (
+          <div className="space-y-6">
             <div className="flex justify-between items-center bg-[#111827] p-4 rounded-xl border border-white/5">
-                <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="p-2 hover:bg-white/5 rounded-lg transition-colors"><ChevronLeft size={20}/></button>
-                <span className="font-black text-white uppercase tracking-widest">{currentMonth.toLocaleDateString('en-US', {month: 'long', year: 'numeric'})}</span>
-                <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="p-2 hover:bg-white/5 rounded-lg transition-colors"><ChevronRight size={20}/></button>
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="p-2 hover:bg-white/5 rounded-lg transition-colors"><ChevronLeft size={20}/></button>
+              <span className="font-black text-white uppercase tracking-widest">{currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="p-2 hover:bg-white/5 rounded-lg transition-colors"><ChevronRight size={20}/></button>
             </div>
             <div className="grid grid-cols-7 gap-1">
-                {['M','T','W','T','F','S','S'].map((d, index) => (
-                    <div key={`day-header-${index}`} className="text-[14px] md:text-sm font-black text-slate-500 pb-2 text-center">{d}</div>
-                ))}
-                {calendarDays.map((d, i) => {
-                  const hasEventToday = hasEvent(d.date);
-                  const isEventDay = d.monthType === 'current' && hasEventToday;
+              {['M','T','W','T','F','S','S'].map((d, index) => (
+                <div key={`day-header-${index}`} className="text-[14px] md:text-sm font-black text-slate-500 pb-2 text-center">{d}</div>
+              ))}
+              {calendarDays.map((d, i) => {
+                const hasEventToday = hasEvent(d.date);
+                const isEventDay = d.monthType === 'current' && hasEventToday;
                 
-                  return (
-                    <button 
-                      key={`day-cell-${i}`} 
-                      onClick={() => setSelectedDay(d.date)} 
-                      className={`aspect-square flex flex-col items-center justify-center text-lg font-bold rounded-lg relative transition-colors 
-                        ${d.monthType === 'current' ? 'text-white' : 'text-slate-600'}
-                        ${selectedDay?.toDateString() === d.date.toDateString() 
-                            ? 'bg-indigo-600 !text-white' 
-                            : isEventDay 
-                                ? 'bg-indigo-900/40 border border-indigo-500/30' 
-                                : d.monthType === 'current' ? 'bg-[#111827]' : 'bg-[#0a0f1d]'}
-                        hover:bg-white/5 border border-white/5`}
-                    >
-                      {d.date.getDate()}
-                      {hasEventToday && (
-                        <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${selectedDay?.toDateString() === d.date.toDateString() ? 'bg-white' : 'bg-indigo-400'}`}></div>
-                      )}
-                    </button>
-                  );
-                })}
+                return (
+                  <button 
+                    key={`day-cell-${i}`} 
+                    onClick={() => setSelectedDay(d.date)} 
+                    className={`aspect-square flex flex-col items-center justify-center text-lg font-bold rounded-lg relative transition-colors 
+                      ${d.monthType === 'current' ? 'text-white' : 'text-slate-600'}
+                      ${selectedDay?.toDateString() === d.date.toDateString() 
+                        ? 'bg-indigo-600 !text-white' 
+                        : isEventDay 
+                          ? 'bg-indigo-900/40 border border-indigo-500/30' 
+                          : d.monthType === 'current' ? 'bg-[#111827]' : 'bg-[#0a0f1d]'}
+                      hover:bg-white/5 border border-white/5`}
+                  >
+                    {d.date.getDate()}
+                    {hasEventToday && (
+                      <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${selectedDay?.toDateString() === d.date.toDateString() ? 'bg-white' : 'bg-indigo-400'}`}></div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-           </div>
+          </div>
         )}
         
         {view === 'Manage' && (
-            <div className="space-y-8">
-                <form onSubmit={handleAdd} className="bg-[#111827] border border-white/5 p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input required placeholder="Event Theme" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors text-white" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
-                    <input required placeholder="Host Name" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors text-white" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
-                    <input placeholder="Co-Host Name (Optional)" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors text-white" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
-                    <select required className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-300 focus:outline-none focus:border-indigo-500 transition-colors" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
-                        <option value="VUI">VUI</option>
-                        <option value="StoryTeller">StoryTeller</option>
-                    </select>
-                    <select required className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-300 focus:outline-none focus:border-indigo-500 transition-colors" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
-                        {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <input required type="date" className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-300 focus:outline-none focus:border-indigo-500 transition-colors" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
-                    <button type="submit" className="bg-indigo-600 rounded-xl font-black p-4 col-span-full hover:bg-indigo-500 transition-colors text-white mt-2 shadow-lg shadow-indigo-600/20">ADD EVENT</button>
-                </form>
+          <div className="space-y-8">
+            <form onSubmit={handleAdd} className="bg-[#111827] border border-white/5 p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input required placeholder="Event Theme" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors text-white" value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}/>
+              <input required placeholder="Host Name" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors text-white" value={formData.hostName} onChange={e=>setFormData({...formData, hostName: e.target.value})}/>
+              <input placeholder="Co-Host Name (Optional)" className="bg-black/40 p-4 rounded-lg border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors text-white" value={formData.coHost} onChange={e=>setFormData({...formData, coHost: e.target.value})}/>
+              <select required className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-300 focus:outline-none focus:border-indigo-500 transition-colors" value={formData.performers} onChange={e=>setFormData({...formData, performers: e.target.value})}>
+                <option value="VUI">VUI</option>
+                <option value="StoryTeller">StoryTeller</option>
+              </select>
+              <select required className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-300 focus:outline-none focus:border-indigo-500 transition-colors" value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})}>
+                {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <input required type="date" className="bg-black/40 p-4 rounded-lg border border-white/10 text-slate-300 focus:outline-none focus:border-indigo-500 transition-colors" value={formData.date} onChange={e=>setFormData({...formData, date: e.target.value})}/>
+              <button type="submit" disabled={isSubmitting} className="bg-indigo-600 rounded-xl font-black p-4 col-span-full hover:bg-indigo-500 transition-colors text-white mt-2 shadow-lg shadow-indigo-600/20 disabled:opacity-50">
+                {isSubmitting ? 'ADDING...' : 'ADD EVENT'}
+              </button>
+            </form>
         
-                <div className="space-y-3">
-                    <h3 className="font-black text-lg mb-4 text-white flex items-center gap-2"><Archive size={18}/> Active Events</h3>
-                    {parties && parties.length > 0 ? (
-                        parties
-                          .filter(p => p && p.date && new Date(p.date) >= today)
-                          .sort((a, b) => new Date(a.date) - new Date(b.date))
-                          .map(p => (
-                            <div key={p.id} className="bg-[#111827] border border-white/5 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                <div className="flex flex-col gap-1">
-                                    <span className="font-bold text-white text-[15px]">{p.theme || 'Untitled Event'}</span>
-                                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 font-bold mt-1">
-                                        <span>{p.date}</span>
-                                        <span>{formatTime(p.startTime)}</span>
-                                        <span>Host: {p.hostName || 'N/A'}</span>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 w-full md:w-auto justify-end">
-                                    <button onClick={() => setEditModal(p)} className="p-2.5 bg-black/40 border border-white/5 hover:bg-white/10 rounded-xl text-indigo-400 transition-colors"><Edit size={16}/></button>
-                                    <button onClick={() => setDeleteQueue(p)} className="p-2.5 bg-black/40 border border-white/5 hover:bg-rose-500/20 rounded-xl text-rose-500 transition-colors"><Trash2 size={16}/></button>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <p className="text-slate-500 text-sm">No active events to manage.</p>
-                    )}
-                </div>
+            <div className="space-y-3">
+              <h3 className="font-black text-lg mb-4 text-white flex items-center gap-2"><Archive size={18}/> Active Events</h3>
+              {upcomingParties.length > 0 ? (
+                upcomingParties.map(p => (
+                  <div key={p.id} className="bg-[#111827] border border-white/5 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="font-bold text-white text-[15px]">{p.theme || 'Untitled Event'}</span>
+                      <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 font-bold mt-1">
+                        <span>{p.date}</span>
+                        <span>{formatTime(p.startTime)}</span>
+                        <span>Host: {p.hostName || 'N/A'}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 w-full md:w-auto justify-end">
+                      <button onClick={() => setEditModal(p)} className="p-2.5 bg-black/40 border border-white/5 hover:bg-white/10 rounded-xl text-indigo-400 transition-colors"><Edit size={16}/></button>
+                      <button onClick={() => setDeleteQueue(p)} className="p-2.5 bg-black/40 border border-white/5 hover:bg-rose-500/20 rounded-xl text-rose-500 transition-colors"><Trash2 size={16}/></button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-slate-500 text-sm">No active events to manage.</p>
+              )}
             </div>
+          </div>
         )}
 
         {view === 'Staff' && currentUser?.role === 'owner' && (
-            <div className="space-y-8">
-                <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl">
-                    <h3 className="font-black text-lg text-white mb-4">Create New Admin</h3>
-                    <form onSubmit={handleAddAdmin} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input placeholder="Admin Username" value={newAdminU} onChange={e=>setNewAdminU(e.target.value)} className="bg-black/40 p-4 rounded-lg border border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-                        <input placeholder="Initial Password" value={newAdminP} onChange={e=>setNewAdminP(e.target.value)} className="bg-black/40 p-4 rounded-lg border border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-                        {adminMsg && <div className="col-span-full text-sm font-bold text-emerald-400 mt-1">{adminMsg}</div>}
-                        <button type="submit" className="col-span-full bg-indigo-600 rounded-xl font-black p-4 text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20">CREATE ADMIN ACCOUNT</button>
-                    </form>
-                </div>
-
-                <div className="space-y-3">
-                    <h3 className="font-black text-lg text-white mb-4">Current Administrators</h3>
-                    {admins.map(a => (
-                        <div key={a.id} className="bg-[#111827] border border-white/5 p-5 rounded-2xl flex justify-between items-center">
-                            <span className="font-bold text-white flex items-center gap-2"><Shield size={16} className="text-indigo-400"/> {a.username}</span>
-                            <button onClick={()=>handleDeleteAdmin(a.id)} className="p-2.5 bg-black/40 border border-white/5 hover:bg-rose-500/20 hover:border-rose-500/30 rounded-xl text-rose-500 transition-colors"><Trash2 size={16}/></button>
-                        </div>
-                    ))}
-                    {admins.length === 0 && <p className="text-slate-500 text-sm">No administrators found.</p>}
-                </div>
-
-                {/* --- COMPACT AUDIT LOGS --- */}
-                <div className="space-y-1 pt-8 border-t border-white/10">
-                    <h3 className="font-black text-lg text-white mb-4">Event Audit Logs</h3>
-                    {parties
-                        .slice()
-                        .sort((a,b) => new Date(b.lastEditedAt || 0) - new Date(a.lastEditedAt || 0))
-                        .map(p => (
-                            <div key={p.id} className="text-xs bg-[#0a0f1d] p-3 rounded-lg border border-white/5 flex justify-between items-center text-slate-400">
-                                <div className="truncate flex-1 font-bold text-white mr-4">
-                                    {p.theme}
-                                </div>
-                                <div className="flex gap-4 text-[10px] font-mono">
-                                    <span className="text-slate-500">
-                                        Edited by: <span className="text-indigo-400">{p.lastEditedBy || 'N/A'}</span>
-                                    </span>
-                                    <span className="text-slate-600">
-                                        {new Date(p.lastEditedAt).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'})} {new Date(p.lastEditedAt).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}
-                                    </span>
-                                </div>
-                            </div>
-                    ))}
-                </div>
+          <div className="space-y-8">
+            <div className="bg-[#111827] border border-white/5 p-6 rounded-2xl">
+              <h3 className="font-black text-lg text-white mb-4">Create New Admin</h3>
+              <form onSubmit={handleAddAdmin} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input placeholder="Admin Username" value={newAdminU} onChange={e=>setNewAdminU(e.target.value)} className="bg-black/40 p-4 rounded-lg border border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+                <input placeholder="Initial Password" type="password" value={newAdminP} onChange={e=>setNewAdminP(e.target.value)} className="bg-black/40 p-4 rounded-lg border border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+                {adminMsg && <div className="col-span-full text-sm font-bold text-emerald-400 mt-1">{adminMsg}</div>}
+                <button type="submit" className="col-span-full bg-indigo-600 rounded-xl font-black p-4 text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20">CREATE ADMIN ACCOUNT</button>
+              </form>
             </div>
+
+            <div className="space-y-3">
+              <h3 className="font-black text-lg text-white mb-4">Current Administrators</h3>
+              {admins.map(a => (
+                <div key={a.id} className="bg-[#111827] border border-white/5 p-5 rounded-2xl flex justify-between items-center">
+                  <span className="font-bold text-white flex items-center gap-2"><Shield size={16} className="text-indigo-400"/> {a.username}</span>
+                  <button onClick={()=>handleDeleteAdmin(a.id)} className="p-2.5 bg-black/40 border border-white/5 hover:bg-rose-500/20 hover:border-rose-500/30 rounded-xl text-rose-500 transition-colors"><Trash2 size={16}/></button>
+                </div>
+              ))}
+              {admins.length === 0 && <p className="text-slate-500 text-sm">No administrators found.</p>}
+            </div>
+
+            {/* Compact Audit Logs */}
+            <div className="space-y-1 pt-8 border-t border-white/10">
+              <h3 className="font-black text-lg text-white mb-4">Event Audit Logs</h3>
+              {parties
+                .slice()
+                .filter(p => p.lastEditedAt)
+                .sort((a,b) => new Date(b.lastEditedAt || 0) - new Date(a.lastEditedAt || 0))
+                .map(p => (
+                  <div key={p.id} className="text-xs bg-[#0a0f1d] p-3 rounded-lg border border-white/5 flex justify-between items-center text-slate-400">
+                    <div className="truncate flex-1 font-bold text-white mr-4">
+                      {p.theme}
+                    </div>
+                    <div className="flex gap-4 text-[10px] font-mono">
+                      <span className="text-slate-500">
+                        Edited by: <span className="text-indigo-400">{p.lastEditedBy || 'N/A'}</span>
+                      </span>
+                      <span className="text-slate-600">
+                        {new Date(p.lastEditedAt).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} {new Date(p.lastEditedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute:'2-digit' })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
         )}
       </main>
 
       {/* Monthly Day Modal */}
       {selectedDay && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-           <div className="bg-[#111827] p-6 rounded-3xl w-full max-w-lg border border-white/10 space-y-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-2 pb-4 border-b border-white/5">
-                  <h2 className="font-black text-lg text-white">Events for {selectedDay.toDateString()}</h2>
-                  <button onClick={() => setSelectedDay(null)} className="text-slate-400 hover:text-white transition-colors bg-white/5 p-2 rounded-full"><X size={18}/></button>
-              </div>
-              {parties.filter(p => new Date(p.date).toDateString() === selectedDay.toDateString()).map(p => <EventCard key={p.id} p={p}/>)}
-              {parties.filter(p => new Date(p.date).toDateString() === selectedDay.toDateString()).length === 0 && (
-                  <p className="text-slate-500 text-sm text-center py-8">No events scheduled for this date.</p>
-              )}
-           </div>
+          <div className="bg-[#111827] p-6 rounded-3xl w-full max-w-lg border border-white/10 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-2 pb-4 border-b border-white/5">
+              <h2 className="font-black text-lg text-white">Events for {selectedDay.toDateString()}</h2>
+              <button onClick={() => setSelectedDay(null)} className="text-slate-400 hover:text-white transition-colors bg-white/5 p-2 rounded-full"><X size={18}/></button>
+            </div>
+            {parties.filter(p => new Date(p.date).toDateString() === selectedDay.toDateString()).map(p => <EventCard key={p.id} p={p}/>)}
+            {parties.filter(p => new Date(p.date).toDateString() === selectedDay.toDateString()).length === 0 && (
+              <p className="text-slate-500 text-sm text-center py-8">No events scheduled for this date.</p>
+            )}
+          </div>
         </div>
       )}
 
       {/* Edit Event Modal */}
       {editModal && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-           <form onSubmit={handleUpdate} className="bg-[#111827] p-6 rounded-3xl w-full max-w-lg border border-white/10 space-y-4">
-              <div className="flex justify-between items-center mb-2 pb-4 border-b border-white/5">
-                  <h2 className="font-black text-lg text-white flex items-center gap-2"><Edit size={18} className="text-indigo-400"/> Edit Event</h2>
-              </div>
-              
-              <input required placeholder="Event Theme" className="w-full bg-black/40 p-4 rounded-xl border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 text-white transition-colors" value={editModal.theme} onChange={e=>setEditModal({...editModal, theme: e.target.value})}/>
-              <input required placeholder="Host Name" className="w-full bg-black/40 p-4 rounded-xl border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 text-white transition-colors" value={editModal.hostName} onChange={e=>setEditModal({...editModal, hostName: e.target.value})}/>
-              <input placeholder="Co-Host Name (Optional)" className="w-full bg-black/40 p-4 rounded-xl border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 text-white transition-colors" value={editModal.coHost} onChange={e=>setEditModal({...editModal, coHost: e.target.value})}/>
-              
-              <select required className="w-full bg-black/40 p-4 rounded-xl border border-white/10 text-slate-300 focus:outline-none focus:border-indigo-500 transition-colors" value={editModal.performers} onChange={e=>setEditModal({...editModal, performers: e.target.value})}>
-                <option value="VUI">VUI</option>
-                <option value="StoryTeller">StoryTeller</option>
-              </select>
-              
-              <select required className="w-full bg-black/40 p-4 rounded-xl border border-white/10 text-slate-300 focus:outline-none focus:border-indigo-500 transition-colors" value={editModal.startTime} onChange={e=>setEditModal({...editModal, startTime: e.target.value})}>
-                {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-              
-              <input required type="date" className="w-full bg-black/40 p-4 rounded-xl border border-white/10 text-slate-300 focus:outline-none focus:border-indigo-500 transition-colors" value={editModal.date} onChange={e=>setEditModal({...editModal, date: e.target.value})}/>
-              
-              <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={() => setEditModal(null)} className="bg-black/40 border border-white/10 flex-1 p-4 rounded-xl flex items-center justify-center gap-2 font-black text-slate-300 hover:bg-white/5 transition-colors">
-                      CANCEL
-                  </button>
-                  <button type="submit" className="bg-indigo-600 flex-1 p-4 rounded-xl flex items-center justify-center gap-2 font-black text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20">
-                      <Save size={18}/> SAVE
-                  </button>
-              </div>
-           </form>
+          <form onSubmit={handleUpdate} className="bg-[#111827] p-6 rounded-3xl w-full max-w-lg border border-white/10 space-y-4">
+            <div className="flex justify-between items-center mb-2 pb-4 border-b border-white/5">
+              <h2 className="font-black text-lg text-white flex items-center gap-2"><Edit size={18} className="text-indigo-400"/> Edit Event</h2>
+            </div>
+            
+            <input required placeholder="Event Theme" className="w-full bg-black/40 p-4 rounded-xl border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 text-white transition-colors" value={editModal.theme} onChange={e=>setEditModal({...editModal, theme: e.target.value})}/>
+            <input required placeholder="Host Name" className="w-full bg-black/40 p-4 rounded-xl border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 text-white transition-colors" value={editModal.hostName} onChange={e=>setEditModal({...editModal, hostName: e.target.value})}/>
+            <input placeholder="Co-Host Name (Optional)" className="w-full bg-black/40 p-4 rounded-xl border border-white/10 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 text-white transition-colors" value={editModal.coHost} onChange={e=>setEditModal({...editModal, coHost: e.target.value})}/>
+            
+            <select required className="w-full bg-black/40 p-4 rounded-xl border border-white/10 text-slate-300 focus:outline-none focus:border-indigo-500 transition-colors" value={editModal.performers} onChange={e=>setEditModal({...editModal, performers: e.target.value})}>
+              <option value="VUI">VUI</option>
+              <option value="StoryTeller">StoryTeller</option>
+            </select>
+            
+            <select required className="w-full bg-black/40 p-4 rounded-xl border border-white/10 text-slate-300 focus:outline-none focus:border-indigo-500 transition-colors" value={editModal.startTime} onChange={e=>setEditModal({...editModal, startTime: e.target.value})}>
+              {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            
+            <input required type="date" className="w-full bg-black/40 p-4 rounded-xl border border-white/10 text-slate-300 focus:outline-none focus:border-indigo-500 transition-colors" value={editModal.date} onChange={e=>setEditModal({...editModal, date: e.target.value})}/>
+            
+            <div className="flex gap-3 pt-4">
+              <button type="button" onClick={() => setEditModal(null)} className="bg-black/40 border border-white/10 flex-1 p-4 rounded-xl flex items-center justify-center gap-2 font-black text-slate-300 hover:bg-white/5 transition-colors">
+                CANCEL
+              </button>
+              <button type="submit" className="bg-indigo-600 flex-1 p-4 rounded-xl flex items-center justify-center gap-2 font-black text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20">
+                <Save size={18}/> SAVE
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
       {/* Auth Gate Modal */}
       {showAuthGate && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-           <div className="bg-[#111827] p-8 rounded-3xl w-full max-w-sm border border-white/10">
-              <div className="flex justify-between items-center mb-6">
-                  <h2 className="font-black text-xl text-white flex items-center gap-2"><Shield size={20} className="text-indigo-500"/> Admin Login</h2>
-                  <button onClick={() => {setShowAuthGate(false); setLoginError('');}} className="text-slate-400 hover:text-white transition-colors bg-white/5 p-2 rounded-full"><X size={16}/></button>
+          <div className="bg-[#111827] p-8 rounded-3xl w-full max-w-sm border border-white/10">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="font-black text-xl text-white flex items-center gap-2"><Shield size={20} className="text-indigo-500"/> Admin Login</h2>
+              <button onClick={() => { setShowAuthGate(false); setLoginError(''); }} className="text-slate-400 hover:text-white transition-colors bg-white/5 p-2 rounded-full"><X size={16}/></button>
+            </div>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <input placeholder="Username" value={gateU} onChange={e=>setGateU(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-indigo-500 transition-colors"/>
+              <div className="relative">
+                <input type={showPass ? "text" : "password"} placeholder="Password" value={gateP} onChange={e=>setGateP(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-indigo-500 transition-colors"/>
+                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-4 text-slate-500 hover:text-slate-300 transition-colors">{showPass ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
               </div>
-              <form onSubmit={handleLogin} className="space-y-4">
-                <input placeholder="Username" value={gateU} onChange={e=>setGateU(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-indigo-500 transition-colors"/>
-                <div className="relative">
-                    <input type={showPass ? "text" : "password"} placeholder="Password" value={gateP} onChange={e=>setGateP(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-indigo-500 transition-colors"/>
-                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-4 text-slate-500 hover:text-slate-300 transition-colors">{showPass ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
-                </div>
-                {loginError && <p className="text-rose-500 text-sm font-bold pt-1">{loginError}</p>}
-                <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 transition-colors py-4 rounded-xl font-black text-white shadow-lg shadow-indigo-600/20 mt-2">Submit</button>
-              </form>
-           </div>
+              {loginError && <p className="text-rose-500 text-sm font-bold pt-1">{loginError}</p>}
+              <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 transition-colors py-4 rounded-xl font-black text-white shadow-lg shadow-indigo-600/20 mt-2">Submit</button>
+            </form>
+          </div>
         </div>
       )}
 
       {/* Profile Modal (Change Password) */}
       {showProfileModal && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-           <form onSubmit={handleChangePassword} className="bg-[#111827] p-8 rounded-3xl w-full max-w-sm border border-white/10 space-y-4">
-              <div className="flex justify-between items-center mb-4">
-                  <h2 className="font-black text-lg text-white">Change Password</h2>
-                  <button type="button" onClick={()=>{setShowProfileModal(false); setPwdMsg(null); setNewPass('');}} className="text-slate-400 hover:text-white transition-colors bg-white/5 p-2 rounded-full"><X size={16}/></button>
-              </div>
-              <p className="text-sm text-slate-400 font-medium mb-4">Update the password for <strong className="text-indigo-400">{currentUser?.username}</strong>.</p>
-              <input type="text" placeholder="Enter new password" value={newPass} onChange={e=>setNewPass(e.target.value)} className="w-full bg-black/40 p-4 rounded-xl border border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-              {pwdMsg && <p className={`text-sm font-bold ${pwdMsg.type === 'error' ? 'text-rose-500' : 'text-emerald-500'}`}>{pwdMsg.text}</p>}
-              <button type="submit" className="bg-indigo-600 w-full p-4 rounded-xl font-black text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20 mt-2">UPDATE PASSWORD</button>
-           </form>
+          <form onSubmit={handleChangePassword} className="bg-[#111827] p-8 rounded-3xl w-full max-w-sm border border-white/10 space-y-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-black text-lg text-white">Change Password</h2>
+              <button type="button" onClick={()=>{ setShowProfileModal(false); setPwdMsg(null); setNewPass(''); }} className="text-slate-400 hover:text-white transition-colors bg-white/5 p-2 rounded-full"><X size={16}/></button>
+            </div>
+            <p className="text-sm text-slate-400 font-medium mb-4">Update the password for <strong className="text-indigo-400">{currentUser?.username}</strong>.</p>
+            <input type="password" placeholder="Enter new password" value={newPass} onChange={e=>setNewPass(e.target.value)} className="w-full bg-black/40 p-4 rounded-xl border border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+            {pwdMsg && <p className={`text-sm font-bold ${pwdMsg.type === 'error' ? 'text-rose-500' : 'text-emerald-500'}`}>{pwdMsg.text}</p>}
+            <button type="submit" className="bg-indigo-600 w-full p-4 rounded-xl font-black text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20 mt-2">UPDATE PASSWORD</button>
+          </form>
         </div>
       )}
 
       {/* Delete Confirmation Modal */}
       {deleteQueue && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
-            <div className="bg-[#111827] p-6 rounded-3xl w-full max-w-sm border border-rose-500/20 space-y-4">
-                <h2 className="font-black text-white text-lg">Confirm Deletion</h2>
-                <p className="text-sm text-slate-400">Are you sure you want to delete <span className="text-white font-bold">{deleteQueue.theme}</span>?</p>
-                <div className="flex gap-3 mt-6">
-                    <button onClick={() => setDeleteQueue(null)} className="flex-1 p-3 bg-black/40 rounded-xl font-bold text-white hover:bg-white/5 transition-colors">Cancel</button>
-                    <button onClick={handleExecuteDelete} className="flex-1 p-3 bg-rose-600 rounded-xl font-bold text-white hover:bg-rose-500 transition-colors shadow-lg shadow-rose-600/20">Yes, Delete</button>
-                </div>
+          <div className="bg-[#111827] p-6 rounded-3xl w-full max-w-sm border border-rose-500/20 space-y-4">
+            <h2 className="font-black text-white text-lg">Confirm Deletion</h2>
+            <p className="text-sm text-slate-400">Are you sure you want to delete <span className="text-white font-bold">{deleteQueue.theme}</span>?</p>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setDeleteQueue(null)} className="flex-1 p-3 bg-black/40 rounded-xl font-bold text-white hover:bg-white/5 transition-colors">Cancel</button>
+              <button onClick={handleExecuteDelete} className="flex-1 p-3 bg-rose-600 rounded-xl font-bold text-white hover:bg-rose-500 transition-colors shadow-lg shadow-rose-600/20">Yes, Delete</button>
             </div>
+          </div>
         </div>
       )}
     </div>
@@ -704,53 +714,50 @@ const handleAdd = async (e) => {
 }
 
 function EventCard({ p }) {
-    const live = isEventLive(p.date, p.startTime);
+  const live = isEventLive(p.date, p.startTime);
 
-    return (
-        <div className={`bg-[#111827] border p-5 rounded-2xl mb-3 relative transition-all duration-300 
-            ${live 
-                ? 'border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.4),0_0_40px_rgba(99,102,241,0.2)] ring-1 ring-indigo-500/30' 
-                : 'border-white/5 hover:border-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.08)]'
-            }`}>
-            
-            {/* Header: Theme and Live Badge */}
-            <div className="flex justify-between items-start mb-3">
-                <div className="font-black text-white text-[17px] leading-tight">{p.theme}</div>
-                {live && (
-                    <div className="bg-indigo-600 text-[10px] font-black px-2 py-1 rounded-md animate-pulse text-white uppercase tracking-wider shrink-0 ml-2">
-                        live
-                    </div>
-                )}
-            </div>
+  return (
+    <div className={`bg-[#111827] border p-5 rounded-2xl mb-3 relative transition-all duration-300 
+      ${live 
+        ? 'border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.4),0_0_40px_rgba(99,102,241,0.2)] ring-1 ring-indigo-500/30' 
+        : 'border-white/5 hover:border-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.08)]'
+      }`}>
+      
+      {/* Header: Theme and Live Badge */}
+      <div className="flex justify-between items-start mb-3">
+        <div className="font-black text-white text-[17px] leading-tight">{p.theme}</div>
+        {live && (
+          <div className="bg-indigo-600 text-[10px] font-black px-2 py-1 rounded-md animate-pulse text-white uppercase tracking-wider shrink-0 ml-2">
+            live
+          </div>
+        )}
+      </div>
 
-            {/* Content: Host, Role, Date, Time */}
-            <div className="flex flex-col gap-2 text-sm font-bold">
-                
-                {/* Host and Role Row */}
-                <div className="flex justify-between items-center text-xs">
-                    {/* Host Label is dim (slate-500), Name is bright (white) and Case Sensitive */}
-                    <span className="tracking-widest">
-                        <span className="text-slate-500 uppercase">Host: </span>
-                        <span className="text-white font-semibold">{p.hostName}</span>
-                    </span>
-                    
-                    <span className="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-md text-[10px] border border-indigo-500/20 uppercase tracking-wider">
-                        {p.performers || 'General'}
-                    </span>
-                </div>
-                
-                {/* Date and Time Row */}
-                <div className="flex justify-between mt-1 pt-2 border-t border-white/5">
-                    <div className="flex flex-col">
-                        <span className="text-[9px] text-slate-600 uppercase">Date</span>
-                        <span className="text-white text-sm">{formatDate(p.date)}</span>
-                    </div>
-                    <div className="flex flex-col items-end">
-                        <span className="text-[9px] text-slate-600 uppercase">Time</span>
-                        <span className="text-white text-sm">{formatTime(p.startTime)}</span>
-                    </div>
-                </div>
-            </div>
+      {/* Content: Host, Role, Date, Time */}
+      <div className="flex flex-col gap-2 text-sm font-bold">
+        <div className="flex justify-between items-center text-xs">
+          <span className="tracking-widest">
+            <span className="text-slate-500 uppercase">Host: </span>
+            <span className="text-white font-semibold">{p.hostName}</span>
+          </span>
+          
+          <span className="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-md text-[10px] border border-indigo-500/20 uppercase tracking-wider">
+            {p.performers || 'General'}
+          </span>
         </div>
-    );
+        
+        {/* Date and Time Row */}
+        <div className="flex justify-between mt-1 pt-2 border-t border-white/5">
+          <div className="flex flex-col">
+            <span className="text-[9px] text-slate-600 uppercase">Date</span>
+            <span className="text-white text-sm">{formatDate(p.date)}</span>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className="text-[9px] text-slate-600 uppercase">Time</span>
+            <span className="text-white text-sm">{formatTime(p.startTime)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
